@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - "*"
+  push:
+    branches:
+      - main
+
+jobs:
+  stylua:
+    name: stylua
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: latest
+          args: --check .
+
+  emmylua_check:
+    needs: stylua
+    name: emmylua_check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+
+      - uses: actions/checkout@v5
+
+      - name: Setup emmylua_check
+        run: make deps/emmylua_check
+
+      - name: Run emmylua_check
+        run: ./deps/emmylua/emmylua_check . --config ./.emmyrc.json
+        env:
+          VIMRUNTIME: /home/runner/nvim-stable/share/nvim/runtime
+
+  test:
+    needs: emmylua_check
+    timeout-minutes: 4
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        neovim_version: ["stable", "nightly"]
+        include:
+          - os: macos-latest
+            neovim_version: stable
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.neovim_version }}
+
+      - name: Setup mini.nvim
+        run: make deps/mini.nvim
+
+      - name: Setup memo
+        run: make deps/memo
+
+      - name: Add ~/.local/bin to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Run tests
+        run: make test
