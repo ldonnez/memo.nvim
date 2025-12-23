@@ -8,13 +8,8 @@ function M.setup()
 	end
 
 	local config = require("memo.config")
-	local notes_dir = vim.fn.expand(config.options.notes_dir)
-
-	fzf.fzf_exec("rg --files", {
-		prompt = "Notes> ",
-		cwd = notes_dir,
-		actions = require("fzf-lua").defaults.actions.files,
-	})
+	local notes_dir = config.options.notes_dir
+	require("fzf-lua").files({ cwd = notes_dir, previewer = false })
 end
 
 return M
