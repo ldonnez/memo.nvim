@@ -115,7 +115,6 @@ function M.load_decrypted(bufnr, original_file, lines, meta_key)
 		end,
 	})
 
-	vim.cmd("doautocmd BufReadPost")
 	vim.api.nvim_set_option_value("modified", false, { buf = bufnr })
 
 	vim.notify("Decrypted and loaded: " .. base, vim.log.levels.INFO)
