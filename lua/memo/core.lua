@@ -99,8 +99,10 @@ function M.load_decrypted(bufnr, original_file, lines, meta_key)
 	vim.bo[bufnr].bin = false
 
 	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-	vim.api.nvim_buf_set_name(bufnr, base)
-	vim.cmd("keepalt file " .. vim.fn.fnameescape(base))
+
+	if vim.api.nvim_buf_get_name(bufnr) ~= base then
+		vim.api.nvim_buf_set_name(bufnr, base)
+	end
 
 	-- filetype detection
 	local ft = vim.filetype.match({ filename = base })
