@@ -142,4 +142,33 @@ function M.encrypt_from_buffer(original_gpg)
 	end
 end
 
+---@param lines string[]
+---@param target string
+---@return integer  -- Returns exit code (0 for success)
+function M.encrypt_from_stdin(lines, target)
+	-- 1. Use your existing passphrase check for consistency
+	if not M.get_gpg_passphrase() then
+		vim.notify("GPG encryption cancelled or failed", vim.log.levels.ERROR)
+		return 1
+	end
+
+	-- 2. Prepare the data
+	local input = table.concat(lines, "\n")
+
+	-- 3. Use standard GPG for stdin (since 'memo' CLI might expect files)
+	-- Note: Ensure your GPG config has a default-recipient or add
+	-- "--recipient", "ID" to this table if needed.
+	local cmd = { "memo", "encrypt", "-", target }
+
+	local obj = vim.system(cmd, { stdin = input }):wait()
+
+	if obj.code == 0 then
+		vim.notify("Encrypted -> " .. utils.base_name(target), vim.log.levels.INFO)
+	else
+		vim.notify("GPG Stdin Error: " .. (obj.stderr or "Unknown"), vim.log.levels.ERROR)
+	end
+
+	return obj.code
+end
+
 return M

@@ -46,8 +46,8 @@ describe("autocmd", function()
 		local cmd = {
 			"memo",
 			"encrypt",
-			plain,
 			encrypted,
+			plain,
 		}
 		vim.system(cmd, { stdin = "test", text = true }):wait()
 
@@ -77,8 +77,8 @@ describe("autocmd", function()
 		local cmd = {
 			"memo",
 			"encrypt",
-			plain,
 			encrypted,
+			plain,
 		}
 		vim.system(cmd, { stdin = "test", text = true }):wait()
 
@@ -94,7 +94,7 @@ describe("autocmd", function()
         ]])
 
 		MiniTest.expect.equality(result.lines, { "Hello world!" })
-		MiniTest.expect.equality(result.name, "secret.md")
+		MiniTest.expect.equality(result.name, "secret.md.gpg")
 	end)
 
 	it("automatically encrypts a new .md file saved in notes dir", function()

@@ -3,96 +3,79 @@ local core = require("memo.core")
 local config = require("memo.config")
 
 local M = {}
-
----@param file string
----@return string
-local function as_gpg_file(file)
-	if not file:match("%.gpg$") then
-		return file .. ".gpg"
-	end
-	return file
-end
+local META = "gpg_original_filename"
 
 function M.setup()
 	local notes_dir = config.options.notes_dir
-	local GROUP = vim.api.nvim_create_augroup("customGpg", { clear = true })
-	local META = "gpg_original_filename"
 	local abs_notes = vim.fn.fnamemodify(vim.fn.expand(notes_dir), ":p")
+	local GROUP = vim.api.nvim_create_augroup("MemoGpg", { clear = true })
 
-	-- 1. Disable unsafe swaps for *.gpg
-	vim.api.nvim_create_autocmd("BufReadPre", {
-		group = GROUP,
-		pattern = abs_notes .. "*.{md,txt,org}.gpg",
-		callback = function()
-			vim.opt_local.shadafile = "NONE"
-			vim.opt_local.swapfile = false
-			vim.opt_local.undofile = false
-		end,
-	})
+	-- Standard patterns
+	local pattern = { abs_notes .. "*.{md,txt,org}", abs_notes .. "*.{md,txt,org}.gpg" }
 
-	-- 2. Decrypt on BufReadCmd
+	-- 2. Reading / Decrypting
 	vim.api.nvim_create_autocmd("BufReadCmd", {
 		group = GROUP,
-		pattern = {
-			abs_notes .. "*.{md,txt,org}",
-			abs_notes .. "*.{md,txt,org}.gpg",
-		},
+		pattern = pattern,
 		callback = function(args)
-			local file = args.file
-			local base = utils.base_name(file)
-			local gpg_file = as_gpg_file(file)
+			vim.opt_local.swapfile = false
+			vim.opt_local.undofile = false
+			vim.opt_local.shadafile = "NONE"
 
-			if vim.fn.filereadable(gpg_file) == 0 then
+			local gpg_path = args.file:match("%.gpg$") and args.file or (args.file .. ".gpg")
+
+			-- If the .gpg file doesn't exist, it's a new note, just open it
+			if vim.fn.filereadable(gpg_path) == 0 then
 				return
 			end
 
-			local bufnr = args.buf
+			local result = core.decrypt_file(gpg_path)
 
-			-- Conflict?
-			local conflict = utils.get_conflicting_buffer(base)
-			if conflict and conflict ~= bufnr then
-				return utils.handle_conflict(conflict, bufnr)
+			if not result or result.code ~= 0 then
+				vim.api.nvim_buf_delete(args.buf, { force = true })
+				return vim.notify("GPG decryption failed", vim.log.levels.ERROR)
 			end
 
-			-- Decrypt (cached)
-			local result = core.decrypt_file(gpg_file)
-
-			-- Retry with passphrase
-			if result == nil or (result and result.code ~= 0) then
-				vim.cmd("bwipeout! " .. bufnr)
-				vim.notify("GPG decryption failed", vim.log.levels.ERROR)
+			if not result.stdout then
 				return
 			end
 
-			if result.stdout then
-				local lines = utils.to_lines(result.stdout)
-				core.load_decrypted(bufnr, gpg_file, lines, META)
-			end
+			local lines = utils.to_lines(result.stdout)
+			vim.api.nvim_buf_set_lines(args.buf, 0, -1, false, lines)
+
+			-- Set state
+			vim.b[args.buf][META] = gpg_path
+			vim.bo[args.buf].buftype = "acwrite"
+			vim.bo[args.buf].modified = false
+
+			-- Force filetype detection based on the name without .gpg
+			local base = args.file:gsub("%.gpg$", "")
+			vim.bo[args.buf].filetype = vim.filetype.match({ filename = base }) or "markdown"
 		end,
 	})
 
-	vim.api.nvim_create_autocmd("BufWritePost", {
+	-- 3. Writing / Encrypting
+	vim.api.nvim_create_autocmd("BufWriteCmd", {
 		group = GROUP,
-		pattern = abs_notes .. "*.{md,txt,org}",
+		pattern = pattern,
 		callback = function(args)
-			local file = args.file
-			local bufnr = args.buf
+			local gpg_path = vim.b[args.buf][META] or (args.file:match("%.gpg$") and args.file or (args.file .. ".gpg"))
 
-			if not file:match("%.gpg$") then
-				local new_name = file .. ".gpg"
+			-- Encrypt buffer content directly via stdin to avoid temp files
+			local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
+			local result = core.encrypt_from_stdin(lines, gpg_path)
 
-				local result = core.encrypt_file(file, new_name)
+			if result and result.code == 0 then
+				vim.bo[args.buf].modified = false
+				vim.b[args.buf][META] = gpg_path
 
-				if not result or (result and result.code ~= 0) then
-					vim.api.nvim_buf_delete(bufnr, { force = true })
-					return vim.notify("GPG encryption failed", vim.log.levels.ERROR)
+				if args.file ~= gpg_path and vim.fn.filereadable(args.file) == 1 then
+					vim.fn.delete(args.file)
+					-- Rename buffer to .gpg so future saves are "clean"
+					vim.api.nvim_buf_set_name(args.buf, gpg_path)
 				end
-
-				vim.fn.delete(file)
-				vim.api.nvim_buf_set_name(bufnr, file)
-
-				vim.notify("Encrypted -> " .. utils.base_name(new_name))
-				vim.api.nvim_exec_autocmds("BufReadCmd", { buffer = bufnr })
+			else
+				vim.notify("Encryption failed!", vim.log.levels.ERROR)
 			end
 		end,
 	})
