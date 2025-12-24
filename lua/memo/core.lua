@@ -110,7 +110,10 @@ function M.load_decrypted(bufnr, original_file, lines, meta_key)
 		vim.bo.filetype = ft
 	end
 
+	local write_group = vim.api.nvim_create_augroup("MemoWrite_" .. bufnr, { clear = true })
+
 	vim.api.nvim_create_autocmd("BufWriteCmd", {
+		group = write_group,
 		buffer = bufnr,
 		callback = function()
 			M.encrypt_from_buffer(original_file)
