@@ -85,7 +85,7 @@ function M.setup()
 
 				if not result or (result and result.code ~= 0) then
 					vim.api.nvim_buf_delete(bufnr, { force = true })
-					return vim.notify("GPG decryption failed", vim.log.levels.ERROR)
+					return vim.notify("GPG encryption failed", vim.log.levels.ERROR)
 				end
 
 				vim.fn.delete(file)
