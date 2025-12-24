@@ -110,7 +110,6 @@ function M.load_decrypted(bufnr, original_file, lines, meta_key)
 
 	vim.api.nvim_create_autocmd("BufWriteCmd", {
 		buffer = bufnr,
-		once = false,
 		callback = function()
 			M.encrypt_from_buffer(original_file)
 		end,
