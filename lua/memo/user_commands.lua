@@ -19,7 +19,7 @@ local function setup_memo_sync()
 		if backend == "git" or backend == "" then
 			local result = core.memo_sync_git()
 			if result and result.code == 0 then
-				return vim.notify("Sync complete: " .. backend, vim.log.levels.INFO)
+				return vim.notify("Sync complete: git", vim.log.levels.INFO)
 			end
 			return vim.notify("Something went wrong syncing: " .. backend, vim.log.levels.ERROR)
 		else
