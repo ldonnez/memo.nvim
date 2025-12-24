@@ -142,33 +142,44 @@ function M.register(opts)
 	vim.api.nvim_buf_set_name(buf, "capture://" .. path)
 
 	local header = resolve_header(config.header)
-	vim.api.nvim_buf_set_lines(buf, 0, -1, false, { header, "", "" })
+	local initial_lines = { header, "", "" }
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, initial_lines)
 	vim.api.nvim_win_set_cursor(win, { 3, 0 })
 
-	local has_written = false
-	local group = vim.api.nvim_create_augroup("CaptureMemo", { clear = false })
+	local has_finished = false
+	local group = vim.api.nvim_create_augroup("CaptureMemo_" .. buf, { clear = true })
 
-	local function write_and_clear()
-		if has_written then
+	local function finalize_capture()
+		if has_finished then
 			return
 		end
-		has_written = true
+		has_finished = true
 
 		local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-		append_capture_memo(lines, path)
-		vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
+
+		-- Abort check
+		local is_empty = #lines == 0 or (#lines == 1 and lines[1] == "")
+		local only_header = #lines <= #initial_lines and table.concat(lines) == table.concat(initial_lines)
+
+		if is_empty or only_header then
+			vim.notify("Capture aborted: empty content", vim.log.levels.WARN)
+		else
+			-- Process the capture
+			append_capture_memo(lines, path)
+		end
+
+		-- Safe Buffer Cleanup
+		vim.schedule(function()
+			if vim.api.nvim_buf_is_valid(buf) then
+				vim.api.nvim_buf_delete(buf, { force = true })
+			end
+		end)
 	end
 
-	vim.api.nvim_create_autocmd("BufWriteCmd", {
+	vim.api.nvim_create_autocmd({ "BufWriteCmd", "BufUnload" }, {
 		buffer = buf,
 		group = group,
-		callback = write_and_clear,
-	})
-
-	vim.api.nvim_create_autocmd("BufUnload", {
-		buffer = buf,
-		group = group,
-		callback = write_and_clear,
+		callback = finalize_capture,
 	})
 end
 
