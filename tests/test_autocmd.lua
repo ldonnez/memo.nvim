@@ -119,8 +119,7 @@ describe("autocmd", function()
 			encrypted
 		))
 
-		-- Buffer should be renamed to .gpg
-		MiniTest.expect.equality(vim.fn.fnamemodify(result.new_name, ":t"), "new_note.md.gpg")
+		MiniTest.expect.equality(vim.fn.fnamemodify(result.new_name, ":t"), "new_note.md")
 		MiniTest.expect.equality(result.plaintext_exists, false)
 		MiniTest.expect.equality(result.gpg_exists, true)
 	end)

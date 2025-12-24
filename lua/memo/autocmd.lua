@@ -89,9 +89,10 @@ function M.setup()
 				end
 
 				vim.fn.delete(file)
-				vim.api.nvim_buf_set_name(bufnr, new_name)
-				vim.api.nvim_command("edit!")
+				vim.api.nvim_buf_set_name(bufnr, file)
+
 				vim.notify("Encrypted -> " .. utils.base_name(new_name))
+				vim.api.nvim_exec_autocmds("BufReadCmd", { buffer = bufnr })
 			end
 		end,
 	})
