@@ -53,7 +53,7 @@ end
 
 ---@param path string
 ---@return vim.SystemCompleted?
-function M.decrypt_file(path)
+function M.decrypt_to_stdout(path)
 	if not M.get_gpg_passphrase() then
 		return vim.notify("wrong gpg password", vim.log.levels.ERROR)
 	end
@@ -61,7 +61,14 @@ function M.decrypt_file(path)
 	local cmd = { "memo", "decrypt", path }
 
 	local opts = { text = true, stdin = "test" }
-	return vim.system(cmd, opts):wait()
+
+	local obj = vim.system(cmd, opts):wait()
+
+	if obj.code ~= 0 then
+		vim.notify("GPG Stdin Error: " .. (obj.stderr or "Unknown"), vim.log.levels.ERROR)
+	end
+
+	return obj
 end
 
 ---@param lines string[]
