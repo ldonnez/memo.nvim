@@ -100,6 +100,8 @@ describe("autocmd", function()
 		local plain = NOTES_DIR .. "/new_note.md"
 		local encrypted = plain .. ".gpg"
 
+		vim.system({ "touch", plain }):wait()
+
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. plain)
 		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
@@ -117,7 +119,7 @@ describe("autocmd", function()
 			encrypted
 		))
 
-		MiniTest.expect.equality(vim.fn.fnamemodify(result.new_name, ":t"), "new_note.md")
+		MiniTest.expect.equality(vim.fn.fnamemodify(result.new_name, ":t"), "new_note.md.gpg")
 		MiniTest.expect.equality(result.plaintext_exists, false)
 		MiniTest.expect.equality(result.gpg_exists, true)
 	end)
