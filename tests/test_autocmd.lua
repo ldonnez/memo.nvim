@@ -124,6 +124,35 @@ describe("autocmd", function()
 		MiniTest.expect.equality(result.gpg_exists, true)
 	end)
 
+	it("automatically encrypts a new .md.gpg file saved in notes dir", function()
+		helpers.create_gpg_key("mock@example.com")
+		local plain = NOTES_DIR .. "/new_note.md"
+		local encrypted = plain .. ".gpg"
+
+		vim.system({ "touch", encrypted }):wait()
+
+		child.lua([[ M.setup() ]])
+		child.cmd("edit " .. encrypted)
+		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
+		child.cmd("write")
+
+		local result = child.lua(string.format(
+			[[
+            return {
+                new_name = vim.api.nvim_buf_get_name(0),
+                plaintext_exists = vim.fn.filereadable(%q) == 1,
+                gpg_exists = vim.fn.filereadable(%q) == 1,
+            }
+        ]],
+			plain,
+			encrypted
+		))
+
+		MiniTest.expect.equality(vim.fn.fnamemodify(result.new_name, ":t"), "new_note.md.gpg")
+		MiniTest.expect.equality(result.plaintext_exists, false)
+		MiniTest.expect.equality(result.gpg_exists, true)
+	end)
+
 	it("wipes buffer if decryption fails", function()
 		helpers.create_gpg_key("mock@example.com")
 		local test_file = NOTES_DIR .. "/broken.md.gpg"
