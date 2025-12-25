@@ -29,7 +29,7 @@ function M.setup()
 				return
 			end
 
-			local result = core.decrypt_file(gpg_path)
+			local result = core.decrypt_to_stdout(gpg_path)
 
 			if not result or result.code ~= 0 then
 				vim.api.nvim_buf_delete(args.buf, { force = true })

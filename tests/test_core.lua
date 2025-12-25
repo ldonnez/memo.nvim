@@ -160,7 +160,7 @@ describe("core", function()
 		}
 		vim.system(cmd, { stdin = "Hello world!", text = true }):wait()
 
-		local result = child.lua(string.format([[ return M.decrypt_file(%q) ]], encrypted))
+		local result = child.lua(string.format([[ return M.decrypt_to_stdout(%q) ]], encrypted))
 
 		MiniTest.expect.equality(result.code, 0)
 		MiniTest.expect.equality(result.stdout, "Hello world!")
@@ -194,7 +194,7 @@ describe("core", function()
           return %q
         end
 
-        return M.decrypt_file(%q)
+        return M.decrypt_to_stdout(%q)
     ]],
 			password,
 			encrypted
@@ -207,7 +207,7 @@ describe("core", function()
 
 	it("fails to decrypt file not found", function()
 		helpers.create_gpg_key("mock@example.com")
-		local result = child.lua([[ return M.decrypt_file("/tmp/does_not_exist.gpg") ]])
+		local result = child.lua([[ return M.decrypt_to_stdout("/tmp/does_not_exist.gpg") ]])
 
 		MiniTest.expect.equality(result.code, 1)
 		MiniTest.expect.equality(result.stderr, "")

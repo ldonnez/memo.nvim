@@ -80,7 +80,7 @@ describe("capture", function()
 		local head = child.fn.readfile(encrypted)[1]
 		MiniTest.expect.equality(head, "-----BEGIN PGP MESSAGE-----")
 
-		local result = child.lua(string.format([[ return core.decrypt_file(%q) ]], encrypted))
+		local result = child.lua(string.format([[ return core.decrypt_to_stdout(%q) ]], encrypted))
 		MiniTest.expect.equality(result.code, 0)
 		MiniTest.expect.equality(result.stdout:find("Integration Test Content") ~= nil, true)
 	end)
@@ -179,7 +179,7 @@ describe("capture", function()
 		local head = child.fn.readfile(capture_file_path)[1]
 		MiniTest.expect.equality(head, "-----BEGIN PGP MESSAGE-----")
 
-		local result = child.lua(string.format([[ return core.decrypt_file(%q) ]], capture_file_path))
+		local result = child.lua(string.format([[ return core.decrypt_to_stdout(%q) ]], capture_file_path))
 		MiniTest.expect.equality(result.code, 0)
 		MiniTest.expect.equality(result.stdout:find("Integration Test Content") ~= nil, true)
 	end)

@@ -42,7 +42,7 @@ local function append_capture_memo(lines, capture_path)
 
 	local file = vim.fn.expand(capture_path)
 
-	local result = core.decrypt_file(file)
+	local result = core.decrypt_to_stdout(file)
 
 	if not result or result.code ~= 0 then
 		vim.notify(
