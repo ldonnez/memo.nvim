@@ -46,7 +46,7 @@ function M.get_gpg_passphrase(keyid)
 		table.insert(cache_cmd, 8, keyid)
 	end
 
-	local cache = vim.system(cache_cmd, { stdin = "test", text = true }):wait()
+	local cache = vim.system(cache_cmd):wait()
 	return cache.code == 0
 end
 
@@ -59,9 +59,7 @@ function M.decrypt_to_stdout(path)
 
 	local cmd = { "memo", "decrypt", path }
 
-	local opts = { text = true, stdin = "test" }
-
-	local obj = vim.system(cmd, opts):wait()
+	local obj = vim.system(cmd):wait()
 
 	if obj.code ~= 0 then
 		vim.notify("GPG Stdin Error: " .. (obj.stderr or "Unknown"), vim.log.levels.ERROR)
