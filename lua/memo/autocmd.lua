@@ -31,7 +31,8 @@ function M.setup()
 			local gpg_path = args.file:match("%.gpg$") and args.file or (args.file .. ".gpg")
 
 			-- If the .gpg file doesn't exist, it's a new note, just open it
-			if vim.fn.filereadable(gpg_path) == 0 then
+			if vim.fn.filereadable(gpg_path) == 0 or vim.fn.getfsize(gpg_path) <= 0 then
+				vim.bo[bufnr].modified = false
 				return
 			end
 
