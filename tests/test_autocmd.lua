@@ -72,15 +72,13 @@ describe("autocmd", function()
 		local encrypted = plain .. ".gpg"
 		helpers.create_gpg_key("mock@example.com")
 
-		helpers.write_file(plain, "Hello world!")
-
 		local cmd = {
 			"memo",
 			"encrypt",
 			encrypted,
 			plain,
 		}
-		vim.system(cmd, { stdin = "test", text = true }):wait()
+		vim.system(cmd, { stdin = "Hello world!", text = true }):wait()
 
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)

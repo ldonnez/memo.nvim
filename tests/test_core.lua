@@ -68,66 +68,83 @@ describe("core", function()
 		MiniTest.expect.equality(result, false)
 	end)
 
-	it("correctly encrypts file", function()
+	it("correctly encrypts from stdin", function()
 		helpers.create_gpg_key("mock@example.com")
 
-		local input = child.fn.tempname() .. ".md"
-		local encrypted = input .. ".gpg"
+		local encrypted = TEST_HOME .. "/stdin_test.md.gpg"
+		local test_lines = { "Hello World", "Line 2" }
 
-		child.fn.writefile({ "hello world" }, input)
+		local result = child.lua(
+			[[
+        local args = {...}
+        local lines = args[1]
+        local target = args[2]
 
-		-- Call your function inside child neovim
-		local result = child.lua(string.format([[ return M.encrypt_file(%q, %q) ]], input, encrypted))
-
+        return M.encrypt_from_stdin(lines, target)
+    ]],
+			{ test_lines, encrypted }
+		)
 		MiniTest.expect.equality(result.code, 0)
 
-		-- Validate that memo actually encrypted it (binary header check)
-		local head = child.fn.readfile(encrypted)[1]
-		MiniTest.expect.equality(head, "-----BEGIN PGP MESSAGE-----")
+		local exists = child.fn.filereadable(encrypted)
+		MiniTest.expect.equality(exists, 1)
+
+		local lines = child.fn.readfile(encrypted)
+		MiniTest.expect.equality(lines[1], "-----BEGIN PGP MESSAGE-----")
 	end)
 
-	it("correctly encrypts file when key has password", function()
+	it("correctly encrypts from stdin when gpg key has password", function()
 		local password = "testpass"
 		helpers.create_gpg_key("mock-password@example.com", password)
 
-		local input = child.fn.tempname() .. ".md"
-		local encrypted = input .. ".gpg"
+		local encrypted = TEST_HOME .. "/stdin_test.md.gpg"
+		local test_lines = { "Hello World", "Line 2" }
 
-		child.fn.writefile({ "hello world" }, input)
-
-		local result = child.lua(string.format(
+		local result = child.lua(
 			[[
+        local args = {...}
+        local lines = args[1]
+        local target = args[2]
+        local password = args[3]
         local utils = require("memo.utils")
 
         utils.prompt_passphrase = function()
-          return %q
+          return password
         end
 
-        return M.encrypt_file(%q, %q)
+        return M.encrypt_from_stdin(lines, target)
     ]],
-			password,
-			input,
-			encrypted
-		))
-
+			{ test_lines, encrypted, password }
+		)
 		MiniTest.expect.equality(result.code, 0)
 
-		-- Validate that memo actually encrypted it (binary header check)
-		local head = child.fn.readfile(encrypted)[1]
-		MiniTest.expect.equality(head, "-----BEGIN PGP MESSAGE-----")
+		local exists = child.fn.filereadable(encrypted)
+		MiniTest.expect.equality(exists, 1)
+
+		local lines = child.fn.readfile(encrypted)
+		MiniTest.expect.equality(lines[1], "-----BEGIN PGP MESSAGE-----")
 	end)
 
 	it("fails encrypting - unsupported extension jpeg", function()
 		helpers.create_gpg_key("mock@example.com")
-		local input = child.fn.tempname() .. ".jpeg"
-		local encrypted = input .. ".gpg"
 
-		child.fn.writefile({ "hello world" }, input)
+		local encrypted = TEST_HOME .. "/stdin_test.jpg.gpg"
+		local test_lines = { "Hello World", "Line 2" }
 
-		-- Call your function inside child neovim
-		local result = child.lua(string.format([[ return M.encrypt_file(%q, %q) ]], input, encrypted))
+		local result = child.lua(
+			[[
+        local args = {...}
+        local lines = args[1]
+        local target = args[2]
 
+        return M.encrypt_from_stdin(lines, target)
+    ]],
+			{ test_lines, encrypted }
+		)
 		MiniTest.expect.equality(result.code, 1)
+
+		local exists = child.fn.filereadable(encrypted)
+		MiniTest.expect.equality(exists, 0)
 	end)
 
 	it("correctly decrypts file", function()
@@ -135,15 +152,13 @@ describe("core", function()
 		local encrypted = "/tmp/plain.txt.gpg"
 		helpers.create_gpg_key("mock@example.com")
 
-		helpers.write_file(plain, "Hello world!")
-
 		local cmd = {
 			"memo",
 			"encrypt",
-			plain,
 			encrypted,
+			plain,
 		}
-		vim.system(cmd, { stdin = "test", text = true }):wait()
+		vim.system(cmd, { stdin = "Hello world!", text = true }):wait()
 
 		local result = child.lua(string.format([[ return M.decrypt_file(%q) ]], encrypted))
 
@@ -158,16 +173,15 @@ describe("core", function()
 		local password = "testpass"
 		helpers.create_gpg_key("mock-password@example.com", password)
 
-		helpers.write_file(plain, "Hello world!")
 		helpers.cache_gpg_password(password)
 
 		local cmd = {
 			"memo",
 			"encrypt",
-			plain,
 			encrypted,
+			plain,
 		}
-		vim.system(cmd, { stdin = "test", text = true }):wait()
+		vim.system(cmd, { stdin = "Hello world!", text = true }):wait()
 
 		-- Ensures gpg password will not be cached anymore for our test case
 		helpers.kill_gpg_agent()
@@ -197,60 +211,5 @@ describe("core", function()
 
 		MiniTest.expect.equality(result.code, 1)
 		MiniTest.expect.equality(result.stderr, "")
-	end)
-
-	it("encrypts buffer", function()
-		helpers.create_gpg_key("mock@example.com")
-
-		local result = child.lua([[
-    -- create a test buffer
-    local bufnr = vim.api.nvim_create_buf(true, false)
-    vim.api.nvim_set_current_buf(bufnr)
-
-    -- write content
-    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "secret", "data" })
-    vim.bo.modified = true
-
-    local target = vim.fn.tempname() .. ".gpg"
-
-    -- run function
-    M.encrypt_from_buffer(target)
-
-    return {
-      modified = vim.bo.modified,
-      exists = vim.fn.filereadable(target) == 1,
-    }
-  ]])
-
-		MiniTest.expect.equality(result.modified, false)
-		MiniTest.expect.equality(result.exists, true)
-	end)
-
-	it("load decrypted buffer", function()
-		local result = child.lua([[
-	  local bufnr = vim.api.nvim_create_buf(true, false)
-
-	  vim.api.nvim_set_current_buf(bufnr)
-
-	  local lines = { "hello", "world" }
-	  local meta_key = "gpg_original"
-	  local original = "/tmp/test.md.gpg"
-
-	  M.load_decrypted(bufnr, original, lines, meta_key)
-
-	  return {
-	    name = vim.api.nvim_buf_get_name(bufnr),
-	    lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false),
-	    meta = vim.b[bufnr][meta_key],
-	    modified = vim.api.nvim_get_option_value("modified", { buf = bufnr }),
-	    ft = vim.bo[bufnr].filetype,
-	  }
-	]])
-
-		MiniTest.expect.equality(result.name, vim.fn.resolve("/tmp/test.md"))
-		MiniTest.expect.equality(result.lines, { "hello", "world" })
-		MiniTest.expect.equality(result.meta, "/tmp/test.md.gpg")
-		MiniTest.expect.equality(result.modified, false)
-		MiniTest.expect.equality(result.ft, "markdown")
 	end)
 end)

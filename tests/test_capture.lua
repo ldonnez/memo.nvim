@@ -47,7 +47,14 @@ describe("capture", function()
 
 		helpers.write_file(capture_file_path, "CAPTURE")
 
-		child.lua(string.format([[ return core.encrypt_file(%q, %q) ]], capture_file, encrypted))
+		local cmd = {
+			"memo",
+			"encrypt",
+			encrypted,
+			capture_file_path,
+		}
+		vim.system(cmd, { stdin = "test", text = true }):wait()
+
 		child.lua(string.format(
 			[[
 	       M.register({ capture_file = %q })
@@ -87,7 +94,14 @@ describe("capture", function()
 
 		helpers.write_file(capture_file_path, "CAPTURE")
 
-		child.lua(string.format([[ return core.encrypt_file(%q, %q) ]], capture_file, encrypted))
+		local cmd = {
+			"memo",
+			"encrypt",
+			encrypted,
+			capture_file_path,
+		}
+		vim.system(cmd, { stdin = "test", text = true }):wait()
+
 		child.lua(string.format(
 			[[
 	       M.register({ capture_file = %q })
@@ -108,8 +122,14 @@ describe("capture", function()
 		local encrypted = capture_file_path .. ".gpg"
 
 		helpers.write_file(capture_file_path, "CAPTURE")
+		local cmd = {
+			"memo",
+			"encrypt",
+			encrypted,
+			capture_file_path,
+		}
+		vim.system(cmd, { stdin = "test", text = true }):wait()
 
-		child.lua(string.format([[ return core.encrypt_file(%q, %q) ]], capture_file, encrypted))
 		child.lua(string.format(
 			[[
 	       M.register({ capture_file = %q })

@@ -51,19 +51,6 @@ function M.get_gpg_passphrase(keyid)
 	return cache.code == 0
 end
 
----@param tmpfile string
----@param target string
----@return vim.SystemCompleted?
-function M.encrypt_file(tmpfile, target)
-	if not M.get_gpg_passphrase() then
-		return vim.notify("wrong gpg password", vim.log.levels.ERROR)
-	end
-
-	local cmd = { "memo", "encrypt", tmpfile, target }
-
-	return vim.system(cmd):wait()
-end
-
 ---@param path string
 ---@return vim.SystemCompleted?
 function M.decrypt_file(path)
@@ -77,98 +64,31 @@ function M.decrypt_file(path)
 	return vim.system(cmd, opts):wait()
 end
 
+---@param lines string[]
+---@param target string
+---@return vim.SystemCompleted?
+function M.encrypt_from_stdin(lines, target)
+	if not M.get_gpg_passphrase() then
+		vim.notify("wrong gpg password", vim.log.levels.ERROR)
+		return
+	end
+
+	local input = table.concat(lines, "\n")
+	local cmd = { "memo", "encrypt", target }
+	local obj = vim.system(cmd, { stdin = input }):wait()
+
+	if obj.code ~= 0 then
+		vim.notify("GPG Stdin Error: " .. (obj.stderr or "Unknown"), vim.log.levels.ERROR)
+	end
+
+	return obj
+end
+
 ---@return vim.SystemCompleted?
 function M.memo_sync_git()
 	local cmd = { "memo", "sync", "git" }
 
 	return vim.system(cmd):wait()
-end
-
----@param bufnr integer
----@param original_file string
----@param lines string[]
----@param meta_key string
-function M.load_decrypted(bufnr, original_file, lines, meta_key)
-	local base = utils.base_name(original_file)
-
-	vim.b[bufnr][meta_key] = original_file
-
-	vim.bo[bufnr].buftype = "acwrite" -- prevents default write
-	vim.bo[bufnr].swapfile = false
-	vim.bo[bufnr].undofile = false
-	vim.bo[bufnr].bin = false
-
-	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-
-	if vim.api.nvim_buf_get_name(bufnr) ~= base then
-		vim.api.nvim_buf_set_name(bufnr, base)
-	end
-
-	-- filetype detection
-	local ft = vim.filetype.match({ filename = base })
-	if ft then
-		vim.bo.filetype = ft
-	end
-
-	local write_group = vim.api.nvim_create_augroup("MemoWrite_" .. bufnr, { clear = true })
-
-	vim.api.nvim_create_autocmd("BufWriteCmd", {
-		group = write_group,
-		buffer = bufnr,
-		callback = function()
-			M.encrypt_from_buffer(original_file)
-		end,
-	})
-
-	vim.api.nvim_set_option_value("modified", false, { buf = bufnr })
-
-	vim.notify("Decrypted and loaded: " .. base, vim.log.levels.INFO)
-end
-
----@param original_gpg string
-function M.encrypt_from_buffer(original_gpg)
-	local tmp = vim.fn.tempname() .. ".txt"
-	vim.cmd("silent! write! " .. tmp)
-
-	local ok = M.encrypt_file(tmp, original_gpg)
-
-	vim.fn.delete(tmp)
-
-	if ok then
-		vim.bo.modified = false
-		vim.notify("Encrypted -> " .. original_gpg, vim.log.levels.INFO)
-	else
-		vim.notify("GPG encryption failed", vim.log.levels.ERROR)
-	end
-end
-
----@param lines string[]
----@param target string
----@return integer  -- Returns exit code (0 for success)
-function M.encrypt_from_stdin(lines, target)
-	-- 1. Use your existing passphrase check for consistency
-	if not M.get_gpg_passphrase() then
-		vim.notify("GPG encryption cancelled or failed", vim.log.levels.ERROR)
-		return 1
-	end
-
-	-- 2. Prepare the data
-	local input = table.concat(lines, "\n")
-
-	-- 3. Use standard GPG for stdin (since 'memo' CLI might expect files)
-	-- Note: Ensure your GPG config has a default-recipient or add
-	-- "--recipient", "ID" to this table if needed.
-	local cmd = { "memo", "encrypt", "-", target }
-
-	local obj = vim.system(cmd, { stdin = input }):wait()
-
-	if obj.code == 0 then
-		vim.notify("Encrypted -> " .. utils.base_name(target), vim.log.levels.INFO)
-	else
-		vim.notify("GPG Stdin Error: " .. (obj.stderr or "Unknown"), vim.log.levels.ERROR)
-	end
-
-	return obj.code
 end
 
 return M

@@ -42,69 +42,50 @@ local function append_capture_memo(lines, capture_path)
 
 	local file = vim.fn.expand(capture_path)
 
-	-- Try to decrypt without passphrase first (cached)
 	local result = core.decrypt_file(file)
 
-	if result and result.code ~= 0 then
-		vim.notify("Memo decryption failed: " .. (result.stderr or "Wrong passphrase?"), vim.log.levels.ERROR)
+	if not result or result.code ~= 0 then
+		vim.notify(
+			"Memo decryption failed: " .. (
+					result--[[@cast -?]].stderr or "Wrong passphrase?"
+				),
+			vim.log.levels.ERROR
+		)
 		return
 	end
 
-	if not result or result.stdout == nil then
-		return
-	end
+	-- 2. Process decrypted lines
+	local decrypted = vim.split(result.stdout or "", "\n", { plain = true })
 
-	-- Split output into lines
-	local decrypted = vim.split(result.stdout, "\n", { plain = true })
+	-- Clean up trailing empty string from split
 	if decrypted[#decrypted] == "" then
 		table.remove(decrypted)
 	end
 
-	-- Ensure at least 2 lines
-	decrypted[1] = decrypted[1] or ""
-	decrypted[2] = decrypted[2] or ""
-
-	local new = {
-		decrypted[1],
-		decrypted[2],
+	-- 3. Construct the merged table in memory
+	-- We assume standard memo structure: Header (1), Spacer (2), then content
+	local merged = {
+		decrypted[1] or "",
+		decrypted[2] or "",
 	}
 
-	-- Insert block (lines + blank line)
+	-- Insert the new capture lines + a blank line for separation
 	for _, l in ipairs(lines) do
-		table.insert(new, l)
+		table.insert(merged, l)
 	end
-	table.insert(new, "")
+	table.insert(merged, "")
 
-	-- Append the rest of decrypted (from line 3 onward)
+	-- Append the rest of the old content (from line 3 onwards)
 	for i = 3, #decrypted do
-		table.insert(new, decrypted[i])
+		table.insert(merged, decrypted[i])
 	end
 
-	decrypted = new
+	-- 4. Re-encrypt directly from the 'merged' table
+	local encrypt_result = core.encrypt_from_stdin(merged, file)
 
-	-- Write decrypted + new capture to temp file
-	local tmpfile = vim.fn.tempname() .. ".txt"
-	local w = io.open(tmpfile, "w")
-
-	if w == nil then
-		return
+	if encrypt_result and encrypt_result.code == 0 then
+		vim.notify("Capture inserted -> " .. vim.fn.fnamemodify(file, ":t"))
 	end
-
-	for _, l in ipairs(decrypted) do
-		w:write(l .. "\n")
-	end
-
-	w:close()
-
-	local encrypt_result = core.encrypt_file(tmpfile, file)
-
-	if encrypt_result and encrypt_result.code ~= 0 then
-		vim.notify("Memo encryption failed", vim.log.levels.ERROR)
-	else
-		vim.notify("Capture inserted -> " .. file)
-	end
-
-	vim.fn.delete(tmpfile)
 end
 
 ---@param opts CaptureConfig?
@@ -117,17 +98,7 @@ function M.register(opts)
 	local path = vim.fn.expand(notes_dir .. "/" .. config.capture_file)
 
 	if vim.fn.filereadable(path) == 0 then
-		local tmp = vim.fn.tempname() .. ".md"
-		vim.fn.writefile({ "", "" }, tmp)
-
-		local result = core.encrypt_file(tmp, path)
-
-		if result and result.code ~= 0 then
-			vim.notify("Memo Encryption failed: " .. (result.stderr or "Wrong passphrase?"), vim.log.levels.ERROR)
-			return
-		end
-
-		vim.fn.delete(tmp)
+		core.encrypt_from_stdin({ "", "" }, path)
 	end
 
 	vim.cmd(config.window.split)
