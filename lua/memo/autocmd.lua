@@ -19,16 +19,13 @@ function M.setup()
 		callback = function(args)
 			local bufnr = args.buf
 
-			vim.opt_local.swapfile = false
-			vim.opt_local.undofile = false
-			vim.opt_local.shadafile = "NONE"
-			vim.bo[bufnr].buftype = "acwrite"
+			utils.apply_gpg_opts(bufnr)
 
 			-- Force filetype detection based on the name without .gpg
 			local base = args.file:gsub("%.gpg$", "")
 			vim.bo[bufnr].filetype = vim.filetype.match({ filename = base })
 
-			local gpg_path = args.file:match("%.gpg$") and args.file or (args.file .. ".gpg")
+			local gpg_path = utils.get_gpg_path(args.file)
 
 			-- If the .gpg file doesn't exist, it's a new note, just open it
 			if vim.fn.filereadable(gpg_path) == 0 or vim.fn.getfsize(gpg_path) <= 0 then
@@ -59,7 +56,7 @@ function M.setup()
 		group = GROUP,
 		pattern = pattern,
 		callback = function(args)
-			local gpg_path = args.file:match("%.gpg$") and args.file or (args.file .. ".gpg")
+			local gpg_path = utils.get_gpg_path(args.file)
 
 			-- Encrypt buffer content directly via stdin to avoid temp files
 			local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
