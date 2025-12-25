@@ -54,7 +54,7 @@ end
 ---@return vim.SystemCompleted?
 function M.decrypt_to_stdout(path)
 	if not M.get_gpg_passphrase() then
-		return vim.notify("wrong gpg password", vim.log.levels.ERROR)
+		return vim.notify("Invalid GPG password", vim.log.levels.ERROR)
 	end
 
 	local cmd = { "memo", "decrypt", path }
@@ -62,7 +62,7 @@ function M.decrypt_to_stdout(path)
 	local obj = vim.system(cmd):wait()
 
 	if obj.code ~= 0 then
-		vim.notify("GPG Stdin Error: " .. (obj.stderr or "Unknown"), vim.log.levels.ERROR)
+		vim.notify("GPG stdout error: " .. (obj.stderr or "Unknown"), vim.log.levels.ERROR)
 	end
 
 	return obj
@@ -73,7 +73,7 @@ end
 ---@return vim.SystemCompleted?
 function M.encrypt_from_stdin(lines, target)
 	if not M.get_gpg_passphrase() then
-		vim.notify("wrong gpg password", vim.log.levels.ERROR)
+		vim.notify("Invalid GPG password", vim.log.levels.ERROR)
 		return
 	end
 
@@ -82,7 +82,7 @@ function M.encrypt_from_stdin(lines, target)
 	local obj = vim.system(cmd, { stdin = input }):wait()
 
 	if obj.code ~= 0 then
-		vim.notify("GPG Stdin Error: " .. (obj.stderr or "Unknown"), vim.log.levels.ERROR)
+		vim.notify("GPG stdin error: " .. (obj.stderr or "Unknown"), vim.log.levels.ERROR)
 	end
 
 	return obj
