@@ -9,7 +9,6 @@ function M.setup()
 	local abs_notes = vim.fn.fnamemodify(vim.fn.expand(notes_dir), ":p")
 	local GROUP = vim.api.nvim_create_augroup("MemoGpg", { clear = true })
 
-	-- Standard patterns
 	local pattern = { abs_notes .. "*.{md,txt,org}", abs_notes .. "*.{md,txt,org}.gpg" }
 
 	-- 2. Reading / Decrypting

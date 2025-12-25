@@ -6,7 +6,6 @@ local M = {}
 --- @param keyid string?
 --- @return boolean
 function M.get_gpg_passphrase(keyid)
-	-- 1. Check if cached
 	local check_cmd = {
 		"gpg",
 		"--batch",
@@ -20,11 +19,11 @@ function M.get_gpg_passphrase(keyid)
 	end
 
 	local check = vim.system(check_cmd, { stdin = "test", text = true }):wait()
+
 	if check.code == 0 then
-		return true -- already cached
+		return true
 	end
 
-	-- 2. Ask for passphrase
 	local pass = utils.prompt_passphrase()
 
 	if pass == "" then
