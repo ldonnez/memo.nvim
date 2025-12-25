@@ -22,6 +22,10 @@ function M.setup()
 			vim.opt_local.undofile = false
 			vim.opt_local.shadafile = "NONE"
 
+			-- Force filetype detection based on the name without .gpg
+			local base = args.file:gsub("%.gpg$", "")
+			vim.bo[args.buf].filetype = vim.filetype.match({ filename = base })
+
 			local gpg_path = args.file:match("%.gpg$") and args.file or (args.file .. ".gpg")
 
 			-- If the .gpg file doesn't exist, it's a new note, just open it
@@ -47,10 +51,6 @@ function M.setup()
 			vim.b[args.buf][META] = gpg_path
 			vim.bo[args.buf].buftype = "acwrite"
 			vim.bo[args.buf].modified = false
-
-			-- Force filetype detection based on the name without .gpg
-			local base = args.file:gsub("%.gpg$", "")
-			vim.bo[args.buf].filetype = vim.filetype.match({ filename = base }) or "markdown"
 		end,
 	})
 
