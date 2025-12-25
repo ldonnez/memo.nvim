@@ -45,7 +45,7 @@ function M.apply_gpg_opts(bufnr)
 end
 
 --- Split decrypted text into clean list of lines
----@param str string
+---@param str string?
 ---@return string[]
 function M.to_lines(str)
 	local lines = vim.split(str or "", "\n", { plain = true })
