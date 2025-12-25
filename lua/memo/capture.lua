@@ -61,7 +61,7 @@ function M.register(opts)
 
 	local path = utils.get_gpg_path(memo_config.options.notes_dir .. "/" .. config.capture_file)
 
-	-- Ensure file exists
+	-- Ensure capture file exists, otherwise create
 	if vim.fn.filereadable(path) == 0 then
 		core.encrypt_from_stdin({ "", "" }, path)
 	end
@@ -86,7 +86,7 @@ function M.register(opts)
 		callback = function()
 			local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
 
-			-- Simple abort check
+			-- Abort when capture window contains only the header or is empty
 			if #lines > 3 or (lines[3] and lines[3] ~= "") then
 				append_capture_memo(lines, path)
 			else
