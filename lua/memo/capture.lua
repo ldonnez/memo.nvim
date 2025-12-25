@@ -80,14 +80,10 @@ function M.register(opts)
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, initial_lines)
 	vim.api.nvim_win_set_cursor(0, { 3, 0 })
 
-	local has_finished = false
 	vim.api.nvim_create_autocmd({ "BufWriteCmd", "BufUnload" }, {
 		buffer = buf,
+		once = true,
 		callback = function()
-			if has_finished then
-				return
-			end
-			has_finished = true
 			local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
 
 			-- Simple abort check
