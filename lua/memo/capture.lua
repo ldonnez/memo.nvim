@@ -12,7 +12,7 @@ local M = {}
 
 ---@type CaptureConfig
 local defaults = {
-	capture_file = vim.fn.expand("~/notes" .. "/inbox.md.gpg"),
+	capture_file = "inbox.md.gpg",
 	header = function()
 		return "## " .. os.date("%Y-%m-%d %H:%M")
 	end,
