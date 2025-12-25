@@ -54,7 +54,6 @@ local function append_capture_memo(lines, capture_path)
 		return
 	end
 
-	-- 2. Process decrypted lines
 	local decrypted = vim.split(result.stdout or "", "\n", { plain = true })
 
 	-- Clean up trailing empty string from split
@@ -62,7 +61,6 @@ local function append_capture_memo(lines, capture_path)
 		table.remove(decrypted)
 	end
 
-	-- 3. Construct the merged table in memory
 	-- We assume standard memo structure: Header (1), Spacer (2), then content
 	local merged = {
 		decrypted[1] or "",
@@ -80,7 +78,6 @@ local function append_capture_memo(lines, capture_path)
 		table.insert(merged, decrypted[i])
 	end
 
-	-- 4. Re-encrypt directly from the 'merged' table
 	local encrypt_result = core.encrypt_from_stdin(merged, file)
 
 	if encrypt_result and encrypt_result.code == 0 then
@@ -139,7 +136,7 @@ function M.register(opts)
 			append_capture_memo(lines, path)
 		end
 
-		-- Safe Buffer Cleanup
+		-- Buffer Cleanup
 		vim.schedule(function()
 			if vim.api.nvim_buf_is_valid(buf) then
 				vim.api.nvim_buf_delete(buf, { force = true })
