@@ -12,9 +12,6 @@ describe("config", function()
 			"-u",
 			"scripts/minimal_init.lua",
 		})
-
-		-- Load tested plugin
-		child.lua([[ M = require('memo.config') ]])
 	end)
 
 	after_each(function()
@@ -24,15 +21,11 @@ describe("config", function()
 
 	it("correctly loads default notes_dir", function()
 		vim.fn.mkdir(TEST_HOME .. "/notes", "p")
-		child.lua([[
-        return M.setup()
-    ]])
 
-		local result = child.lua([[
-        return M.options
-    ]])
+		child.lua([[ require('memo.config').setup() ]])
+		local result_dir = child.lua([[ return require('memo.config').notes_dir ]])
 
-		MiniTest.expect.equality(result.notes_dir, TEST_HOME .. "/notes")
+		MiniTest.expect.equality(result_dir, TEST_HOME .. "/notes")
 	end)
 
 	it("errors when notes dir does not exist", function()
@@ -40,7 +33,7 @@ describe("config", function()
 
 		child.lua(string.format(
 			[[
-        return M.setup({ notes_dir = %q })
+        require('memo.config').setup({ notes_dir = %q })
     ]],
 			notes_dir
 		))
@@ -55,15 +48,12 @@ describe("config", function()
 
 		child.lua(string.format(
 			[[
-        return M.setup({ notes_dir = %q })
+        require('memo.config').setup({ notes_dir = %q })
     ]],
 			notes_dir
 		))
 
-		local result = child.lua([[
-        return M.options
-    ]])
-
-		MiniTest.expect.equality(result.notes_dir, notes_dir)
+		local result = child.lua([[ return require('memo.config').notes_dir ]])
+		MiniTest.expect.equality(result, notes_dir)
 	end)
 end)

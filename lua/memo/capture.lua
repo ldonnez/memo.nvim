@@ -59,7 +59,7 @@ function M.register(opts)
 		config = vim.tbl_deep_extend("force", defaults, opts)
 	end
 
-	local path = utils.get_gpg_path(memo_config.options.notes_dir .. "/" .. config.capture_file)
+	local path = utils.get_gpg_path(memo_config.notes_dir .. "/" .. config.capture_file)
 
 	-- Ensure capture file exists, otherwise create
 	if vim.fn.filereadable(path) == 0 then

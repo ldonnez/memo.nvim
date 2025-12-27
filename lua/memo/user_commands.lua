@@ -5,8 +5,8 @@ local function setup_memo_setup()
 		local memo = require("memo")
 		local config = require("memo.config")
 
-		if not config.options or next(config.options) == nil then
-			memo.setup({ notes_dir = config.options.notes_dir })
+		if not config or next(config) == nil then
+			memo.setup({ notes_dir = config.notes_dir })
 		end
 	end, {})
 end

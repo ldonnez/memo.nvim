@@ -8,7 +8,7 @@ function M.setup()
 	end
 
 	local config = require("memo.config")
-	local notes_dir = config.options.notes_dir
+	local notes_dir = config.notes_dir
 	require("fzf-lua").files({ cwd = notes_dir, previewer = false })
 end
 
