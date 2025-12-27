@@ -12,7 +12,7 @@ end
 ---@param input string[]
 ---@return vim.SystemCompleted?
 function M.encrypt_from_stdin(path, input)
-	return gpg.exec_with_gpg_auth({ "memo", "encrypt", path }, { stdin = input })
+	return vim.system({ "memo", "encrypt", path }, { stdin = input }):wait()
 end
 
 ---@return vim.SystemCompleted?

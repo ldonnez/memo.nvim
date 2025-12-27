@@ -52,38 +52,6 @@ describe("core", function()
 		MiniTest.expect.equality(lines[1], "-----BEGIN PGP MESSAGE-----")
 	end)
 
-	it("correctly encrypts from stdin when gpg key has password", function()
-		local password = "testpass"
-		helpers.create_gpg_key("mock-password@example.com", password)
-
-		local encrypted = TEST_HOME .. "/stdin_test.md.gpg"
-		local test_lines = { "Hello World", "Line 2" }
-
-		local result = child.lua(
-			[[
-        local args = {...}
-        local lines = args[1]
-        local target = args[2]
-        local password = args[3]
-        local utils = require("memo.utils")
-
-        utils.prompt_passphrase = function()
-          return password
-        end
-
-        return M.encrypt_from_stdin(target, lines)
-    ]],
-			{ test_lines, encrypted, password }
-		)
-		MiniTest.expect.equality(result.code, 0)
-
-		local exists = child.fn.filereadable(encrypted)
-		MiniTest.expect.equality(exists, 1)
-
-		local lines = child.fn.readfile(encrypted)
-		MiniTest.expect.equality(lines[1], "-----BEGIN PGP MESSAGE-----")
-	end)
-
 	it("fails encrypting - unsupported extension jpeg", function()
 		helpers.create_gpg_key("mock@example.com")
 
