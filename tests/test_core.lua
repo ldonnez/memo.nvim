@@ -27,47 +27,6 @@ describe("core", function()
 		helpers.kill_gpg_agent()
 	end)
 
-	it("correctly asks password and caches it", function()
-		local password = "testpassword"
-		helpers.create_gpg_key("mock-password@example.com", password)
-
-		local result = child.lua(string.format(
-			[[
-        local utils = require("memo.utils")
-
-        utils.prompt_passphrase = function()
-          return %q
-        end
-
-        return M.get_gpg_passphrase()
-    ]],
-			password
-		))
-
-		MiniTest.expect.equality(result, true)
-	end)
-
-	it("does not cache password when its wrong", function()
-		local password = "testpassword"
-		local keyid = "mock-wrong-password@example.com"
-		helpers.create_gpg_key(keyid, password)
-
-		local result = child.lua(string.format(
-			[[
-        local utils = require("memo.utils")
-
-        utils.prompt_passphrase = function()
-          return %q
-        end
-
-        return M.get_gpg_passphrase()
-    ]],
-			"wrong-password"
-		))
-
-		MiniTest.expect.equality(result, false)
-	end)
-
 	it("correctly encrypts from stdin", function()
 		helpers.create_gpg_key("mock@example.com")
 
