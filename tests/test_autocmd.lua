@@ -153,6 +153,36 @@ describe("autocmd", function()
 		MiniTest.expect.equality(result.gpg_exists, true)
 	end)
 
+	it("does not re-encrypt (no-op) if content hasn't changed", function()
+		helpers.create_gpg_key("mock@example.com")
+		local encrypted = NOTES_DIR .. "/unchanged.md.gpg"
+
+		local cmd = {
+			"memo",
+			"encrypt",
+			encrypted,
+		}
+		vim.system(cmd, { stdin = "Hello world!", text = true }):wait()
+		child.lua([[ M.setup() ]])
+		child.cmd("edit " .. encrypted)
+		child.cmd("write")
+
+		local messages = child.cmd_capture("messages")
+		MiniTest.expect.equality(messages, "No changes detected")
+
+		child.cmd("messages clear")
+		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
+		child.cmd("write")
+
+		local messages2 = child.cmd_capture("messages")
+		MiniTest.expect.equality(messages2, "")
+
+		child.cmd("write")
+
+		local messages3 = child.cmd_capture("messages")
+		MiniTest.expect.equality(messages3, "No changes detected")
+	end)
+
 	it("wipes buffer if decryption fails", function()
 		helpers.create_gpg_key("mock@example.com")
 		local test_file = NOTES_DIR .. "/broken.md.gpg"

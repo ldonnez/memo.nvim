@@ -44,6 +44,9 @@ function M.setup()
 			end
 
 			local lines = utils.to_lines(result.stdout)
+			local sha256 = vim.fn.sha256(table.concat(lines, "\n"))
+			vim.b[bufnr].hash = sha256
+
 			vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
 
 			vim.bo[bufnr].modified = false
@@ -59,11 +62,22 @@ function M.setup()
 
 			-- Encrypt buffer content directly via stdin to avoid temp files
 			local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
+
+			local current_hash = vim.fn.sha256(table.concat(lines, "\n"))
+			local original_hash = vim.b[args.buf].hash
+
+			if current_hash == original_hash then
+				vim.notify("No changes detected", vim.log.levels.INFO)
+				vim.bo[args.buf].modified = false
+				return
+			end
+
 			local result = core.encrypt_from_stdin(gpg_path, lines)
 
 			if result and result.code == 0 then
 				vim.bo[args.buf].modified = false
 
+				vim.b[args.buf].hash = current_hash
 				if args.file ~= gpg_path and vim.fn.filereadable(args.file) == 1 then
 					vim.fn.delete(args.file)
 					-- Rename buffer to .gpg so future saves are "clean"
