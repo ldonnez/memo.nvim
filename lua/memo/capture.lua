@@ -21,10 +21,6 @@ local defaults = {
 	},
 }
 
----@type CaptureConfig
-local config = vim.deepcopy(defaults)
----@cast config.capture_file string
-
 ---@param header string|function
 ---@return string
 local function resolve_header(header)
@@ -55,10 +51,7 @@ end
 
 ---@param opts CaptureConfig?
 function M.register(opts)
-	if opts then
-		config = vim.tbl_deep_extend("force", defaults, opts)
-	end
-
+	local config = vim.tbl_deep_extend("force", defaults, opts or {})
 	local path = utils.get_gpg_path(memo_config.notes_dir .. "/" .. config.capture_file)
 
 	-- Ensure capture file exists, otherwise create
