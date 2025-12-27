@@ -59,7 +59,7 @@ function M.setup()
 
 			-- Encrypt buffer content directly via stdin to avoid temp files
 			local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
-			local result = core.encrypt_from_stdin(lines, gpg_path)
+			local result = core.encrypt_from_stdin(gpg_path, lines)
 
 			if result and result.code == 0 then
 				vim.bo[args.buf].modified = false

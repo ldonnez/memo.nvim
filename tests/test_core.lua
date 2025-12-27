@@ -39,7 +39,7 @@ describe("core", function()
         local lines = args[1]
         local target = args[2]
 
-        return M.encrypt_from_stdin(lines, target)
+        return M.encrypt_from_stdin(target, lines)
     ]],
 			{ test_lines, encrypted }
 		)
@@ -71,7 +71,7 @@ describe("core", function()
           return password
         end
 
-        return M.encrypt_from_stdin(lines, target)
+        return M.encrypt_from_stdin(target, lines)
     ]],
 			{ test_lines, encrypted, password }
 		)
@@ -96,7 +96,7 @@ describe("core", function()
         local lines = args[1]
         local target = args[2]
 
-        return M.encrypt_from_stdin(lines, target)
+        return M.encrypt_from_stdin(target, lines)
     ]],
 			{ test_lines, encrypted }
 		)
