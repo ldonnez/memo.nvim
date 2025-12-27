@@ -16,7 +16,7 @@ function M.encrypt_from_stdin(path, input)
 end
 
 ---@return vim.SystemCompleted?
-function M.memo_sync_git()
+function M.sync_git()
 	local cmd = { "memo", "sync", "git" }
 
 	return vim.system(cmd):wait()
