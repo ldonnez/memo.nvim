@@ -46,7 +46,7 @@ local function append_capture_memo(lines, capture_path)
 
 	local existing = utils.to_lines(result.stdout or "")
 	local merged = utils.merge_content(existing, lines)
-	core.encrypt_from_stdin(merged, file)
+	core.encrypt_from_stdin(file, merged)
 end
 
 ---@param opts CaptureConfig?
@@ -56,7 +56,7 @@ function M.register(opts)
 
 	-- Ensure capture file exists, otherwise create
 	if vim.fn.filereadable(path) == 0 then
-		core.encrypt_from_stdin({ "", "" }, path)
+		core.encrypt_from_stdin(path, { "", "" })
 	end
 
 	-- UI Setup
