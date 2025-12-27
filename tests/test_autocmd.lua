@@ -22,7 +22,7 @@ describe("autocmd", function()
 		child.lua(string.format(
 			[[
             local config = require('memo.config')
-            config.notes_dir = %q
+            config.setup({ notes_dir = %q })
             M = require('memo.autocmd')
         ]],
 			NOTES_DIR

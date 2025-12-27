@@ -5,7 +5,7 @@ local config = require("memo.config")
 local M = {}
 
 function M.setup()
-	local notes_dir = config.options.notes_dir
+	local notes_dir = config.notes_dir
 	local abs_notes = vim.fn.fnamemodify(vim.fn.expand(notes_dir), ":p")
 	local GROUP = vim.api.nvim_create_augroup("MemoGpg", { clear = true })
 
