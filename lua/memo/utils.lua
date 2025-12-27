@@ -1,9 +1,10 @@
 local M = {}
 
 --- Prompt user for passphrase
+---@param label string
 ---@return string
-function M.prompt_passphrase()
-	return vim.fn.inputsecret("GPG Passphrase: ")
+function M.prompt_passphrase(label)
+	return vim.fn.inputsecret("GPG Passphrase for " .. label .. ": ")
 end
 
 ---Ensures a path ends in .gpg
