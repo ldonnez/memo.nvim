@@ -53,7 +53,7 @@ describe("capture", function()
 			encrypted,
 			capture_file_path,
 		}
-		vim.system(cmd, { stdin = "test", text = true }):wait()
+		vim.system(cmd):wait()
 
 		child.lua(string.format(
 			[[
@@ -100,7 +100,7 @@ describe("capture", function()
 			encrypted,
 			capture_file_path,
 		}
-		vim.system(cmd, { stdin = "test", text = true }):wait()
+		vim.system(cmd):wait()
 
 		child.lua(string.format(
 			[[
@@ -128,7 +128,7 @@ describe("capture", function()
 			encrypted,
 			capture_file_path,
 		}
-		vim.system(cmd, { stdin = "test", text = true }):wait()
+		vim.system(cmd):wait()
 
 		child.lua(string.format(
 			[[
