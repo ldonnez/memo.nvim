@@ -95,6 +95,45 @@ describe("autocmd", function()
 		MiniTest.expect.equality(result.name, "secret.md.gpg")
 	end)
 
+	it("does not trigger decryption when existing .md file is opened; reencrypts it after saving", function()
+		local plain = NOTES_DIR .. "/existing.md"
+		helpers.write_file(plain, "Hello world")
+		helpers.create_gpg_key("mock@example.com")
+
+		child.lua([[ M.setup() ]])
+		child.cmd("edit " .. plain)
+
+		-- Check if buffer content
+		local result = child.lua([[
+            return {
+                lines = vim.api.nvim_buf_get_lines(0, 0, -1, false),
+                name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":t")
+            }
+        ]])
+
+		MiniTest.expect.equality(result.lines, { "Hello world" })
+		MiniTest.expect.equality(result.name, "existing.md")
+
+		child.cmd("write")
+
+		local result_after_write = child.lua([[
+            return {
+                lines = vim.api.nvim_buf_get_lines(0, 0, -1, false),
+                name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":t")
+            }
+        ]])
+
+		local cmd = {
+			"memo",
+			"decrypt",
+			plain .. ".gpg",
+		}
+		local decrypted_result = vim.system(cmd):wait()
+
+		MiniTest.expect.equality(decrypted_result.stdout, "Hello world\n")
+		MiniTest.expect.equality(result_after_write.name, "existing.md.gpg")
+	end)
+
 	it("automatically encrypts a new .md file saved in notes dir", function()
 		helpers.create_gpg_key("mock@example.com")
 		local plain = NOTES_DIR .. "/new_note.md"
