@@ -80,53 +80,6 @@ describe("utils", function()
 		end)
 	end)
 
-	describe("to_lines", function()
-		it("splits a basic string into lines", function()
-			local util = require("memo.utils")
-			local input = "Line 1\nLine 2"
-			local result = util.to_lines(input)
-
-			MiniTest.expect.equality(#result, 2)
-			MiniTest.expect.equality(result[1], "Line 1")
-			MiniTest.expect.equality(result[2], "Line 2")
-		end)
-
-		it("removes the trailing empty line caused by a final newline", function()
-			local util = require("memo.utils")
-			local input = "Line 1\nLine 2\n"
-			local result = util.to_lines(input)
-
-			-- Without the cleanup, length would be 3
-			MiniTest.expect.equality(#result, 2)
-			MiniTest.expect.equality(result[1], "Line 1")
-			MiniTest.expect.equality(result[2], "Line 2")
-		end)
-
-		it("handles an empty string", function()
-			local util = require("memo.utils")
-			local result = util.to_lines("")
-
-			MiniTest.expect.equality(#result, 0)
-		end)
-
-		it("handles nil gracefully", function()
-			local util = require("memo.utils")
-			local result = util.to_lines(nil)
-
-			MiniTest.expect.equality(#result, 0)
-		end)
-
-		it("preserves internal empty lines", function()
-			local util = require("memo.utils")
-			local input = "Line 1\n\nLine 3\n"
-			local result = util.to_lines(input)
-
-			MiniTest.expect.equality(#result, 3)
-			MiniTest.expect.equality(result[2], "")
-			MiniTest.expect.equality(result[3], "Line 3")
-		end)
-	end)
-
 	describe("apply_gpg_opts", function()
 		it("correctly sets buffer-local security options", function()
 			local util = require("memo.utils")

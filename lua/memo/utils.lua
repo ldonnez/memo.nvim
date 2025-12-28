@@ -45,17 +45,6 @@ function M.apply_gpg_opts(bufnr)
 	vim.bo[bufnr].buftype = "acwrite"
 end
 
---- Split decrypted text into clean list of lines
----@param str string?
----@return string[]
-function M.to_lines(str)
-	local lines = vim.split(str or "", "\n", { plain = true })
-	if lines[#lines] == "" then
-		table.remove(lines)
-	end
-	return lines
-end
-
 ---@param cmd string
 ---@return boolean
 function M.check_exec(cmd)

@@ -1,4 +1,5 @@
 local helpers = require("tests.helpers")
+local events = require("memo.events")
 local child = MiniTest.new_child_neovim()
 
 describe("autocmd", function()
@@ -32,6 +33,7 @@ describe("autocmd", function()
 	after_each(function()
 		vim.fn.delete(TEST_HOME, "rf")
 		vim.fn.delete(NOTES_DIR, "rf")
+		child.cmd("messages clear")
 		child.stop()
 		helpers.kill_gpg_agent()
 	end)
@@ -82,6 +84,7 @@ describe("autocmd", function()
 
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
+		helpers.wait_for_event(child, events.types.DECRYPT_DONE)
 
 		-- Check if buffer content is decrypted and buffer is renamed
 		local result = child.lua([[
@@ -116,6 +119,8 @@ describe("autocmd", function()
 
 		child.cmd("write")
 
+		helpers.wait_for_event(child, events.types.ENCRYPT_DONE)
+
 		local result_after_write = child.lua([[
             return {
                 lines = vim.api.nvim_buf_get_lines(0, 0, -1, false),
@@ -145,6 +150,7 @@ describe("autocmd", function()
 		child.cmd("edit " .. plain)
 		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
 		child.cmd("write")
+		helpers.wait_for_event(child, events.types.ENCRYPT_DONE)
 
 		local result = child.lua(string.format(
 			[[
@@ -172,8 +178,13 @@ describe("autocmd", function()
 
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
+
+		helpers.wait_for_event(child, events.types.DECRYPT_DONE)
+
 		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
 		child.cmd("write")
+
+		helpers.wait_for_event(child, events.types.ENCRYPT_DONE)
 
 		local result = child.lua(string.format(
 			[[
@@ -204,7 +215,10 @@ describe("autocmd", function()
 		vim.system(cmd, { stdin = "Hello world!", text = true }):wait()
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
+
+		helpers.wait_for_event(child, events.types.BUFFER_READY)
 		child.cmd("write")
+		helpers.wait_for_event(child, events.types.BUFFER_READY)
 
 		local messages = child.cmd_capture("messages")
 		MiniTest.expect.equality(messages, "No changes detected")
@@ -212,11 +226,13 @@ describe("autocmd", function()
 		child.cmd("messages clear")
 		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
 		child.cmd("write")
+		helpers.wait_for_event(child, events.types.BUFFER_READY)
 
 		local messages2 = child.cmd_capture("messages")
 		MiniTest.expect.equality(messages2, "")
 
 		child.cmd("write")
+		helpers.wait_for_event(child, events.types.BUFFER_READY)
 
 		local messages3 = child.cmd_capture("messages")
 		MiniTest.expect.equality(messages3, "No changes detected")
@@ -229,6 +245,8 @@ describe("autocmd", function()
 
 		child.lua([[ M.setup() ]])
 		child.lua(string.format([[ pcall(vim.cmd, "edit %s") ]], test_file))
+
+		helpers.wait_for_event(child, events.types.DECRYPT_DONE)
 
 		local buf_name = child.api.nvim_buf_get_name(0)
 		MiniTest.expect.no_equality(buf_name, test_file)

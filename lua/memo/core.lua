@@ -1,18 +1,82 @@
 local gpg = require("memo.gpg")
+local events = require("memo.events")
 
 local M = {}
 
 ---@param path string
----@return vim.SystemCompleted?
-function M.decrypt_to_stdout(path)
-	return gpg.exec_with_gpg_auth({ "memo", "decrypt", path })
+---@param input string[]
+---@param on_exit fun(result: vim.SystemCompleted)?
+---@return vim.SystemObj?
+function M.encrypt_from_stdin(path, input, on_exit)
+	return vim.system({ "memo", "encrypt", path }, {
+		stdin = input,
+	}, function(result)
+		vim.schedule(function()
+			if result.code ~= 0 and not on_exit then
+				local err = (result.stderr and result.stderr ~= "") and result.stderr or "Unknown encryption error"
+				return vim.notify("Memo failed: " .. err, vim.log.levels.ERROR)
+			end
+
+			if on_exit then
+				on_exit(result)
+			end
+
+			events.emit(events.types.ENCRYPT_DONE)
+		end)
+	end)
 end
 
----@param path string
----@param input string[]
----@return vim.SystemCompleted?
-function M.encrypt_from_stdin(path, input)
-	return vim.system({ "memo", "encrypt", path }, { stdin = input }):wait()
+--- Decrypts a file and handles all buffer insertions.
+--- @param path string The path to the encrypted file.
+--- @param bufnr integer The buffer handle to write into.
+--- @param on_exit fun(result: vim.SystemCompleted)
+--- @return vim.SystemObj?
+function M.decrypt_to_buffer(path, bufnr, on_exit)
+	return gpg.exec_with_gpg_auth({ "memo", "decrypt", path }, {
+		stdout = function(_, data)
+			if not data or data == "" then
+				return
+			end
+
+			vim.schedule(function()
+				if not vim.api.nvim_buf_is_valid(bufnr) then
+					return
+				end
+
+				vim.bo[bufnr].modifiable = true
+
+				local line_count = vim.api.nvim_buf_line_count(bufnr)
+				local last_line_idx = line_count - 1
+				local last_line_content = vim.api.nvim_buf_get_lines(bufnr, -2, -1, false)[1] or ""
+				local last_col = #last_line_content
+
+				vim.api.nvim_buf_set_text(
+					bufnr,
+					last_line_idx,
+					last_col,
+					last_line_idx,
+					last_col,
+					vim.split(data, "\n", { plain = true })
+				)
+
+				-- Ensure cursor stays on top
+				local winid = vim.fn.bufwinid(bufnr)
+				if winid ~= -1 then
+					vim.api.nvim_win_set_cursor(winid, { 1, 0 })
+				end
+
+				vim.bo[bufnr].modifiable = false
+			end)
+		end,
+	}, function(result)
+		vim.schedule(function()
+			if on_exit then
+				on_exit(result)
+			end
+
+			events.emit(events.types.DECRYPT_DONE)
+		end)
+	end)
 end
 
 ---@return vim.SystemCompleted?

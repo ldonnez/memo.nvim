@@ -1,4 +1,5 @@
 local helpers = require("tests.helpers")
+local events = require("memo.events")
 local child = MiniTest.new_child_neovim()
 
 describe("capture", function()
@@ -73,6 +74,7 @@ describe("capture", function()
     ]],
 			{ buf }
 		)
+		helpers.wait_for_event(child, events.types.CAPTURE_DONE)
 
 		local exists = child.fn.filereadable(encrypted)
 		MiniTest.expect.equality(exists, 1)
@@ -80,8 +82,9 @@ describe("capture", function()
 		local head = child.fn.readfile(encrypted)[1]
 		MiniTest.expect.equality(head, "-----BEGIN PGP MESSAGE-----")
 
-		local result = child.lua(string.format([[ return core.decrypt_to_stdout(%q) ]], encrypted))
+		local result = vim.system({ "memo", "decrypt", encrypted }):wait()
 		MiniTest.expect.equality(result.code, 0)
+		--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 		MiniTest.expect.equality(result.stdout:find("Integration Test Content") ~= nil, true)
 	end)
 
@@ -160,6 +163,7 @@ describe("capture", function()
 	   ]],
 			capture_file
 		))
+		helpers.wait_for_event(child, events.types.ENCRYPT_DONE)
 
 		child.type_keys("i", "Integration Test Content", "<Esc>")
 
@@ -172,6 +176,7 @@ describe("capture", function()
     ]],
 			{ buf }
 		)
+		helpers.wait_for_event(child, events.types.CAPTURE_DONE)
 
 		local exists = child.fn.filereadable(capture_file_path)
 		MiniTest.expect.equality(exists, 1)
@@ -179,8 +184,9 @@ describe("capture", function()
 		local head = child.fn.readfile(capture_file_path)[1]
 		MiniTest.expect.equality(head, "-----BEGIN PGP MESSAGE-----")
 
-		local result = child.lua(string.format([[ return core.decrypt_to_stdout(%q) ]], capture_file_path))
+		local result = vim.system({ "memo", "decrypt", capture_file_path }):wait()
 		MiniTest.expect.equality(result.code, 0)
+		--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 		MiniTest.expect.equality(result.stdout:find("Integration Test Content") ~= nil, true)
 	end)
 
@@ -204,6 +210,7 @@ describe("capture", function()
 			password,
 			capture_file
 		))
+		helpers.wait_for_event(child, events.types.ENCRYPT_DONE)
 
 		child.type_keys("i", "Integration Test Content", "<Esc>")
 
@@ -216,6 +223,7 @@ describe("capture", function()
     ]],
 			{ buf }
 		)
+		helpers.wait_for_event(child, events.types.CAPTURE_DONE)
 
 		local exists = child.fn.filereadable(capture_file_path)
 		MiniTest.expect.equality(exists, 1)
