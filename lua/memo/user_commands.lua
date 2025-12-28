@@ -5,8 +5,8 @@ local function setup_memo_setup()
 		local memo = require("memo")
 		local config = require("memo.config")
 
-		if not config.options or next(config.options) == nil then
-			memo.setup({ notes_dir = config.options.notes_dir })
+		if not config or next(config) == nil then
+			memo.setup({ notes_dir = config.notes_dir })
 		end
 	end, {})
 end
@@ -17,11 +17,7 @@ local function setup_memo_sync()
 		local backend = opts.args
 
 		if backend == "git" or backend == "" then
-			local result = core.memo_sync_git()
-			if result and result.code == 0 then
-				return vim.notify("Sync complete: " .. backend, vim.log.levels.INFO)
-			end
-			return vim.notify("Something went wrong syncing: " .. backend, vim.log.levels.ERROR)
+			return core.sync_git()
 		else
 			vim.notify("Unknown sync backend: " .. backend, vim.log.levels.ERROR)
 		end

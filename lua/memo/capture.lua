@@ -1,4 +1,5 @@
 local core = require("memo.core")
+local utils = require("memo.utils")
 local memo_config = require("memo.config")
 
 local M = {}
@@ -11,7 +12,7 @@ local M = {}
 
 ---@type CaptureConfig
 local defaults = {
-	capture_file = vim.fn.expand("~/notes" .. "/inbox.md.gpg"),
+	capture_file = "inbox.md.gpg",
 	header = function()
 		return "## " .. os.date("%Y-%m-%d %H:%M")
 	end,
@@ -19,10 +20,6 @@ local defaults = {
 		split = "split",
 	},
 }
-
----@type CaptureConfig
-local config = vim.deepcopy(defaults)
----@cast config.capture_file string
 
 ---@param header string|function
 ---@return string
@@ -39,136 +36,63 @@ local function append_capture_memo(lines, capture_path)
 	if #lines == 0 then
 		return
 	end
-
 	local file = vim.fn.expand(capture_path)
+	local result = core.decrypt_to_stdout(file)
 
-	-- Try to decrypt without passphrase first (cached)
-	local result = core.decrypt_file(file)
-
-	if result and result.code ~= 0 then
-		vim.notify("Memo decryption failed: " .. (result.stderr or "Wrong passphrase?"), vim.log.levels.ERROR)
+	if not result or result.code ~= 0 then
+		vim.notify("Decryption failed", vim.log.levels.ERROR)
 		return
 	end
 
-	if not result or result.stdout == nil then
-		return
-	end
-
-	-- Split output into lines
-	local decrypted = vim.split(result.stdout, "\n", { plain = true })
-	if decrypted[#decrypted] == "" then
-		table.remove(decrypted)
-	end
-
-	-- Ensure at least 2 lines
-	decrypted[1] = decrypted[1] or ""
-	decrypted[2] = decrypted[2] or ""
-
-	local new = {
-		decrypted[1],
-		decrypted[2],
-	}
-
-	-- Insert block (lines + blank line)
-	for _, l in ipairs(lines) do
-		table.insert(new, l)
-	end
-	table.insert(new, "")
-
-	-- Append the rest of decrypted (from line 3 onward)
-	for i = 3, #decrypted do
-		table.insert(new, decrypted[i])
-	end
-
-	decrypted = new
-
-	-- Write decrypted + new capture to temp file
-	local tmpfile = vim.fn.tempname() .. ".txt"
-	local w = io.open(tmpfile, "w")
-
-	if w == nil then
-		return
-	end
-
-	for _, l in ipairs(decrypted) do
-		w:write(l .. "\n")
-	end
-
-	w:close()
-
-	local encrypt_result = core.encrypt_file(tmpfile, file)
-
-	if encrypt_result and encrypt_result.code ~= 0 then
-		vim.notify("Memo encryption failed", vim.log.levels.ERROR)
-	else
-		vim.notify("Capture inserted -> " .. file)
-	end
-
-	vim.fn.delete(tmpfile)
+	local existing = utils.to_lines(result.stdout or "")
+	local merged = utils.merge_content(existing, lines)
+	core.encrypt_from_stdin(file, merged)
 end
 
 ---@param opts CaptureConfig?
 function M.register(opts)
-	if opts then
-		config = vim.tbl_deep_extend("force", defaults, opts)
-	end
+	local config = vim.tbl_deep_extend("force", defaults, opts or {})
+	local path = utils.get_gpg_path(memo_config.notes_dir .. "/" .. config.capture_file)
 
-	local notes_dir = memo_config.options.notes_dir
-	local path = vim.fn.expand(notes_dir .. "/" .. config.capture_file)
-
+	-- Ensure capture file exists, otherwise create
 	if vim.fn.filereadable(path) == 0 then
-		local tmp = vim.fn.tempname() .. ".md"
-		vim.fn.writefile({ "", "" }, tmp)
-
-		local result = core.encrypt_file(tmp, path)
-
-		if result and result.code ~= 0 then
-			vim.notify("Memo Encryption failed: " .. (result.stderr or "Wrong passphrase?"), vim.log.levels.ERROR)
-			return
-		end
-
-		vim.fn.delete(tmp)
+		core.encrypt_from_stdin(path, { "", "" })
 	end
 
+	-- UI Setup
 	vim.cmd(config.window.split)
-	local win = vim.api.nvim_get_current_win()
 	local buf = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_win_set_buf(win, buf)
+	vim.api.nvim_win_set_buf(0, buf)
 
 	vim.bo[buf].buftype = "nofile"
 	vim.bo[buf].bufhidden = "wipe"
-	vim.bo[buf].swapfile = false
 	vim.bo[buf].filetype = "markdown"
 	vim.api.nvim_buf_set_name(buf, "capture://" .. path)
 
-	local header = resolve_header(config.header)
-	vim.api.nvim_buf_set_lines(buf, 0, -1, false, { header, "", "" })
-	vim.api.nvim_win_set_cursor(win, { 3, 0 })
+	local initial_lines = { resolve_header(config.header), "", "" }
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, initial_lines)
+	vim.api.nvim_win_set_cursor(0, { 3, 0 })
 
-	local has_written = false
-	local group = vim.api.nvim_create_augroup("CaptureMemo", { clear = false })
-
-	local function write_and_clear()
-		if has_written then
-			return
-		end
-		has_written = true
-
-		local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-		append_capture_memo(lines, path)
-		vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
-	end
-
-	vim.api.nvim_create_autocmd("BufWriteCmd", {
+	vim.api.nvim_create_autocmd({ "BufWriteCmd", "BufUnload" }, {
 		buffer = buf,
-		group = group,
-		callback = write_and_clear,
-	})
+		once = true,
+		callback = function()
+			local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
 
-	vim.api.nvim_create_autocmd("BufUnload", {
-		buffer = buf,
-		group = group,
-		callback = write_and_clear,
+			-- Abort when capture window contains only the header or is empty
+			if #lines > 3 or (lines[3] and lines[3] ~= "") then
+				append_capture_memo(lines, path)
+			else
+				vim.notify("Capture aborted: empty content", vim.log.levels.WARN)
+				return
+			end
+
+			vim.schedule(function()
+				if vim.api.nvim_buf_is_valid(buf) then
+					vim.api.nvim_buf_delete(buf, { force = true })
+				end
+			end)
+		end,
 	})
 end
 

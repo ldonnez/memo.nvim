@@ -11,57 +11,140 @@ describe("utils", function()
 		child.stop()
 	end)
 
-	describe("base_name", function()
-		it("returns base name of file", function()
+	describe("get_gpg_path", function()
+		it("adds .gpg to given path", function()
 			local util = require("memo.utils")
-			local result = util.base_name("test.md.gpg")
+			local result = util.get_gpg_path("test.md")
 
-			MiniTest.expect.equality(result, "test.md")
+			MiniTest.expect.equality(result, "test.md.gpg")
+		end)
+
+		it("does not add .gpg when path already is .gpg", function()
+			local util = require("memo.utils")
+			local result = util.get_gpg_path("test.md.gpg")
+
+			MiniTest.expect.equality(result, "test.md.gpg")
 		end)
 	end)
 
-	describe("get_conflicting_buffer", function()
-		it("returns conflicting buffer number", function()
-			child.lua([[
-    vim.cmd("enew")
-    vim.api.nvim_buf_set_name(0, "note.txt")
-  ]])
-			local conflict = child.lua([[ return M.get_conflicting_buffer("note.txt") ]])
-			MiniTest.expect.equality(conflict, 1)
+	describe("merge_memo_content", function()
+		it("inserts new content after the second line", function()
+			local util = require("memo.utils")
+			local existing = { "Header", "---", "Old Note 1", "Old Note 2" }
+			local new_lines = { "New Thought" }
+
+			local result = util.merge_content(existing, new_lines)
+
+			-- Expected structure:
+			-- 1: Header (Existing[1])
+			-- 2: ---    (Existing[2])
+			-- 3: New Thought (New)
+			-- 4: "" (Separator)
+			-- 5: Old Note 1 (Existing[3])
+			-- 6: Old Note 2 (Existing[4])
+
+			MiniTest.expect.equality(#result, 6)
+			MiniTest.expect.equality(result[1], "Header")
+			MiniTest.expect.equality(result[2], "---")
+			MiniTest.expect.equality(result[3], "New Thought")
+			MiniTest.expect.equality(result[4], "")
+			MiniTest.expect.equality(result[5], "Old Note 1")
 		end)
 
-		it("returns nil when buffer does not exist", function()
-			local conflict = child.lua([[ return M.get_conflicting_buffer("nope.txt") ]])
-			MiniTest.expect.equality(conflict, vim.NIL)
+		it("handles empty existing files gracefully", function()
+			local util = require("memo.utils")
+			-- Even if the file is empty, it should ensure line 1 and 2 exist
+			local existing = {}
+			local new_lines = { "First Note" }
+
+			local result = util.merge_content(existing, new_lines)
+
+			MiniTest.expect.equality(result[1], "")
+			MiniTest.expect.equality(result[2], "")
+			MiniTest.expect.equality(result[3], "First Note")
+			MiniTest.expect.equality(result[4], "")
+		end)
+
+		it("preserves multi-line new content", function()
+			local util = require("memo.utils")
+			local existing = { "Title", "====", "Bottom" }
+			local new_lines = { "Line A", "Line B" }
+
+			local result = util.merge_content(existing, new_lines)
+
+			-- Title, ====, Line A, Line B, "", Bottom
+			MiniTest.expect.equality(result[3], "Line A")
+			MiniTest.expect.equality(result[4], "Line B")
+			MiniTest.expect.equality(result[5], "")
+			MiniTest.expect.equality(result[6], "Bottom")
 		end)
 	end)
 
-	describe("handle_conflict", function()
-		it("returns base name of file", function()
-			local bufs = child.lua([[
-	   local existing = vim.api.nvim_create_buf(true, false)
-	   local new = vim.api.nvim_create_buf(true, false)
+	describe("to_lines", function()
+		it("splits a basic string into lines", function()
+			local util = require("memo.utils")
+			local input = "Line 1\nLine 2"
+			local result = util.to_lines(input)
 
-	   return { existing = existing, new = new }
-	 ]])
+			MiniTest.expect.equality(#result, 2)
+			MiniTest.expect.equality(result[1], "Line 1")
+			MiniTest.expect.equality(result[2], "Line 2")
+		end)
 
-			local existing = bufs.existing
-			local new = bufs.new
+		it("removes the trailing empty line caused by a final newline", function()
+			local util = require("memo.utils")
+			local input = "Line 1\nLine 2\n"
+			local result = util.to_lines(input)
 
-			child.lua(string.format([[ vim.cmd("b %d") ]], new))
-			child.lua(string.format([[ M.handle_conflict(%d, %d) ]], existing, new))
+			-- Without the cleanup, length would be 3
+			MiniTest.expect.equality(#result, 2)
+			MiniTest.expect.equality(result[1], "Line 1")
+			MiniTest.expect.equality(result[2], "Line 2")
+		end)
 
-			local current_buf = child.lua([[ return vim.api.nvim_get_current_buf() ]])
-			MiniTest.expect.equality(current_buf, existing)
+		it("handles an empty string", function()
+			local util = require("memo.utils")
+			local result = util.to_lines("")
 
-			local new_exists = child.lua(string.format(
-				[[
-	   return vim.api.nvim_buf_is_valid(%d)
-	 ]],
-				new
-			))
+			MiniTest.expect.equality(#result, 0)
+		end)
 
-			MiniTest.expect.equality(new_exists, false)
+		it("handles nil gracefully", function()
+			local util = require("memo.utils")
+			local result = util.to_lines(nil)
+
+			MiniTest.expect.equality(#result, 0)
+		end)
+
+		it("preserves internal empty lines", function()
+			local util = require("memo.utils")
+			local input = "Line 1\n\nLine 3\n"
+			local result = util.to_lines(input)
+
+			MiniTest.expect.equality(#result, 3)
+			MiniTest.expect.equality(result[2], "")
+			MiniTest.expect.equality(result[3], "Line 3")
+		end)
+	end)
+
+	describe("apply_gpg_opts", function()
+		it("correctly sets buffer-local security options", function()
+			local util = require("memo.utils")
+			local bufnr = vim.api.nvim_create_buf(false, true)
+
+			util.apply_gpg_opts(bufnr)
+
+			local swap = vim.api.nvim_get_option_value("swapfile", { buf = bufnr })
+			local undo = vim.api.nvim_get_option_value("undofile", { buf = bufnr })
+			local shada = vim.api.nvim_get_option_value("shadafile", {})
+			local buftype = vim.api.nvim_get_option_value("buftype", { buf = bufnr })
+
+			MiniTest.expect.equality(swap, false)
+			MiniTest.expect.equality(undo, false)
+			MiniTest.expect.equality(shada, "NONE")
+			MiniTest.expect.equality(buftype, "acwrite")
+
+			vim.api.nvim_buf_delete(bufnr, { force = true })
 		end)
 	end)
 
@@ -85,22 +168,6 @@ describe("utils", function()
 
 			MiniTest.expect.equality(result, false)
 			MiniTest.expect.equality(messages, string.format("Memo.nvim: '%s' binary not found", cmd))
-		end)
-	end)
-
-	describe("in_dir", function()
-		it("returns true when given path is in dir", function()
-			local util = require("memo.utils")
-			local result = util.in_dir("~/notes", "~/notes/test")
-
-			MiniTest.expect.equality(result, true)
-		end)
-
-		it("returns false when given path is not in dir", function()
-			local util = require("memo.utils")
-			local result = util.in_dir("~/notes", "~/test")
-
-			MiniTest.expect.equality(result, false)
 		end)
 	end)
 end)

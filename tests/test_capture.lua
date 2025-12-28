@@ -47,7 +47,14 @@ describe("capture", function()
 
 		helpers.write_file(capture_file_path, "CAPTURE")
 
-		child.lua(string.format([[ return core.encrypt_file(%q, %q) ]], capture_file, encrypted))
+		local cmd = {
+			"memo",
+			"encrypt",
+			encrypted,
+			capture_file_path,
+		}
+		vim.system(cmd, { stdin = "test", text = true }):wait()
+
 		child.lua(string.format(
 			[[
 	       M.register({ capture_file = %q })
@@ -73,9 +80,72 @@ describe("capture", function()
 		local head = child.fn.readfile(encrypted)[1]
 		MiniTest.expect.equality(head, "-----BEGIN PGP MESSAGE-----")
 
-		local result = child.lua(string.format([[ return core.decrypt_file(%q) ]], encrypted))
+		local result = child.lua(string.format([[ return core.decrypt_to_stdout(%q) ]], encrypted))
 		MiniTest.expect.equality(result.code, 0)
 		MiniTest.expect.equality(result.stdout:find("Integration Test Content") ~= nil, true)
+	end)
+
+	it("aborts capture when capture window only contains header", function()
+		helpers.create_gpg_key("mock@example.com")
+
+		local capture_file = "capture.md"
+		local capture_file_path = NOTES_DIR .. "/" .. capture_file
+		local encrypted = capture_file_path .. ".gpg"
+
+		helpers.write_file(capture_file_path, "CAPTURE")
+
+		local cmd = {
+			"memo",
+			"encrypt",
+			encrypted,
+			capture_file_path,
+		}
+		vim.system(cmd, { stdin = "test", text = true }):wait()
+
+		child.lua(string.format(
+			[[
+	       M.register({ capture_file = %q })
+	   ]],
+			capture_file .. ".gpg"
+		))
+
+		child.cmd("quit")
+		local messages = child.cmd_capture("messages")
+		MiniTest.expect.equality(messages, "Capture aborted: empty content")
+	end)
+
+	it("aborts capture when capture window has no content", function()
+		helpers.create_gpg_key("mock@example.com")
+
+		local capture_file = "capture.md"
+		local capture_file_path = NOTES_DIR .. "/" .. capture_file
+		local encrypted = capture_file_path .. ".gpg"
+
+		helpers.write_file(capture_file_path, "CAPTURE")
+		local cmd = {
+			"memo",
+			"encrypt",
+			encrypted,
+			capture_file_path,
+		}
+		vim.system(cmd, { stdin = "test", text = true }):wait()
+
+		child.lua(string.format(
+			[[
+	       M.register({ capture_file = %q })
+	   ]],
+			capture_file .. ".gpg"
+		))
+
+		-- empty the buffer
+		child.lua([[
+            local buf = vim.api.nvim_get_current_buf()
+            vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
+        ]])
+
+		child.cmd("quit")
+		local messages = child.cmd_capture("messages")
+		MiniTest.expect.equality(messages, "Capture aborted: empty content")
 	end)
 
 	it("captures text when capture file does not exists", function()
@@ -109,7 +179,7 @@ describe("capture", function()
 		local head = child.fn.readfile(capture_file_path)[1]
 		MiniTest.expect.equality(head, "-----BEGIN PGP MESSAGE-----")
 
-		local result = child.lua(string.format([[ return core.decrypt_file(%q) ]], capture_file_path))
+		local result = child.lua(string.format([[ return core.decrypt_to_stdout(%q) ]], capture_file_path))
 		MiniTest.expect.equality(result.code, 0)
 		MiniTest.expect.equality(result.stdout:find("Integration Test Content") ~= nil, true)
 	end)

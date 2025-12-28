@@ -1,57 +1,52 @@
 local M = {}
 
----Check if a path is inside the dir
----@param dir string The configured notes directory
----@param path string The file path to check
----@return boolean
-function M.in_dir(dir, path)
-	local abs_path = vim.fn.fnamemodify(path, ":p")
-	local abs_notes = vim.fn.fnamemodify(vim.fn.expand(dir), ":p")
-
-	local sep = package.config:sub(1, 1) -- Gets '/' on Unix or '\' on Windows
-
-	if abs_notes:sub(-1) ~= sep then
-		abs_notes = abs_notes .. sep
-	end
-
-	return abs_path:sub(1, #abs_notes) == abs_notes
-end
-
---- Compute base filename for a *.gpg file
----@param path string
----@return string, integer
-function M.base_name(path)
-	return path:gsub("%.gpg$", "")
-end
-
---- Returns conflicting buffer
----@param base string
----@return integer?
-function M.get_conflicting_buffer(base)
-	local num = vim.fn.bufnr(base)
-	return num ~= -1 and num or nil
-end
-
----@param existing integer
----@param new integer
-function M.handle_conflict(existing, new)
-	if existing == new then
-		return
-	end
-
-	vim.cmd("b " .. existing)
-	vim.cmd("bwipeout! " .. new)
-	vim.notify("Switched to existing decrypted buffer", vim.log.levels.INFO)
-end
-
 --- Prompt user for passphrase
+---@param label string
 ---@return string
-function M.prompt_passphrase()
-	return vim.fn.inputsecret("GPG Passphrase: ")
+function M.prompt_passphrase(label)
+	return vim.fn.inputsecret("GPG Passphrase for " .. label .. ": ")
+end
+
+---Ensures a path ends in .gpg
+---@param path string
+---@return string
+function M.get_gpg_path(path)
+	if path == "" or path:match("%.gpg$") then
+		return path
+	end
+	return path .. ".gpg"
+end
+
+---Inserts new lines into existing content after the header (line 2)
+---@param existing_lines string[]
+---@param new_lines string[]
+---@return string[]
+function M.merge_content(existing_lines, new_lines)
+	local merged = {
+		existing_lines[1] or "",
+		existing_lines[2] or "",
+	}
+	for _, l in ipairs(new_lines) do
+		table.insert(merged, l)
+	end
+	table.insert(merged, "") -- Separator
+	for i = 3, #existing_lines do
+		table.insert(merged, existing_lines[i])
+	end
+	return merged
+end
+
+---Standard security settings for GPG buffers
+---@param bufnr integer
+function M.apply_gpg_opts(bufnr)
+	vim.opt_local.swapfile = false
+	vim.opt_local.undofile = false
+	vim.opt_local.shadafile = "NONE"
+	vim.bo[bufnr].buftype = "acwrite"
 end
 
 --- Split decrypted text into clean list of lines
----@param str string
+---@param str string?
 ---@return string[]
 function M.to_lines(str)
 	local lines = vim.split(str or "", "\n", { plain = true })

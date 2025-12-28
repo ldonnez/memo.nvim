@@ -22,7 +22,7 @@ describe("autocmd", function()
 		child.lua(string.format(
 			[[
             local config = require('memo.config')
-            config.notes_dir = %q
+            config.setup({ notes_dir = %q })
             M = require('memo.autocmd')
         ]],
 			NOTES_DIR
@@ -46,8 +46,8 @@ describe("autocmd", function()
 		local cmd = {
 			"memo",
 			"encrypt",
-			plain,
 			encrypted,
+			plain,
 		}
 		vim.system(cmd, { stdin = "test", text = true }):wait()
 
@@ -72,15 +72,13 @@ describe("autocmd", function()
 		local encrypted = plain .. ".gpg"
 		helpers.create_gpg_key("mock@example.com")
 
-		helpers.write_file(plain, "Hello world!")
-
 		local cmd = {
 			"memo",
 			"encrypt",
-			plain,
 			encrypted,
+			plain,
 		}
-		vim.system(cmd, { stdin = "test", text = true }):wait()
+		vim.system(cmd, { stdin = "Hello world!", text = true }):wait()
 
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
@@ -94,13 +92,15 @@ describe("autocmd", function()
         ]])
 
 		MiniTest.expect.equality(result.lines, { "Hello world!" })
-		MiniTest.expect.equality(result.name, "secret.md")
+		MiniTest.expect.equality(result.name, "secret.md.gpg")
 	end)
 
 	it("automatically encrypts a new .md file saved in notes dir", function()
 		helpers.create_gpg_key("mock@example.com")
 		local plain = NOTES_DIR .. "/new_note.md"
 		local encrypted = plain .. ".gpg"
+
+		vim.system({ "touch", plain }):wait()
 
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. plain)
@@ -119,9 +119,68 @@ describe("autocmd", function()
 			encrypted
 		))
 
-		MiniTest.expect.equality(vim.fn.fnamemodify(result.new_name, ":t"), "new_note.md")
+		MiniTest.expect.equality(vim.fn.fnamemodify(result.new_name, ":t"), "new_note.md.gpg")
 		MiniTest.expect.equality(result.plaintext_exists, false)
 		MiniTest.expect.equality(result.gpg_exists, true)
+	end)
+
+	it("automatically encrypts a new .md.gpg file saved in notes dir", function()
+		helpers.create_gpg_key("mock@example.com")
+		local plain = NOTES_DIR .. "/new_note.md"
+		local encrypted = plain .. ".gpg"
+
+		vim.system({ "touch", encrypted }):wait()
+
+		child.lua([[ M.setup() ]])
+		child.cmd("edit " .. encrypted)
+		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
+		child.cmd("write")
+
+		local result = child.lua(string.format(
+			[[
+            return {
+                new_name = vim.api.nvim_buf_get_name(0),
+                plaintext_exists = vim.fn.filereadable(%q) == 1,
+                gpg_exists = vim.fn.filereadable(%q) == 1,
+            }
+        ]],
+			plain,
+			encrypted
+		))
+
+		MiniTest.expect.equality(vim.fn.fnamemodify(result.new_name, ":t"), "new_note.md.gpg")
+		MiniTest.expect.equality(result.plaintext_exists, false)
+		MiniTest.expect.equality(result.gpg_exists, true)
+	end)
+
+	it("does not re-encrypt (no-op) if content hasn't changed", function()
+		helpers.create_gpg_key("mock@example.com")
+		local encrypted = NOTES_DIR .. "/unchanged.md.gpg"
+
+		local cmd = {
+			"memo",
+			"encrypt",
+			encrypted,
+		}
+		vim.system(cmd, { stdin = "Hello world!", text = true }):wait()
+		child.lua([[ M.setup() ]])
+		child.cmd("edit " .. encrypted)
+		child.cmd("write")
+
+		local messages = child.cmd_capture("messages")
+		MiniTest.expect.equality(messages, "No changes detected")
+
+		child.cmd("messages clear")
+		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
+		child.cmd("write")
+
+		local messages2 = child.cmd_capture("messages")
+		MiniTest.expect.equality(messages2, "")
+
+		child.cmd("write")
+
+		local messages3 = child.cmd_capture("messages")
+		MiniTest.expect.equality(messages3, "No changes detected")
 	end)
 
 	it("wipes buffer if decryption fails", function()

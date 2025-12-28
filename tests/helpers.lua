@@ -34,10 +34,11 @@ local function determine_gen_key_string(keyid, passphrase)
 end
 
 function M.create_gpg_key(keyid, passphrase)
-	local check = vim.system({ "gpg", "--list-secret-keys", keyid }):wait()
-	if check.code == 0 then
-		print("Key already exists.")
-		return
+	local existing = vim.system({ "gpg", "--with-colons", "--list-secret-keys", keyid }, { text = true }):wait()
+
+	if existing.code == 0 and existing.stdout then
+		local key = existing.stdout:match("\nfpr:::::::::([%w%d]+):")
+		return key and key:sub(-16)
 	end
 
 	local batch_content = determine_gen_key_string(keyid, passphrase)
@@ -48,17 +49,27 @@ function M.create_gpg_key(keyid, passphrase)
 	local obj = vim.system({
 		"gpg",
 		"--batch",
+		"--status-fd",
+		"1",
 		"--pinentry-mode",
 		"loopback",
 		"--gen-key",
 		batch_file,
-	}):wait()
+	}, { text = true }):wait()
 
 	if obj.code ~= 0 then
 		print("GPG Error: " .. (obj.stderr or "Unknown error"))
+		return
 	end
 
 	os.remove(batch_file)
+
+	if obj.stdout then
+		local fingerprint = obj.stdout:match("KEY_CREATED [^ ]+ ([%w%d]+)")
+		if fingerprint then
+			return fingerprint:sub(-16) -- Returns the 16-char Long ID (e.g., DC66CDB28DC727BC)
+		end
+	end
 end
 
 function M.cache_gpg_password(password)
