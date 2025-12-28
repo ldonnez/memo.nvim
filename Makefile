@@ -18,6 +18,9 @@ EMMYLUA_RELEASE_TAR := deps/emmylua_check-$(EMMYLUA_REF)-$(OS)-$(ARCH).tar.gz
 EMMYLUA_DIR := deps/emmylua
 EMMYLUA_BIN := $(EMMYLUA_DIR)/emmylua_check
 
+# Install all development dependencies
+dev: deps/mini.nvim deps/memo deps/emmylua_check
+
 # Run all test files
 test: deps/mini.nvim
 	nvim --headless --noplugin -u ./scripts/minimal_init.lua -c "lua MiniTest.run()"
