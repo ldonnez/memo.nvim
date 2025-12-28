@@ -1,4 +1,5 @@
 local helpers = require("tests.helpers")
+local events = require("memo.events")
 local child = MiniTest.new_child_neovim()
 
 describe("core", function()
@@ -33,22 +34,21 @@ describe("core", function()
 		local encrypted = TEST_HOME .. "/stdin_test.md.gpg"
 		local test_lines = { "Hello World", "Line 2" }
 
-		local result = child.lua(
+		child.lua(
 			[[
-        local args = {...}
-        local lines = args[1]
-        local target = args[2]
-
-        return M.encrypt_from_stdin(target, lines)
+        local test_lines, encrypted = ...
+        M.encrypt_from_stdin(encrypted, test_lines, function()
+          return true
+        end)
     ]],
 			{ test_lines, encrypted }
 		)
-		MiniTest.expect.equality(result.code, 0)
+
+		helpers.wait_for_event(child, events.types.ENCRYPT_DONE)
 
 		local exists = child.fn.filereadable(encrypted)
-		MiniTest.expect.equality(exists, 1)
-
 		local lines = child.fn.readfile(encrypted)
+		MiniTest.expect.equality(exists, 1)
 		MiniTest.expect.equality(lines[1], "-----BEGIN PGP MESSAGE-----")
 	end)
 
@@ -58,85 +58,92 @@ describe("core", function()
 		local encrypted = TEST_HOME .. "/stdin_test.jpg.gpg"
 		local test_lines = { "Hello World", "Line 2" }
 
-		local result = child.lua(
+		child.lua(
 			[[
         local args = {...}
         local lines = args[1]
         local target = args[2]
 
-        return M.encrypt_from_stdin(target, lines)
+        M.encrypt_from_stdin(target, lines)
     ]],
 			{ test_lines, encrypted }
 		)
-		MiniTest.expect.equality(result.code, 1)
+
+		helpers.wait_for_event(child, events.types.ENCRYPT_DONE)
+
+		local messages = child.cmd_capture("messages")
+		MiniTest.expect.equality(messages, "Memo failed: Extension: jpg not supported\n")
 
 		local exists = child.fn.filereadable(encrypted)
 		MiniTest.expect.equality(exists, 0)
 	end)
 
-	it("correctly decrypts file", function()
-		local plain = "/tmp/plain.txt"
-		local encrypted = "/tmp/plain.txt.gpg"
+	it("decrypt_to_buffer: decrypts content and ensures cursor stays on top of file", function()
+		local path = "/tmp/test.md.gpg"
 		helpers.create_gpg_key("mock@example.com")
 
-		local cmd = {
-			"memo",
-			"encrypt",
-			encrypted,
-			plain,
-		}
-		vim.system(cmd, { stdin = "Hello world!", text = true }):wait()
+		vim.system({ "memo", "encrypt", path }, { stdin = "Line 1\nLine 2\nLine 3" }):wait()
 
-		local result = child.lua(string.format([[ return M.decrypt_to_stdout(%q) ]], encrypted))
+		child.lua(string.format(
+			[[
+        local bufnr = vim.api.nvim_create_buf(true, false)
+        vim.api.nvim_win_set_buf(0, bufnr)
 
-		MiniTest.expect.equality(result.code, 0)
-		MiniTest.expect.equality(result.stdout, "Hello world!")
+        M.decrypt_to_buffer(%q, bufnr, function(obj)
+          return true
+        end)
+    ]],
+			path
+		))
+
+		helpers.wait_for_event(child, events.types.DECRYPT_DONE)
+
+		local result = child.lua([[
+        return {
+            lines = vim.api.nvim_buf_get_lines(0, 0, -1, false),
+            cursor = vim.api.nvim_win_get_cursor(0)
+        }
+    ]])
+
+		MiniTest.expect.equality(result.lines, { "Line 1", "Line 2", "Line 3" })
+		MiniTest.expect.equality(result.cursor, { 1, 0 })
 	end)
 
-	it("correctly decrypts file when key has password", function()
-		local plain = "/tmp/plain.txt"
-		local encrypted = "/tmp/plain.txt.gpg"
+	it("decrypt_to_buffer: decrypts content when gpg key has password", function()
+		local password = "password"
+		local path = "/tmp/test-password.md.gpg"
+		helpers.create_gpg_key("mock@example.com", password)
 
-		local password = "testpass"
-		helpers.create_gpg_key("mock-password@example.com", password)
+		vim.system({ "memo", "encrypt", path }, { stdin = "Line 1\nLine 2\nLine 3" }):wait()
 
-		helpers.cache_gpg_password(password)
-
-		local cmd = {
-			"memo",
-			"encrypt",
-			encrypted,
-			plain,
-		}
-		vim.system(cmd, { stdin = "Hello world!", text = true }):wait()
-
-		-- Ensures gpg password will not be cached anymore for our test case
-		helpers.kill_gpg_agent()
-
-		local result = child.lua(string.format(
+		child.lua(string.format(
 			[[
         local utils = require("memo.utils")
+
+        local bufnr = vim.api.nvim_create_buf(true, false)
+        vim.api.nvim_win_set_buf(0, bufnr)
 
         utils.prompt_passphrase = function()
           return %q
         end
 
-        return M.decrypt_to_stdout(%q)
+        M.decrypt_to_buffer(%q, bufnr, function(obj)
+          return true
+        end)
     ]],
 			password,
-			encrypted
+			path
 		))
 
-		MiniTest.expect.equality(result.stderr, "")
-		MiniTest.expect.equality(result.code, 0)
-		MiniTest.expect.equality(result.stdout, "Hello world!")
-	end)
+		helpers.wait_for_event(child, events.types.DECRYPT_DONE)
 
-	it("fails to decrypt file not found", function()
-		helpers.create_gpg_key("mock@example.com")
-		local result = child.lua([[ return M.decrypt_to_stdout("/tmp/does_not_exist.gpg") ]])
+		local result = child.lua([[
+        return {
+            lines = vim.api.nvim_buf_get_lines(0, 0, -1, false),
+            cursor = vim.api.nvim_win_get_cursor(0)
+        }
+    ]])
 
-		MiniTest.expect.equality(result.code, 1)
-		MiniTest.expect.equality(result.stderr, "")
+		MiniTest.expect.equality(result.lines, { "Line 1", "Line 2", "Line 3" })
 	end)
 end)

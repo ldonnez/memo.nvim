@@ -1,8 +1,29 @@
 local utils = require("memo.utils")
 local core = require("memo.core")
 local config = require("memo.config")
+local events = require("memo.events")
 
 local M = {}
+
+--- @param bufnr integer The buffer handle to write into.
+local function finalize_buffer_state(bufnr)
+	if not vim.api.nvim_buf_is_valid(bufnr) then
+		return
+	end
+
+	-- Ensure the user can edit now that loading is done
+	vim.bo[bufnr].modifiable = true
+	vim.bo[bufnr].modified = false
+
+	vim.defer_fn(function()
+		if vim.api.nvim_buf_is_valid(bufnr) then
+			local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+			vim.b[bufnr].hash = vim.fn.sha256(table.concat(lines, "\n"))
+
+			events.emit(events.types.BUFFER_READY)
+		end
+	end, 10)
+end
 
 function M.setup()
 	local notes_dir = config.notes_dir
@@ -36,24 +57,18 @@ function M.setup()
 				return
 			end
 
-			local result = core.decrypt_to_stdout(gpg_path)
+			core.decrypt_to_buffer(args.file, bufnr, function(result)
+				vim.schedule(function()
+					if result.code ~= 0 then
+						vim.bo[bufnr].modifiable = true
+						vim.api.nvim_buf_delete(bufnr, { force = true })
+						vim.notify("Decryption failed", vim.log.levels.ERROR)
+						return
+					end
 
-			if not result or result.code ~= 0 then
-				vim.api.nvim_buf_delete(bufnr, { force = true })
-				return vim.notify("GPG decryption failed", vim.log.levels.ERROR)
-			end
-
-			if not result.stdout then
-				return
-			end
-
-			local lines = utils.to_lines(result.stdout)
-			local sha256 = vim.fn.sha256(table.concat(lines, "\n"))
-			vim.b[bufnr].hash = sha256
-
-			vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-
-			vim.bo[bufnr].modified = false
+					finalize_buffer_state(bufnr)
+				end)
+			end)
 		end,
 	})
 
@@ -62,34 +77,39 @@ function M.setup()
 		group = GROUP,
 		pattern = pattern,
 		callback = function(args)
+			local bufnr = args.buf
 			local gpg_path = utils.get_gpg_path(args.file)
+			local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
-			-- Encrypt buffer content directly via stdin to avoid temp files
-			local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
+			local current_content = table.concat(lines, "\n")
+			local current_hash = vim.fn.sha256(current_content)
 
-			local current_hash = vim.fn.sha256(table.concat(lines, "\n"))
-			local original_hash = vim.b[args.buf].hash
-
-			if current_hash == original_hash then
+			if current_hash == vim.b[bufnr].hash then
 				vim.notify("No changes detected", vim.log.levels.INFO)
-				vim.bo[args.buf].modified = false
+				vim.bo[bufnr].modified = false
+				events.emit(events.types.BUFFER_READY)
 				return
 			end
 
-			local result = core.encrypt_from_stdin(gpg_path, lines)
+			core.encrypt_from_stdin(gpg_path, lines, function(result)
+				vim.schedule(function()
+					if not vim.api.nvim_buf_is_valid(bufnr) then
+						return
+					end
 
-			if result and result.code == 0 then
-				vim.bo[args.buf].modified = false
+					if result.code == 0 then
+						finalize_buffer_state(bufnr)
 
-				vim.b[args.buf].hash = current_hash
-				if args.file ~= gpg_path and vim.fn.filereadable(args.file) == 1 then
-					vim.fn.delete(args.file)
-					-- Rename buffer to .gpg so future saves are "clean"
-					vim.api.nvim_buf_set_name(args.buf, gpg_path)
-				end
-			else
-				vim.notify("Encryption failed!", vim.log.levels.ERROR)
-			end
+						if args.file ~= gpg_path and vim.fn.filereadable(args.file) == 1 then
+							vim.fn.delete(args.file)
+							vim.api.nvim_buf_set_name(bufnr, gpg_path)
+						end
+					else
+						local err = (result.stderr and result.stderr ~= "") and result.stderr or "GPG Error"
+						vim.notify("Encryption failed: " .. err, vim.log.levels.ERROR)
+					end
+				end)
+			end)
 		end,
 	})
 end

@@ -123,12 +123,27 @@ end
 --- We assume the last argument of a memo/gpg command is the file path.
 --- @param cmd string[] The command to run (e.g., {'memo', 'decrypt', 'path/to/file'})
 --- @param opts? vim.SystemOpts
---- @return vim.SystemCompleted?
-function M.exec_with_gpg_auth(cmd, opts)
+--- @param on_exit? fun(obj: vim.SystemCompleted) Optional callback for async execution
+--- @overload fun(cmd: string[], opts?: vim.SystemOpts, on_exit: fun(obj: vim.SystemCompleted)): vim.SystemObj?
+--- @overload fun(cmd: string[], opts?: vim.SystemOpts): vim.SystemCompleted?
+--- @return vim.SystemObj|vim.SystemCompleted|nil
+function M.exec_with_gpg_auth(cmd, opts, on_exit)
 	local target_path = cmd[#cmd] -- Assume last command param from cmd is file to be encrypted/decrypted
 
 	if not M.get_gpg_passphrase(target_path) then
 		return nil
+	end
+
+	if on_exit then
+		return vim.system(cmd, opts, function(obj)
+			if obj.code ~= 0 then
+				local err = (obj.stderr and obj.stderr ~= "") and obj.stderr or "Process exited with code " .. obj.code
+				vim.schedule(function()
+					vim.notify(err, vim.log.levels.ERROR)
+				end)
+			end
+			on_exit(obj)
+		end)
 	end
 
 	local obj = vim.system(cmd, opts):wait()

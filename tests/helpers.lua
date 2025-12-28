@@ -1,3 +1,4 @@
+local events = require("memo.events")
 local M = {}
 
 function M.write_file(path, content)
@@ -95,6 +96,23 @@ function M.kill_gpg_agent()
 	}
 
 	return vim.system(cmd):wait()
+end
+
+--- @param child  unknown
+--- @param event_type MemoEvent One of events.MemoEvent
+function M.wait_for_event(child, event_type)
+	child.lua(string.format(
+		[[
+        _G.memo_done = false
+        vim.api.nvim_create_autocmd("User", {
+            pattern = %q,
+            once = true,
+            callback = function() _G.memo_done = true end,
+        })
+    ]],
+		event_type
+	))
+	child.lua([[vim.wait(5000, function() return _G.memo_done end)]])
 end
 
 return M

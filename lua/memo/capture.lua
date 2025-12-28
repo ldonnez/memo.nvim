@@ -1,5 +1,6 @@
 local core = require("memo.core")
 local utils = require("memo.utils")
+local events = require("memo.events")
 local memo_config = require("memo.config")
 
 local M = {}
@@ -30,23 +31,46 @@ local function resolve_header(header)
 	return tostring(header)
 end
 
----@param lines string[]
+---@param lines string[] The new lines from the capture window
 ---@param capture_path string
 local function append_capture_memo(lines, capture_path)
 	if #lines == 0 then
 		return
 	end
 	local file = vim.fn.expand(capture_path)
-	local result = core.decrypt_to_stdout(file)
+	local temp_buf = vim.api.nvim_create_buf(false, true)
 
-	if not result or result.code ~= 0 then
-		vim.notify("Decryption failed", vim.log.levels.ERROR)
-		return
-	end
+	-- 1. Async Decrypt
+	core.decrypt_to_buffer(file, temp_buf, function(read_result)
+		if read_result.code ~= 0 then
+			vim.schedule(function()
+				vim.notify("Capture failed: Decrypt error", vim.log.levels.ERROR)
+			end)
+			return
+		end
 
-	local existing = utils.to_lines(result.stdout or "")
-	local merged = utils.merge_content(existing, lines)
-	core.encrypt_from_stdin(file, merged)
+		vim.schedule(function()
+			-- 2. Extract and Merge (Main thread)
+			local existing = vim.api.nvim_buf_get_lines(temp_buf, 0, -1, false)
+			local merged = utils.merge_content(existing, lines)
+
+			-- Cleanup temp buffer now that we have the data
+			if vim.api.nvim_buf_is_valid(temp_buf) then
+				vim.api.nvim_buf_delete(temp_buf, { force = true })
+			end
+
+			-- 3. Async Encrypt
+			core.encrypt_from_stdin(file, merged, function(write_result)
+				if write_result.code == 0 then
+					vim.notify("Capture saved", vim.log.levels.INFO)
+				else
+					vim.notify("Capture failed: Encrypt error", vim.log.levels.ERROR)
+				end
+
+				events.emit(events.types.CAPTURE_DONE)
+			end)
+		end)
+	end)
 end
 
 ---@param opts CaptureConfig?
@@ -84,6 +108,7 @@ function M.register(opts)
 				append_capture_memo(lines, path)
 			else
 				vim.notify("Capture aborted: empty content", vim.log.levels.WARN)
+				events.emit(events.types.CAPTURE_DONE)
 				return
 			end
 
