@@ -19,7 +19,11 @@ end
 function M.sync_git()
 	local cmd = { "memo", "sync", "git" }
 
-	return vim.system(cmd):wait()
+	local result = vim.system(cmd):wait()
+	if result and result.code == 0 then
+		return vim.notify("Sync complete: git", vim.log.levels.INFO)
+	end
+	return vim.notify("Something went wrong syncing git ", vim.log.levels.ERROR)
 end
 
 return M
