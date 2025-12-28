@@ -49,7 +49,7 @@ describe("autocmd", function()
 			encrypted,
 			plain,
 		}
-		vim.system(cmd, { stdin = "test", text = true }):wait()
+		vim.system(cmd, { text = true }):wait()
 
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
@@ -78,7 +78,7 @@ describe("autocmd", function()
 			encrypted,
 			plain,
 		}
-		vim.system(cmd, { stdin = "Hello world!", text = true }):wait()
+		vim.system(cmd, { stdin = "Hello world!" }):wait()
 
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
