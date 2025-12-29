@@ -1,4 +1,3 @@
-local events = require("memo.events")
 local M = {}
 
 function M.write_file(path, content)
