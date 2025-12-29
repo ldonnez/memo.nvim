@@ -40,7 +40,6 @@ local function append_capture_memo(lines, capture_path)
 	local file = vim.fn.expand(capture_path)
 	local temp_buf = vim.api.nvim_create_buf(false, true)
 
-	-- 1. Async Decrypt
 	core.decrypt_to_buffer(file, temp_buf, function(read_result)
 		if read_result.code ~= 0 then
 			vim.schedule(function()
@@ -50,16 +49,13 @@ local function append_capture_memo(lines, capture_path)
 		end
 
 		vim.schedule(function()
-			-- 2. Extract and Merge (Main thread)
 			local existing = vim.api.nvim_buf_get_lines(temp_buf, 0, -1, false)
 			local merged = utils.merge_content(existing, lines)
 
-			-- Cleanup temp buffer now that we have the data
 			if vim.api.nvim_buf_is_valid(temp_buf) then
 				vim.api.nvim_buf_delete(temp_buf, { force = true })
 			end
 
-			-- 3. Async Encrypt
 			core.encrypt_from_stdin(file, merged, function(write_result)
 				if write_result.code == 0 then
 					vim.notify("Capture saved", vim.log.levels.INFO)
@@ -83,7 +79,6 @@ function M.register(opts)
 		core.encrypt_from_stdin(path, { "", "" })
 	end
 
-	-- UI Setup
 	vim.cmd(config.window.split)
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_win_set_buf(0, buf)
