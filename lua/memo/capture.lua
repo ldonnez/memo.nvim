@@ -71,12 +71,13 @@ function M.register(opts)
 
 	local initial_lines, cursor_pos = capture_template.resolve(config.capture_template)
 	vim.cmd(config.window.split)
+	local base = path:gsub("%.gpg$", "")
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_win_set_buf(0, buf)
 
 	vim.bo[buf].buftype = "nofile"
 	vim.bo[buf].bufhidden = "wipe"
-	vim.bo[buf].filetype = "markdown"
+	vim.bo[buf].filetype = vim.filetype.match({ filename = base })
 	vim.api.nvim_buf_set_name(buf, "capture://" .. path)
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, initial_lines)
