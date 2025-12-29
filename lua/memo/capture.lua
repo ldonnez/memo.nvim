@@ -1,6 +1,7 @@
 local core = require("memo.core")
 local utils = require("memo.utils")
 local events = require("memo.events")
+local capture_template = require("memo.capture_template")
 local memo_config = require("memo.config")
 
 local M = {}
@@ -8,36 +9,25 @@ local M = {}
 ---@alias CaptureSplit "split" | "vsplit"
 ---@class CaptureConfig
 ---@field capture_file string
----@field header string|function
+---@field capture_template MemoCaptureTemplateConfig
 ---@field window { split: CaptureSplit }
 
 ---@type CaptureConfig
 local defaults = {
 	capture_file = "inbox.md.gpg",
-	header = function()
-		return "## " .. os.date("%Y-%m-%d %H:%M")
-	end,
+	capture_template = capture_template.defaults,
 	window = {
 		split = "split",
 	},
 }
 
----@param header string|function
----@return string
-local function resolve_header(header)
-	if type(header) == "function" then
-		return header()
-	end
-	return tostring(header)
-end
-
 ---@param lines string[] The new lines from the capture window
----@param capture_path string
-local function append_capture_memo(lines, capture_path)
+---@param config CaptureConfig
+local function append_capture_memo(lines, config)
 	if #lines == 0 then
 		return
 	end
-	local file = vim.fn.expand(capture_path)
+	local file = utils.get_gpg_path(memo_config.notes_dir .. "/" .. config.capture_file)
 	local temp_buf = vim.api.nvim_create_buf(false, true)
 
 	core.decrypt_to_buffer(file, temp_buf, function(read_result)
@@ -50,7 +40,7 @@ local function append_capture_memo(lines, capture_path)
 
 		vim.schedule(function()
 			local existing = vim.api.nvim_buf_get_lines(temp_buf, 0, -1, false)
-			local merged = utils.merge_content(existing, lines)
+			local merged = capture_template.merge(existing, lines, config.capture_template)
 
 			if vim.api.nvim_buf_is_valid(temp_buf) then
 				vim.api.nvim_buf_delete(temp_buf, { force = true })
@@ -79,6 +69,7 @@ function M.register(opts)
 		core.encrypt_from_stdin(path, { "", "" })
 	end
 
+	local initial_lines, cursor_pos = capture_template.resolve(config.capture_template)
 	vim.cmd(config.window.split)
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_win_set_buf(0, buf)
@@ -88,9 +79,9 @@ function M.register(opts)
 	vim.bo[buf].filetype = "markdown"
 	vim.api.nvim_buf_set_name(buf, "capture://" .. path)
 
-	local initial_lines = { resolve_header(config.header), "", "" }
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, initial_lines)
-	vim.api.nvim_win_set_cursor(0, { 3, 0 })
+	vim.api.nvim_win_set_cursor(0, cursor_pos)
+	vim.cmd("startinsert!")
 
 	vim.api.nvim_create_autocmd({ "BufWriteCmd", "BufUnload" }, {
 		buffer = buf,
@@ -98,9 +89,14 @@ function M.register(opts)
 		callback = function()
 			local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
 
-			-- Abort when capture window contains only the header or is empty
-			if #lines > 3 or (lines[3] and lines[3] ~= "") then
-				append_capture_memo(lines, path)
+			local current_content = table.concat(lines, "\n")
+			local template_content = table.concat(initial_lines, "\n")
+
+			local has_changed = current_content ~= template_content
+			local is_not_empty = current_content:gsub("%s+", "") ~= ""
+
+			if has_changed and is_not_empty then
+				append_capture_memo(lines, config)
 			else
 				vim.notify("Capture aborted: empty content", vim.log.levels.WARN)
 				events.emit(events.types.CAPTURE_DONE)

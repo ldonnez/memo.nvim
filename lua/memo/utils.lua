@@ -17,25 +17,6 @@ function M.get_gpg_path(path)
 	return path .. ".gpg"
 end
 
----Inserts new lines into existing content after the header (line 2)
----@param existing_lines string[]
----@param new_lines string[]
----@return string[]
-function M.merge_content(existing_lines, new_lines)
-	local merged = {
-		existing_lines[1] or "",
-		existing_lines[2] or "",
-	}
-	for _, l in ipairs(new_lines) do
-		table.insert(merged, l)
-	end
-	table.insert(merged, "") -- Separator
-	for i = 3, #existing_lines do
-		table.insert(merged, existing_lines[i])
-	end
-	return merged
-end
-
 ---Standard security settings for GPG buffers
 ---@param bufnr integer
 function M.apply_gpg_opts(bufnr)
