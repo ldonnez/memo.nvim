@@ -247,7 +247,6 @@ describe("capture", function()
 	   ]],
 			capture_file
 		))
-		helpers.wait_for_event(child, events.types.ENCRYPT_DONE)
 
 		child.type_keys("i", "Integration Test Content", "<Esc>")
 
