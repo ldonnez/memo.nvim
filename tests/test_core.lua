@@ -82,7 +82,7 @@ describe("core", function()
 		local path = "/tmp/test.md.gpg"
 		helpers.create_gpg_key("mock@example.com")
 
-		vim.system({ "memo", "encrypt", path }, { stdin = "Line 1\nLine 2\nLine 3" }):wait()
+		vim.system({ "memo", "encrypt", path }, { stdin = "Line 1\nLine 2\nLine 3\n" }):wait()
 
 		child.lua(string.format(
 			[[
@@ -105,6 +105,7 @@ describe("core", function()
         }
     ]])
 
+		MiniTest.expect.equality(#result.lines, 3)
 		MiniTest.expect.equality(result.lines, { "Line 1", "Line 2", "Line 3" })
 		MiniTest.expect.equality(result.cursor, { 1, 0 })
 	end)
