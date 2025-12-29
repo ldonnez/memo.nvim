@@ -93,6 +93,9 @@ describe("autocmd", function()
                 name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":t")
             }
         ]])
+		local buf = child.api.nvim_get_current_buf()
+		local filetype = child.api.nvim_get_option_value("filetype", { buf = buf })
+		MiniTest.expect.equality(filetype, "markdown")
 
 		MiniTest.expect.equality(result.lines, { "Hello world!" })
 		MiniTest.expect.equality(result.name, "secret.md.gpg")
