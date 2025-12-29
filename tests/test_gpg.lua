@@ -3,14 +3,10 @@ local child = MiniTest.new_child_neovim()
 
 describe("gpg", function()
 	local TEST_HOME = vim.fn.tempname()
-	local TEST_GNUPGHOME = TEST_HOME .. "/.gnupg"
+	local NOTES_DIR = TEST_HOME .. "/notes"
 
 	before_each(function()
-		vim.env.HOME = TEST_HOME
-		vim.env.GNUPGHOME = TEST_HOME .. "/.gnupg"
-
-		vim.fn.mkdir(TEST_HOME, "p")
-		vim.fn.system({ "chmod", "700", TEST_GNUPGHOME })
+		helpers.setup_test_env(TEST_HOME, NOTES_DIR)
 
 		child.restart({
 			"-u",

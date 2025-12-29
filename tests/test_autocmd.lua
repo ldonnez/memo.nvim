@@ -4,17 +4,19 @@ local child = MiniTest.new_child_neovim()
 
 describe("autocmd", function()
 	local TEST_HOME = vim.fn.resolve("/tmp/memo.nvim")
-	local TEST_GNUPGHOME = TEST_HOME .. "/.gnupg"
 	local NOTES_DIR = TEST_HOME .. "/notes"
 
+	setup(function()
+		helpers.setup_test_env(TEST_HOME, NOTES_DIR)
+		helpers.create_gpg_key("mock@example.com")
+	end)
+
+	teardown(function()
+		vim.fn.delete(TEST_HOME, "rf")
+		helpers.kill_gpg_agent()
+	end)
+
 	before_each(function()
-		vim.env.HOME = TEST_HOME
-		vim.env.GNUPGHOME = TEST_HOME .. "/.gnupg"
-
-		vim.fn.mkdir(TEST_HOME, "p")
-		vim.fn.system({ "chmod", "700", TEST_GNUPGHOME })
-		vim.fn.mkdir(NOTES_DIR, "p")
-
 		child.restart({
 			"-u",
 			"scripts/minimal_init.lua",
@@ -30,18 +32,9 @@ describe("autocmd", function()
 		))
 	end)
 
-	after_each(function()
-		vim.fn.delete(TEST_HOME, "rf")
-		vim.fn.delete(NOTES_DIR, "rf")
-		child.cmd("messages clear")
-		child.stop()
-		helpers.kill_gpg_agent()
-	end)
-
 	it("disables swap and unsafe files for GPG notes", function()
 		local plain = NOTES_DIR .. "/secret.md"
 		local encrypted = plain .. ".gpg"
-		helpers.create_gpg_key("mock@example.com")
 
 		helpers.write_file(plain, "Hello world!")
 
@@ -72,7 +65,6 @@ describe("autocmd", function()
 	it("triggers decryption when opening a .gpg file", function()
 		local plain = NOTES_DIR .. "/secret.md"
 		local encrypted = plain .. ".gpg"
-		helpers.create_gpg_key("mock@example.com")
 
 		local cmd = {
 			"memo",
@@ -104,7 +96,6 @@ describe("autocmd", function()
 	it("does not trigger decryption when existing .md file is opened; reencrypts it after saving", function()
 		local plain = NOTES_DIR .. "/existing.md"
 		helpers.write_file(plain, "Hello world")
-		helpers.create_gpg_key("mock@example.com")
 
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. plain)
@@ -143,7 +134,6 @@ describe("autocmd", function()
 	end)
 
 	it("automatically encrypts a new .md file saved in notes dir", function()
-		helpers.create_gpg_key("mock@example.com")
 		local plain = NOTES_DIR .. "/new_note.md"
 		local encrypted = plain .. ".gpg"
 
@@ -173,7 +163,6 @@ describe("autocmd", function()
 	end)
 
 	it("automatically encrypts a new .md.gpg file saved in notes dir", function()
-		helpers.create_gpg_key("mock@example.com")
 		local plain = NOTES_DIR .. "/new_note.md"
 		local encrypted = plain .. ".gpg"
 
@@ -207,7 +196,6 @@ describe("autocmd", function()
 	end)
 
 	it("does not re-encrypt (no-op) if content hasn't changed", function()
-		helpers.create_gpg_key("mock@example.com")
 		local encrypted = NOTES_DIR .. "/unchanged.md.gpg"
 
 		local cmd = {
@@ -242,7 +230,6 @@ describe("autocmd", function()
 	end)
 
 	it("wipes buffer if decryption fails", function()
-		helpers.create_gpg_key("mock@example.com")
 		local test_file = NOTES_DIR .. "/broken.md.gpg"
 		vim.fn.writefile({ "not a gpg file" }, test_file)
 
@@ -256,7 +243,6 @@ describe("autocmd", function()
 	end)
 
 	it("does not trigger logic for files outside notes_dir", function()
-		helpers.create_gpg_key("mock@example.com")
 		local outside_dir = TEST_HOME .. "/outside"
 		vim.fn.mkdir(outside_dir, "p")
 		local outside_file = outside_dir .. "/normal.md"

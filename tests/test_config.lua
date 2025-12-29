@@ -1,12 +1,12 @@
+local helpers = require("tests.helpers")
 local child = MiniTest.new_child_neovim()
 
 describe("config", function()
 	local TEST_HOME = vim.fn.resolve("/tmp/memo.nvim")
+	local NOTES_DIR = TEST_HOME .. "/notes"
 
 	before_each(function()
-		vim.env.HOME = TEST_HOME
-
-		vim.fn.mkdir(TEST_HOME, "p")
+		helpers.setup_test_env(TEST_HOME, NOTES_DIR)
 
 		child.restart({
 			"-u",

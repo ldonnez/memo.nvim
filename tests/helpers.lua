@@ -97,6 +97,16 @@ function M.kill_gpg_agent()
 	return vim.system(cmd):wait()
 end
 
+function M.setup_test_env(home, notes_dir)
+	vim.env.HOME = home
+	vim.env.GNUPGHOME = home .. "/.gnupg"
+
+	vim.fn.mkdir(home, "p")
+	vim.fn.mkdir(notes_dir, "p")
+	vim.fn.mkdir(home .. "/.gnupg", "p")
+	vim.fn.system({ "chmod", "700", home .. "/.gnupg" })
+end
+
 --- @param child  unknown
 --- @param event_type MemoEvent One of events.MemoEvent
 function M.wait_for_event(child, event_type)

@@ -5,7 +5,15 @@
     "requirePattern": ["lua/?.lua", "lua/?/init.lua"]
   },
   "diagnostics": {
-    "globals": ["MiniTest", "it", "describe", "after_each", "before_each"],
+    "globals": [
+      "MiniTest",
+      "it",
+      "describe",
+      "after_each",
+      "before_each",
+      "setup",
+      "teardown"
+    ],
     "disable": ["unnecessary-if"],
     "enables": [
       "iter-variable-reassign",
