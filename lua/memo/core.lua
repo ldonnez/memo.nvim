@@ -56,7 +56,7 @@ function M.decrypt_to_buffer(path, bufnr, on_exit)
 					last_col,
 					last_line_idx,
 					last_col,
-					vim.split(data, "\n", { plain = true })
+					vim.split(data, "\n", { plain = true, trimempty = true })
 				)
 
 				-- Ensure cursor stays on top
