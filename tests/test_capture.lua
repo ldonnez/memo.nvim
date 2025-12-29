@@ -153,7 +153,7 @@ describe("capture", function()
 		MiniTest.expect.equality(messages, "Capture aborted: empty content")
 	end)
 
-	it("captures text when capture file does not exists", function()
+	it("captures text when capture file and target header does not exists", function()
 		helpers.create_gpg_key("mock@example.com")
 
 		local capture_file = "capture.md.gpg"
@@ -161,7 +161,7 @@ describe("capture", function()
 
 		child.lua(string.format(
 			[[
-	       M.register({ capture_file = %q})
+	       M.register({ capture_file = %q, capture_template = { target_header = "inbox" }})
 	   ]],
 			capture_file
 		))
@@ -190,6 +190,8 @@ describe("capture", function()
 		MiniTest.expect.equality(result.code, 0)
 		--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 		MiniTest.expect.equality(result.stdout:find("Integration Test Content") ~= nil, true)
+		--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+		MiniTest.expect.equality(result.stdout:find("inbox") ~= nil, true)
 	end)
 
 	it("captures text when capture file does not exists and gpg key has password", function()
@@ -201,15 +203,8 @@ describe("capture", function()
 
 		child.lua(string.format(
 			[[
-        local utils = require("memo.utils")
-
-        utils.prompt_passphrase = function()
-          return %q
-        end
-
 	      M.register({ capture_file = %q})
 	   ]],
-			password,
 			capture_file
 		))
 		helpers.wait_for_event(child, events.types.ENCRYPT_DONE)
@@ -232,6 +227,8 @@ describe("capture", function()
 
 		local head = child.fn.readfile(capture_file_path)[1]
 		MiniTest.expect.equality(head, "-----BEGIN PGP MESSAGE-----")
+
+		helpers.cache_gpg_password(password)
 
 		local cmd = {
 			"memo",
