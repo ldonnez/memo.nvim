@@ -194,6 +194,46 @@ describe("capture", function()
 		MiniTest.expect.equality(result.stdout:find("inbox") ~= nil, true)
 	end)
 
+	it("ensures relative directories from capture_file are created", function()
+		helpers.create_gpg_key("mock@example.com")
+
+		local capture_file = "journals/capture.md.gpg"
+		local capture_file_path = NOTES_DIR .. "/journals/capture.md.gpg"
+
+		child.lua(string.format(
+			[[
+	       M.register({ capture_file = %q, capture_template = { target_header = "inbox" }})
+	   ]],
+			capture_file
+		))
+
+		child.type_keys("i", "Integration Test Content", "<Esc>")
+
+		local buf = child.api.nvim_get_current_buf()
+
+		child.lua(
+			[[
+        local buf = ...
+        vim.api.nvim_exec_autocmds("BufWriteCmd", { buffer = buf })
+    ]],
+			{ buf }
+		)
+		helpers.wait_for_event(child, events.types.CAPTURE_DONE)
+
+		local exists = child.fn.filereadable(capture_file_path)
+		MiniTest.expect.equality(exists, 1)
+
+		local head = child.fn.readfile(capture_file_path)[1]
+		MiniTest.expect.equality(head, "-----BEGIN PGP MESSAGE-----")
+
+		local result = vim.system({ "memo", "decrypt", capture_file_path }):wait()
+		MiniTest.expect.equality(result.code, 0)
+		--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+		MiniTest.expect.equality(result.stdout:find("Integration Test Content") ~= nil, true)
+		--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+		MiniTest.expect.equality(result.stdout:find("inbox") ~= nil, true)
+	end)
+
 	it("captures text when capture file does not exists and gpg key has password", function()
 		local password = "test"
 		helpers.create_gpg_key("mock-password@example.com", password)
