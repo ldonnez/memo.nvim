@@ -66,6 +66,8 @@ describe("capture", function()
 		child.type_keys("i", "Integration Test Content", "<Esc>")
 
 		local buf = child.api.nvim_get_current_buf()
+		local filetype = child.api.nvim_get_option_value("filetype", { buf = buf })
+		MiniTest.expect.equality(filetype, "markdown")
 
 		child.lua(
 			[[
