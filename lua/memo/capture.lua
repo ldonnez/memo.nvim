@@ -21,16 +21,34 @@ local defaults = {
 	},
 }
 
+---Ensures relative directories are created from given capture file path.
+---@param file string -- capture file path
+local function ensure_directories(file)
+	local dir = vim.fn.fnamemodify(file, ":h")
+	if vim.fn.isdirectory(dir) == 0 then
+		local success, err = pcall(vim.fn.mkdir, dir, "p")
+		if not success then
+			vim.notify("Memo: Could not create directory " .. dir .. "\nError: " .. tostring(err), vim.log.levels.ERROR)
+			return
+		end
+	end
+end
+
 ---@param lines string[] The new lines from the capture window
 ---@param config CaptureConfig
 local function append_capture_memo(lines, config)
 	if #lines == 0 then
 		return
 	end
-	local file = utils.get_gpg_path(memo_config.notes_dir .. "/" .. config.capture_file)
+
+	local notes_dir = vim.fn.expand(memo_config.notes_dir)
+	local file = utils.get_gpg_path(vim.fn.expand(notes_dir .. "/" .. config.capture_file))
 	local temp_buf = vim.api.nvim_create_buf(false, true)
 
 	if vim.fn.filereadable(file) == 0 then
+		-- Ensure relative directories are created
+		ensure_directories(file)
+
 		local merged = capture_template.merge({}, lines, config.capture_template)
 
 		core.encrypt_from_stdin(file, merged, function(write_result)
