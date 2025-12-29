@@ -34,6 +34,16 @@ local function ensure_directories(file)
 	end
 end
 
+---@param result vim.SystemCompleted
+local function on_encrypt_done(result)
+	if result.code == 0 then
+		vim.notify("Capture saved", vim.log.levels.INFO)
+	else
+		vim.notify("Capture failed: Encrypt error", vim.log.levels.ERROR)
+	end
+	events.emit(events.types.CAPTURE_DONE)
+end
+
 ---@param lines string[] The new lines from the capture window
 ---@param config CaptureConfig
 local function append_capture_memo(lines, config)
@@ -51,14 +61,7 @@ local function append_capture_memo(lines, config)
 
 		local merged = capture_template.merge({}, lines, config.capture_template)
 
-		core.encrypt_from_stdin(file, merged, function(write_result)
-			if write_result.code == 0 then
-				vim.notify("Capture saved", vim.log.levels.INFO)
-			else
-				vim.notify("Capture failed: Encrypt error", vim.log.levels.ERROR)
-			end
-			events.emit(events.types.CAPTURE_DONE)
-		end)
+		core.encrypt_from_stdin(file, merged, on_encrypt_done)
 		return
 	end
 
@@ -78,15 +81,7 @@ local function append_capture_memo(lines, config)
 				vim.api.nvim_buf_delete(temp_buf, { force = true })
 			end
 
-			core.encrypt_from_stdin(file, merged, function(write_result)
-				if write_result.code == 0 then
-					vim.notify("Capture saved", vim.log.levels.INFO)
-				else
-					vim.notify("Capture failed: Encrypt error", vim.log.levels.ERROR)
-				end
-
-				events.emit(events.types.CAPTURE_DONE)
-			end)
+			core.encrypt_from_stdin(file, merged, on_encrypt_done)
 		end)
 	end)
 end
