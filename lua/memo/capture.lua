@@ -41,12 +41,22 @@ local function on_encrypt_done(result)
 	else
 		vim.notify("Capture failed: Encrypt error", vim.log.levels.ERROR)
 	end
-	events.emit(events.types.CAPTURE_DONE)
+end
+
+---@param bufnr integer
+local function on_capture_done(bufnr)
+	vim.schedule(function()
+		if vim.api.nvim_buf_is_valid(bufnr) then
+			vim.api.nvim_buf_delete(bufnr, { force = true })
+		end
+		events.emit(events.types.CAPTURE_DONE)
+	end)
 end
 
 ---@param lines string[] The new lines from the capture window
 ---@param config CaptureConfig
-local function append_capture_memo(lines, config)
+---@param on_done? fun() Optional callback triggered after encryption completes
+local function append_capture_memo(lines, config, on_done)
 	if #lines == 0 then
 		return
 	end
@@ -61,7 +71,12 @@ local function append_capture_memo(lines, config)
 
 		local merged = capture_template.merge({}, lines, config.capture_template)
 
-		core.encrypt_from_stdin(file, merged, on_encrypt_done)
+		core.encrypt_from_stdin(file, merged, function(result)
+			on_encrypt_done(result)
+			if on_done then
+				on_done()
+			end
+		end)
 		return
 	end
 
@@ -81,7 +96,12 @@ local function append_capture_memo(lines, config)
 				vim.api.nvim_buf_delete(temp_buf, { force = true })
 			end
 
-			core.encrypt_from_stdin(file, merged, on_encrypt_done)
+			core.encrypt_from_stdin(file, merged, function(result)
+				on_encrypt_done(result)
+				if on_done then
+					on_done()
+				end
+			end)
 		end)
 	end)
 end
@@ -118,18 +138,12 @@ function M.register(opts)
 			local is_not_empty = current_content:gsub("%s+", "") ~= ""
 
 			if has_changed and is_not_empty then
-				append_capture_memo(lines, config)
+				append_capture_memo(lines, config, on_capture_done(buf))
 			else
 				vim.notify("Capture aborted: empty content", vim.log.levels.WARN)
 				events.emit(events.types.CAPTURE_DONE)
 				return
 			end
-
-			vim.schedule(function()
-				if vim.api.nvim_buf_is_valid(buf) then
-					vim.api.nvim_buf_delete(buf, { force = true })
-				end
-			end)
 		end,
 	})
 end
