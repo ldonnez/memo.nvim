@@ -30,6 +30,20 @@ local function append_capture_memo(lines, config)
 	local file = utils.get_gpg_path(memo_config.notes_dir .. "/" .. config.capture_file)
 	local temp_buf = vim.api.nvim_create_buf(false, true)
 
+	if vim.fn.filereadable(file) == 0 then
+		local merged = capture_template.merge({}, lines, config.capture_template)
+
+		core.encrypt_from_stdin(file, merged, function(write_result)
+			if write_result.code == 0 then
+				vim.notify("Capture saved", vim.log.levels.INFO)
+			else
+				vim.notify("Capture failed: Encrypt error", vim.log.levels.ERROR)
+			end
+			events.emit(events.types.CAPTURE_DONE)
+		end)
+		return
+	end
+
 	core.decrypt_to_buffer(file, temp_buf, function(read_result)
 		if read_result.code ~= 0 then
 			vim.schedule(function()
@@ -62,23 +76,17 @@ end
 ---@param opts CaptureConfig?
 function M.register(opts)
 	local config = vim.tbl_deep_extend("force", defaults, opts or {})
-	local path = utils.get_gpg_path(memo_config.notes_dir .. "/" .. config.capture_file)
-
-	-- Ensure capture file exists, otherwise create
-	if vim.fn.filereadable(path) == 0 then
-		core.encrypt_from_stdin(path, { "", "" })
-	end
 
 	local initial_lines, cursor_pos = capture_template.resolve(config.capture_template)
 	vim.cmd(config.window.split)
-	local base = path:gsub("%.gpg$", "")
+	local base = config.capture_file:gsub("%.gpg$", "")
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_win_set_buf(0, buf)
 
 	vim.bo[buf].buftype = "nofile"
 	vim.bo[buf].bufhidden = "wipe"
 	vim.bo[buf].filetype = vim.filetype.match({ filename = base })
-	vim.api.nvim_buf_set_name(buf, "capture://" .. path)
+	vim.api.nvim_buf_set_name(buf, "capture://" .. config.capture_file)
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, initial_lines)
 	vim.api.nvim_win_set_cursor(0, cursor_pos)
