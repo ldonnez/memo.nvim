@@ -68,7 +68,7 @@ describe("capture", function()
 			local filetype = child.api.nvim_get_option_value("filetype", { buf = buf })
 			MiniTest.expect.equality(filetype, "markdown")
 
-      child.cmd("quit")
+			child.cmd("quit")
 			helpers.wait_for_event(child, events.types.CAPTURE_DONE)
 
 			local exists = child.fn.filereadable(encrypted)
@@ -156,7 +156,7 @@ describe("capture", function()
 
 			child.type_keys("i", "Integration Test Content", "<Esc>")
 
-      child.cmd("quit")
+			child.cmd("quit")
 			helpers.wait_for_event(child, events.types.CAPTURE_DONE)
 
 			local exists = child.fn.filereadable(capture_file_path)
@@ -186,7 +186,7 @@ describe("capture", function()
 
 			child.type_keys("i", "Integration Test Content", "<Esc>")
 
-      child.cmd("quit")
+			child.cmd("quit")
 			helpers.wait_for_event(child, events.types.CAPTURE_DONE)
 
 			local exists = child.fn.filereadable(capture_file_path)
@@ -285,7 +285,7 @@ describe("capture", function()
 
 			child.type_keys("i", "Integration Test Content 2", "<Esc>")
 
-      child.cmd("quit")
+			child.cmd("quit")
 			helpers.wait_for_event(child, events.types.CAPTURE_DONE)
 
 			local exists = child.fn.filereadable(encrypted)
