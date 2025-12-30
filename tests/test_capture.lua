@@ -244,9 +244,9 @@ describe("capture", function()
 
 			child.lua(string.format(
 				[[
-        local utils = require("memo.utils")
+        local gpg = require("memo.gpg")
 
-        utils.prompt_passphrase = function()
+        gpg.prompt_passphrase = function()
           return %q
         end
 

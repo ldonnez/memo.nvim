@@ -29,9 +29,9 @@ describe("gpg", function()
 
 		local result = child.lua(string.format(
 			[[
-        local utils = require("memo.utils")
+        local gpg = require("memo.gpg")
 
-        utils.prompt_passphrase = function(label)
+        gpg.prompt_passphrase = function(label)
           captured_prompt = label
           return %q
         end
@@ -51,9 +51,9 @@ describe("gpg", function()
 
 		local result = child.lua(string.format(
 			[[
-        local utils = require("memo.utils")
+        local gpg = require("memo.gpg")
 
-        utils.prompt_passphrase = function(label)
+        gpg.prompt_passphrase = function(label)
           captured_prompt = label
           return %q
         end
@@ -138,7 +138,7 @@ describe("gpg", function()
 			[[
         local captured_prompt = ""
 
-        require("memo.utils").prompt_passphrase = function(label)
+        require("memo.gpg").prompt_passphrase = function(label)
             captured_prompt = label
             return %q
         end

@@ -1,5 +1,3 @@
-local utils = require("memo.utils")
-
 local M = {}
 
 --- Check if a specific key (or default) is unlocked in gpg-agent
@@ -61,6 +59,14 @@ local function cache_passphrase(pass, id)
 	return true
 end
 
+--- Prompt user for passphrase
+--- Important to be importable for overriding in tests!
+---@param label string
+---@return string
+function M.prompt_passphrase(label)
+	return vim.fn.inputsecret("GPG Passphrase for " .. label .. ": ")
+end
+
 --- @param target_path string?
 --- @return boolean
 function M.get_gpg_passphrase(target_path)
@@ -94,7 +100,8 @@ function M.get_gpg_passphrase(target_path)
 	end
 
 	local prompt_label = target_id and ("key: " .. target_id) or "default"
-	local pass = utils.prompt_passphrase(prompt_label)
+	local pass = M.prompt_passphrase(prompt_label)
+
 	if pass == "" then
 		return false
 	end

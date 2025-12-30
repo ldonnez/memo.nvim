@@ -132,12 +132,12 @@ describe("core", function()
 
 			child.lua(string.format(
 				[[
-        local utils = require("memo.utils")
+        local gpg = require("memo.gpg")
 
         local bufnr = vim.api.nvim_create_buf(true, false)
         vim.api.nvim_win_set_buf(0, bufnr)
 
-        utils.prompt_passphrase = function()
+        gpg.prompt_passphrase = function()
           return %q
         end
 
@@ -163,9 +163,9 @@ describe("core", function()
 
 			local result = child.lua(string.format(
 				[[
-      local utils = require("memo.utils")
+      local gpg = require("memo.gpg")
 
-      utils.prompt_passphrase = function()
+      gpg.prompt_passphrase = function()
         return %q
       end
 
