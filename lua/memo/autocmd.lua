@@ -11,7 +11,7 @@ local function prepare_buffer_for_edit(bufnr)
 		return
 	end
 
-	-- Ensure the user can edit now that loading is done
+	-- Ensure the user can edit
 	vim.bo[bufnr].modifiable = true
 	vim.bo[bufnr].modified = false
 
@@ -90,12 +90,13 @@ function M.setup()
 			local result = core.encrypt_from_stdin(gpg_path, lines)
 
 			if result.code == 0 then
-				prepare_buffer_for_edit(bufnr)
-
+				-- If saving a plain text file for the first time, delete the unencrypted original and change the buffer to the new .gpg path.
 				if args.file ~= gpg_path and vim.fn.filereadable(args.file) == 1 then
 					vim.fn.delete(args.file)
 					vim.api.nvim_buf_set_name(bufnr, gpg_path)
 				end
+
+				prepare_buffer_for_edit(bufnr)
 				return
 			end
 		end,
