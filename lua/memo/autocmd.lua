@@ -100,10 +100,11 @@ function M.setup()
 							vim.fn.delete(args.file)
 							vim.api.nvim_buf_set_name(bufnr, gpg_path)
 						end
-					else
-						local err = (result.stderr and result.stderr ~= "") and result.stderr or "GPG Error"
-						vim.notify("Encryption failed: " .. err, vim.log.levels.ERROR)
+						return
 					end
+
+					local err = (result.stderr and result.stderr ~= "") and result.stderr or "GPG Error"
+					vim.notify("Encryption failed: " .. err, vim.log.levels.ERROR)
 				end)
 			end)
 		end,
