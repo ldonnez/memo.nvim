@@ -45,12 +45,10 @@ end
 
 ---@param bufnr integer
 local function on_capture_done(bufnr)
-	vim.schedule(function()
-		if vim.api.nvim_buf_is_valid(bufnr) then
-			vim.api.nvim_buf_delete(bufnr, { force = true })
-		end
-		events.emit(events.types.CAPTURE_DONE)
-	end)
+	if vim.api.nvim_buf_is_valid(bufnr) then
+		vim.api.nvim_buf_delete(bufnr, { force = true })
+	end
+	events.emit(events.types.CAPTURE_DONE)
 end
 
 ---@param lines string[] The new lines from the capture window
@@ -58,6 +56,7 @@ end
 ---@param on_done fun() callback triggered after encryption completes
 local function append_capture(lines, config, on_done)
 	if #lines == 0 then
+		on_done()
 		return
 	end
 
@@ -80,9 +79,8 @@ local function append_capture(lines, config, on_done)
 
 	core.decrypt_to_buffer(file, temp_buf, function(read_result)
 		if read_result.code ~= 0 then
-			vim.schedule(function()
-				vim.notify("Capture failed: Decrypt error", vim.log.levels.ERROR)
-			end)
+			vim.notify("Capture failed: Decrypt error", vim.log.levels.ERROR)
+			on_done()
 			return
 		end
 
@@ -137,6 +135,7 @@ function M.register(opts)
 				append_capture(lines, config, function()
 					on_capture_done(buf)
 				end)
+				return
 			else
 				vim.notify("Capture aborted: empty content", vim.log.levels.WARN)
 				events.emit(events.types.CAPTURE_DONE)

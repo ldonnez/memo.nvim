@@ -68,13 +68,7 @@ describe("capture", function()
 			local filetype = child.api.nvim_get_option_value("filetype", { buf = buf })
 			MiniTest.expect.equality(filetype, "markdown")
 
-			child.lua(
-				[[
-        local buf = ...
-        vim.api.nvim_exec_autocmds("BufWriteCmd", { buffer = buf })
-    ]],
-				{ buf }
-			)
+      child.cmd("quit")
 			helpers.wait_for_event(child, events.types.CAPTURE_DONE)
 
 			local exists = child.fn.filereadable(encrypted)
@@ -162,15 +156,7 @@ describe("capture", function()
 
 			child.type_keys("i", "Integration Test Content", "<Esc>")
 
-			local buf = child.api.nvim_get_current_buf()
-
-			child.lua(
-				[[
-        local buf = ...
-        vim.api.nvim_exec_autocmds("BufWriteCmd", { buffer = buf })
-    ]],
-				{ buf }
-			)
+      child.cmd("quit")
 			helpers.wait_for_event(child, events.types.CAPTURE_DONE)
 
 			local exists = child.fn.filereadable(capture_file_path)
@@ -200,15 +186,7 @@ describe("capture", function()
 
 			child.type_keys("i", "Integration Test Content", "<Esc>")
 
-			local buf = child.api.nvim_get_current_buf()
-
-			child.lua(
-				[[
-        local buf = ...
-        vim.api.nvim_exec_autocmds("BufWriteCmd", { buffer = buf })
-    ]],
-				{ buf }
-			)
+      child.cmd("quit")
 			helpers.wait_for_event(child, events.types.CAPTURE_DONE)
 
 			local exists = child.fn.filereadable(capture_file_path)
@@ -253,17 +231,9 @@ describe("capture", function()
 				capture_file
 			))
 
-			child.type_keys("i", "Integration Test Content", "<Esc>")
+			child.type_keys("i", "Integration Test Content 1", "<Esc>")
 
-			local buf = child.api.nvim_get_current_buf()
-
-			child.lua(
-				[[
-        local buf = ...
-        return vim.api.nvim_exec_autocmds("BufWriteCmd", { buffer = buf })
-    ]],
-				{ buf }
-			)
+			child.cmd("quit")
 			helpers.wait_for_event(child, events.types.CAPTURE_DONE)
 
 			local exists = child.fn.filereadable(capture_file_path)
@@ -282,11 +252,11 @@ describe("capture", function()
 			local result = vim.system(cmd):wait()
 
 			MiniTest.expect.equality(result.code, 0)
-			MiniTest.expect.equality((result.stdout or ""):find("Integration Test Content") ~= nil, true)
+			MiniTest.expect.equality((result.stdout or ""):find("Integration Test Content 1") ~= nil, true)
 		end)
 
 		it("captures text when capture file exists", function()
-			local capture_file = "capture-test-with-password.md"
+			local capture_file = "second-capture-test-with-password.md"
 			local capture_file_path = NOTES_DIR .. "/" .. capture_file
 			local encrypted = capture_file_path .. ".gpg"
 
@@ -296,7 +266,6 @@ describe("capture", function()
 				"memo",
 				"encrypt",
 				encrypted,
-				capture_file_path,
 			}
 			vim.system(cmd):wait()
 
@@ -314,19 +283,9 @@ describe("capture", function()
 				capture_file .. ".gpg"
 			))
 
-			child.type_keys("i", "Integration Test Content", "<Esc>")
+			child.type_keys("i", "Integration Test Content 2", "<Esc>")
 
-			local buf = child.api.nvim_get_current_buf()
-			local filetype = child.api.nvim_get_option_value("filetype", { buf = buf })
-			MiniTest.expect.equality(filetype, "markdown")
-
-			child.lua(
-				[[
-        local buf = ...
-        vim.api.nvim_exec_autocmds("BufWriteCmd", { buffer = buf })
-    ]],
-				{ buf }
-			)
+      child.cmd("quit")
 			helpers.wait_for_event(child, events.types.CAPTURE_DONE)
 
 			local exists = child.fn.filereadable(encrypted)
@@ -338,7 +297,7 @@ describe("capture", function()
 			local result = vim.system({ "memo", "decrypt", encrypted }):wait()
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
-			MiniTest.expect.equality(result.stdout:find("Integration Test Content") ~= nil, true)
+			MiniTest.expect.equality(result.stdout:find("Integration Test Content 2") ~= nil, true)
 		end)
 	end)
 end)
