@@ -36,30 +36,23 @@ describe("autocmd", function()
 		local plain = NOTES_DIR .. "/secret.md"
 		local encrypted = plain .. ".gpg"
 
-		helpers.write_file(plain, "Hello world!")
-
 		local cmd = {
 			"memo",
 			"encrypt",
 			encrypted,
-			plain,
 		}
-		vim.system(cmd, { text = true }):wait()
+		vim.system(cmd, { stdin = "Hello World!" }):wait()
 
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
 
-		local result = child.lua([[
-		    return {
-		        swap = vim.opt_local.swapfile:get(),
-		        undo = vim.opt_local.undofile:get(),
-		        shada = vim.opt_local.shadafile:get(),
-		    }
-		    ]])
+		helpers.wait_for_event(child, events.types.DECRYPT_DONE)
 
-		MiniTest.expect.equality(result.swap, false)
-		MiniTest.expect.equality(result.undo, false)
-		MiniTest.expect.equality(result.shada, { "NONE" })
+		local swap = child.bo.swapfile
+		local undo = child.bo.undofile
+
+		MiniTest.expect.equality(swap, false)
+		MiniTest.expect.equality(undo, false)
 	end)
 
 	it("triggers decryption when opening a .gpg file", function()

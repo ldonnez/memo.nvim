@@ -27,26 +27,6 @@ describe("utils", function()
 		end)
 	end)
 
-	describe("harden_buffer", function()
-		it("correctly sets buffer-local security options", function()
-			local bufnr = vim.api.nvim_create_buf(false, true)
-
-			util.harden_buffer(bufnr)
-
-			local swap = vim.api.nvim_get_option_value("swapfile", { buf = bufnr })
-			local undo = vim.api.nvim_get_option_value("undofile", { buf = bufnr })
-			local shada = vim.api.nvim_get_option_value("shadafile", {})
-			local buftype = vim.api.nvim_get_option_value("buftype", { buf = bufnr })
-
-			MiniTest.expect.equality(swap, false)
-			MiniTest.expect.equality(undo, false)
-			MiniTest.expect.equality(shada, "NONE")
-			MiniTest.expect.equality(buftype, "acwrite")
-
-			vim.api.nvim_buf_delete(bufnr, { force = true })
-		end)
-	end)
-
 	describe("check_exec", function()
 		it("returns true when binary exists", function()
 			local result = util.check_exec("git")

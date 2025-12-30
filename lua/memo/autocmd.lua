@@ -11,6 +11,10 @@ local function prepare_buffer_for_edit(bufnr)
 		return
 	end
 
+	vim.bo[bufnr].swapfile = false
+	vim.bo[bufnr].undofile = false
+	vim.bo[bufnr].buftype = "acwrite"
+
 	-- Ensure the user can edit
 	vim.bo[bufnr].modifiable = true
 	vim.bo[bufnr].modified = false
@@ -37,8 +41,6 @@ function M.setup()
 		pattern = pattern,
 		callback = function(args)
 			local bufnr = args.buf
-
-			utils.harden_buffer(bufnr)
 
 			-- Force filetype detection based on the name without .gpg
 			local base = args.file:gsub("%.gpg$", "")
