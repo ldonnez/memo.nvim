@@ -1,20 +1,9 @@
-local child = MiniTest.new_child_neovim()
-
 describe("capture_template", function()
-	before_each(function()
-		child.restart({ "-u", "scripts/minimal_init.lua" })
-		-- Load tested plugin
-		child.lua([[M = require('memo.capture_template')]])
-	end)
-
-	after_each(function()
-		child.stop()
-	end)
+	local capture_template = require("memo.capture_template")
 
 	describe("resolve_header", function()
 		it("resolves basic templates and markers", function()
 			local config = { template = "## Title\n|" }
-			local capture_template = require("memo.capture_template")
 			local lines, cursor = capture_template.resolve_header(config)
 
 			MiniTest.expect.equality(lines, { "## Title", "" })
@@ -23,7 +12,6 @@ describe("capture_template", function()
 
 		it("sets default template with empty config", function()
 			local config = {}
-			local capture_template = require("memo.capture_template")
 			local lines, cursor = capture_template.resolve_header(config)
 
 			MiniTest.expect.equality(lines, { "" })
@@ -32,7 +20,6 @@ describe("capture_template", function()
 
 		it("sets empty string when tempale is empty", function()
 			local config = { template = "" }
-			local capture_template = require("memo.capture_template")
 			local lines, cursor = capture_template.resolve_header(config)
 
 			MiniTest.expect.equality(lines, { "" })
@@ -40,7 +27,6 @@ describe("capture_template", function()
 		end)
 
 		it("places cursor correctly with empty spaces in template", function()
-			local capture_template = require("memo.capture_template")
 			local opts = { template = "- [ ] |" }
 			local lines, pos = capture_template.resolve_header(opts)
 
@@ -54,7 +40,6 @@ describe("capture_template", function()
 			local existing = { "# Inbox", "", "Previous Note" }
 			local new_lines = { "## 2024-01-01", "New Content" }
 			local config = { target_header = "# Inbox" }
-			local capture_template = require("memo.capture_template")
 
 			local result = capture_template.merge_with_content(existing, new_lines, config)
 
@@ -69,7 +54,6 @@ describe("capture_template", function()
 			local existing = { "# Inbox is here", "", "Previous Note" }
 			local new_lines = { "## 2024-01-01", "New Content" }
 			local config = { target_header = "# Inbox" }
-			local capture_template = require("memo.capture_template")
 
 			local result = capture_template.merge_with_content(existing, new_lines, config)
 
@@ -86,7 +70,6 @@ describe("capture_template", function()
 			local existing = { "# Inbox", "", "Second Note", "# Inbox", "", "First Note" }
 			local new_lines = { "New Content" }
 			local config = { target_header = "# Inbox" }
-			local capture_template = require("memo.capture_template")
 
 			local result = capture_template.merge_with_content(existing, new_lines, config)
 
@@ -102,7 +85,6 @@ describe("capture_template", function()
 			local existing = { "# Inbox", "", "Previous Note" }
 			local new_lines = { "## 2024-01-01", "New Content" }
 			local config = { target_header = "# Inbox", header_padding = 2 }
-			local capture_template = require("memo.capture_template")
 
 			local result = capture_template.merge_with_content(existing, new_lines, config)
 
@@ -119,7 +101,6 @@ describe("capture_template", function()
 			local existing = {}
 			local new_lines = { "New Content" }
 			local config = { target_header = "# Inbox" }
-			local capture_template = require("memo.capture_template")
 
 			local result = capture_template.merge_with_content(existing, new_lines, config)
 
@@ -132,7 +113,6 @@ describe("capture_template", function()
 			local existing = { "# test", "existing content" }
 			local new_lines = { "New Content" }
 			local config = { target_header = "# Inbox" }
-			local capture_template = require("memo.capture_template")
 
 			local result = capture_template.merge_with_content(existing, new_lines, config)
 
@@ -147,7 +127,6 @@ describe("capture_template", function()
 			local existing = { "# Inbox", "", "Previous Note" }
 			local new_lines = { "## 2024-01-01", "New Content" }
 			local config = { target_header = "# Inbox", header_padding = 0 }
-			local capture_template = require("memo.capture_template")
 
 			local result = capture_template.merge_with_content(existing, new_lines, config)
 
@@ -162,7 +141,6 @@ describe("capture_template", function()
 			local existing = { "# Inbox", "", "Previous Note" }
 			local new_lines = { "New Content" }
 			local config = {}
-			local capture_template = require("memo.capture_template")
 
 			local result = capture_template.merge_with_content(existing, new_lines, config)
 
