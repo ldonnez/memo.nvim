@@ -78,19 +78,15 @@ describe("autocmd", function()
 		child.cmd("edit " .. encrypted)
 		helpers.wait_for_event(child, events.types.DECRYPT_DONE)
 
-		-- Check if buffer content is decrypted and buffer is renamed
-		local result = child.lua([[
-            return {
-                lines = vim.api.nvim_buf_get_lines(0, 0, -1, false),
-                name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":t")
-            }
-        ]])
+		local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+		local buffer_name = child.api.nvim_buf_get_name(0)
+
 		local buf = child.api.nvim_get_current_buf()
 		local filetype = child.api.nvim_get_option_value("filetype", { buf = buf })
 		MiniTest.expect.equality(filetype, "markdown")
 
-		MiniTest.expect.equality(result.lines, { "Hello world!" })
-		MiniTest.expect.equality(result.name, "secret.md.gpg")
+		MiniTest.expect.equality(lines, { "Hello world!" })
+		MiniTest.expect.equality(vim.fn.fnamemodify(buffer_name, ":t"), "secret.md.gpg")
 	end)
 
 	it("does not trigger decryption when existing .md file is opened; reencrypts it after saving", function()
@@ -100,25 +96,15 @@ describe("autocmd", function()
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. plain)
 
-		-- Check if buffer content
-		local result = child.lua([[
-            return {
-                lines = vim.api.nvim_buf_get_lines(0, 0, -1, false),
-                name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":t")
-            }
-        ]])
+		local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+		local buffer_name = child.api.nvim_buf_get_name(0)
 
-		MiniTest.expect.equality(result.lines, { "Hello world" })
-		MiniTest.expect.equality(result.name, "existing.md")
+		MiniTest.expect.equality(lines, { "Hello world" })
+		MiniTest.expect.equality(buffer_name, plain)
 
 		child.cmd("write")
 
-		local result_after_write = child.lua([[
-            return {
-                lines = vim.api.nvim_buf_get_lines(0, 0, -1, false),
-                name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":t")
-            }
-        ]])
+		local new_buffer_name_after_write = child.api.nvim_buf_get_name(0)
 
 		local cmd = {
 			"memo",
@@ -128,7 +114,7 @@ describe("autocmd", function()
 		local decrypted_result = vim.system(cmd):wait()
 
 		MiniTest.expect.equality(decrypted_result.stdout, "Hello world\n")
-		MiniTest.expect.equality(result_after_write.name, "existing.md.gpg")
+		MiniTest.expect.equality(new_buffer_name_after_write, plain .. ".gpg")
 	end)
 
 	it("automatically encrypts a new .md file saved in notes dir", function()
@@ -142,21 +128,13 @@ describe("autocmd", function()
 		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
 		child.cmd("write")
 
-		local result = child.lua(string.format(
-			[[
-            return {
-                new_name = vim.api.nvim_buf_get_name(0),
-                plaintext_exists = vim.fn.filereadable(%q) == 1,
-                gpg_exists = vim.fn.filereadable(%q) == 1,
-            }
-        ]],
-			plain,
-			encrypted
-		))
+		local new_buffer_name = child.api.nvim_buf_get_name(0)
+		local plaintext_file_exists = vim.fn.filereadable(plain) == 1
+		local gpg_file_exists = vim.fn.filereadable(encrypted) == 1
 
-		MiniTest.expect.equality(vim.fn.fnamemodify(result.new_name, ":t"), "new_note.md.gpg")
-		MiniTest.expect.equality(result.plaintext_exists, false)
-		MiniTest.expect.equality(result.gpg_exists, true)
+		MiniTest.expect.equality(new_buffer_name, plain .. ".gpg")
+		MiniTest.expect.equality(plaintext_file_exists, false)
+		MiniTest.expect.equality(gpg_file_exists, true)
 	end)
 
 	it("automatically encrypts a new .md.gpg file saved in notes dir", function()
@@ -173,21 +151,13 @@ describe("autocmd", function()
 		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
 		child.cmd("write")
 
-		local result = child.lua(string.format(
-			[[
-            return {
-                new_name = vim.api.nvim_buf_get_name(0),
-                plaintext_exists = vim.fn.filereadable(%q) == 1,
-                gpg_exists = vim.fn.filereadable(%q) == 1,
-            }
-        ]],
-			plain,
-			encrypted
-		))
+		local new_buffer_name = child.api.nvim_buf_get_name(0)
+		local plaintext_file_exists = vim.fn.filereadable(plain) == 1
+		local gpg_file_exists = vim.fn.filereadable(encrypted) == 1
 
-		MiniTest.expect.equality(vim.fn.fnamemodify(result.new_name, ":t"), "new_note.md.gpg")
-		MiniTest.expect.equality(result.plaintext_exists, false)
-		MiniTest.expect.equality(result.gpg_exists, true)
+		MiniTest.expect.equality(new_buffer_name, plain .. ".gpg")
+		MiniTest.expect.equality(plaintext_file_exists, false)
+		MiniTest.expect.equality(gpg_file_exists, true)
 	end)
 
 	it("does not re-encrypt (no-op) if content hasn't changed", function()
