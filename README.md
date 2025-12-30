@@ -99,9 +99,9 @@ This will prepend the following under the `# inbox` header in `inbox.md.gpg`.
 require("memo").register_capture({
   capture_file = "inbox.md.gpg",
   capture_template = {
-    template = "## %Y-%m-%d %H:%M\n\n|\n",
+    template = "## %Y-%m-%d %H:%M\n\n|\n", -- you can configure where cursor position in the capture window with '|'.
     target_header = "# inbox", -- will be prepended if it does not exist.
-    header_padding = 1,
+    header_padding = 1, -- padding between capture content and target header.
   },
 })
 ```
