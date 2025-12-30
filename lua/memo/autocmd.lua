@@ -49,11 +49,8 @@ function M.setup()
 
 			-- If the .gpg file doesn't exist, it's a new note, just open it
 			if vim.fn.filereadable(gpg_path) == 0 or vim.fn.getfsize(gpg_path) <= 0 then
-				vim.cmd("silent 0read " .. vim.fn.fnameescape(args.file))
-
-				-- Remove the extra trailing line added by 'read'
-				vim.api.nvim_buf_set_lines(bufnr, -2, -1, false, {})
-				vim.bo[bufnr].modified = false
+				-- Read file - the regular way - into buffer
+				vim.cmd("silent edit " .. vim.fn.fnameescape(args.file))
 				return
 			end
 
