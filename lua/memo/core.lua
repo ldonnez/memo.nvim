@@ -70,9 +70,7 @@ function M.decrypt_to_buffer(path, bufnr, on_exit)
 		end,
 	}, function(result)
 		vim.schedule(function()
-			if on_exit then
-				on_exit(result)
-			end
+			on_exit(result)
 
 			events.emit(events.types.DECRYPT_DONE)
 		end)
