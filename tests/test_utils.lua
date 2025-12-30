@@ -27,12 +27,12 @@ describe("utils", function()
 		end)
 	end)
 
-	describe("apply_gpg_opts", function()
+	describe("harden_buffer", function()
 		it("correctly sets buffer-local security options", function()
 			local util = require("memo.utils")
 			local bufnr = vim.api.nvim_create_buf(false, true)
 
-			util.apply_gpg_opts(bufnr)
+			util.harden_buffer(bufnr)
 
 			local swap = vim.api.nvim_get_option_value("swapfile", { buf = bufnr })
 			local undo = vim.api.nvim_get_option_value("undofile", { buf = bufnr })

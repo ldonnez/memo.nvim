@@ -17,9 +17,9 @@ function M.get_gpg_path(path)
 	return path .. ".gpg"
 end
 
----Standard security settings for GPG buffers
+---Add security buffer settings to prevent disk leakage
 ---@param bufnr integer
-function M.apply_gpg_opts(bufnr)
+function M.harden_buffer(bufnr)
 	vim.opt_local.swapfile = false
 	vim.opt_local.undofile = false
 	vim.opt_local.shadafile = "NONE"

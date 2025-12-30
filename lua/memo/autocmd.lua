@@ -5,8 +5,8 @@ local events = require("memo.events")
 
 local M = {}
 
---- @param bufnr integer The buffer handle to write into.
-local function finalize_buffer_state(bufnr)
+--- @param bufnr integer
+local function prepare_buffer_for_edit(bufnr)
 	if not vim.api.nvim_buf_is_valid(bufnr) then
 		return
 	end
@@ -39,7 +39,7 @@ function M.setup()
 		callback = function(args)
 			local bufnr = args.buf
 
-			utils.apply_gpg_opts(bufnr)
+			utils.harden_buffer(bufnr)
 
 			-- Force filetype detection based on the name without .gpg
 			local base = args.file:gsub("%.gpg$", "")
@@ -66,7 +66,7 @@ function M.setup()
 						return
 					end
 
-					finalize_buffer_state(bufnr)
+					prepare_buffer_for_edit(bufnr)
 				end)
 			end)
 		end,
@@ -97,7 +97,7 @@ function M.setup()
 					end
 
 					if result.code == 0 then
-						finalize_buffer_state(bufnr)
+						prepare_buffer_for_edit(bufnr)
 
 						if args.file ~= gpg_path and vim.fn.filereadable(args.file) == 1 then
 							vim.fn.delete(args.file)
