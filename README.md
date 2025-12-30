@@ -49,6 +49,11 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo) a CLI-base
             template = "",
             header_padding = 1,
           },
+          window = {
+            split = "split", -- "split" | "vsplit"
+            size = 10,
+            position = "botright", -- "botright" | "topleft" | "leftabove" | "rightbelow"
+          },
         })
       end,
       desc = "Capture to inbox",

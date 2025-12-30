@@ -4,12 +4,13 @@ local capture_template = require("memo.capture_template")
 local memo_config = require("memo.config")
 
 local M = {}
-
 ---@alias CaptureSplit "split" | "vsplit"
+---@alias CapturePosition "botright" | "topleft" | "leftabove" | "rightbelow"
+
 ---@class CaptureConfig
 ---@field capture_file string
 ---@field capture_template MemoCaptureTemplateConfig
----@field window { split: CaptureSplit }
+---@field window { split: CaptureSplit, size: integer, position: CapturePosition }
 
 ---@type CaptureConfig
 local defaults = {
@@ -17,6 +18,8 @@ local defaults = {
 	capture_template = capture_template.defaults,
 	window = {
 		split = "split",
+		size = 10,
+		position = "botright",
 	},
 }
 
@@ -31,6 +34,36 @@ local function ensure_directories(file)
 			return
 		end
 	end
+end
+
+---@param config CaptureConfig
+---@return integer win
+---@return integer buf
+local function create_capture_window(config)
+	local base = config.capture_file:gsub("%.gpg$", "")
+	local buf = vim.api.nvim_create_buf(false, true)
+
+	local cmd = string.format("%s %d%s", config.window.position, config.window.size, config.window.split)
+	vim.cmd(cmd)
+
+	local win = vim.api.nvim_get_current_win()
+
+	vim.api.nvim_win_set_buf(win, buf)
+
+	vim.bo[buf].buftype = "acwrite"
+	vim.bo[buf].bufhidden = "wipe"
+	vim.bo[buf].swapfile = false
+	vim.bo[buf].filetype = vim.filetype.match({ filename = base })
+
+	if config.window.split == "vsplit" then
+		vim.wo[win].winfixwidth = true
+	else
+		vim.wo[win].winfixheight = true
+	end
+
+	vim.api.nvim_buf_set_name(buf, "capture://" .. config.capture_file)
+
+	return win, buf
 end
 
 ---@param lines string[] The new lines from the capture window
@@ -66,18 +99,11 @@ function M.register(opts)
 	local config = vim.tbl_deep_extend("force", defaults, opts or {})
 
 	local initial_lines, cursor_pos = capture_template.resolve_header(config.capture_template)
-	vim.cmd(config.window.split)
-	local base = config.capture_file:gsub("%.gpg$", "")
-	local buf = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_win_set_buf(0, buf)
 
-	vim.bo[buf].buftype = "acwrite"
-	vim.bo[buf].bufhidden = "wipe"
-	vim.bo[buf].filetype = vim.filetype.match({ filename = base })
-	vim.api.nvim_buf_set_name(buf, "capture://" .. config.capture_file)
+	local win, buf = create_capture_window(config)
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, initial_lines)
-	vim.api.nvim_win_set_cursor(0, cursor_pos)
+	vim.api.nvim_win_set_cursor(win, cursor_pos)
 
 	vim.bo[buf].modified = false
 
