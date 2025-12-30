@@ -44,15 +44,12 @@ describe("capture", function()
 			local capture_file_path = NOTES_DIR .. "/" .. capture_file
 			local encrypted = capture_file_path .. ".gpg"
 
-			helpers.write_file(capture_file_path, "CAPTURE")
-
 			local cmd = {
 				"memo",
 				"encrypt",
 				encrypted,
-				capture_file_path,
 			}
-			vim.system(cmd):wait()
+			vim.system(cmd, { stdin = "CAPTURE" }):wait()
 
 			child.lua(string.format(
 				[[
@@ -86,15 +83,12 @@ describe("capture", function()
 			local capture_file_path = NOTES_DIR .. "/" .. capture_file
 			local encrypted = capture_file_path .. ".gpg"
 
-			helpers.write_file(capture_file_path, "CAPTURE")
-
 			local cmd = {
 				"memo",
 				"encrypt",
 				encrypted,
-				capture_file_path,
 			}
-			vim.system(cmd):wait()
+			vim.system(cmd, { stdin = "CAPTURE" }):wait()
 
 			child.lua(string.format(
 				[[
@@ -110,17 +104,6 @@ describe("capture", function()
 
 		it("aborts capture when capture window has no content", function()
 			local capture_file = "capture.md"
-			local capture_file_path = NOTES_DIR .. "/" .. capture_file
-			local encrypted = capture_file_path .. ".gpg"
-
-			helpers.write_file(capture_file_path, "CAPTURE")
-			local cmd = {
-				"memo",
-				"encrypt",
-				encrypted,
-				capture_file_path,
-			}
-			vim.system(cmd):wait()
 
 			child.lua(string.format(
 				[[
@@ -252,14 +235,12 @@ describe("capture", function()
 			local capture_file_path = NOTES_DIR .. "/" .. capture_file
 			local encrypted = capture_file_path .. ".gpg"
 
-			helpers.write_file(capture_file_path, "CAPTURE")
-
 			local cmd = {
 				"memo",
 				"encrypt",
 				encrypted,
 			}
-			vim.system(cmd):wait()
+			vim.system(cmd, { stdin = "CAPTURE" }):wait()
 
 			child.lua(string.format(
 				[[
