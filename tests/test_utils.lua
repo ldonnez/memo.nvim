@@ -1,6 +1,8 @@
 local child = MiniTest.new_child_neovim()
 
 describe("utils", function()
+	local util = require("memo.utils")
+
 	before_each(function()
 		child.restart({ "-u", "scripts/minimal_init.lua" })
 		-- Load tested plugin
@@ -13,14 +15,12 @@ describe("utils", function()
 
 	describe("get_gpg_path", function()
 		it("adds .gpg to given path", function()
-			local util = require("memo.utils")
 			local result = util.get_gpg_path("test.md")
 
 			MiniTest.expect.equality(result, "test.md.gpg")
 		end)
 
 		it("does not add .gpg when path already is .gpg", function()
-			local util = require("memo.utils")
 			local result = util.get_gpg_path("test.md.gpg")
 
 			MiniTest.expect.equality(result, "test.md.gpg")
@@ -29,7 +29,6 @@ describe("utils", function()
 
 	describe("harden_buffer", function()
 		it("correctly sets buffer-local security options", function()
-			local util = require("memo.utils")
 			local bufnr = vim.api.nvim_create_buf(false, true)
 
 			util.harden_buffer(bufnr)
@@ -50,7 +49,6 @@ describe("utils", function()
 
 	describe("check_exec", function()
 		it("returns true when binary exists", function()
-			local util = require("memo.utils")
 			local result = util.check_exec("git")
 
 			MiniTest.expect.equality(result, true)
