@@ -38,6 +38,26 @@ function M.resolve(opts)
 end
 
 ---@param existing string[]
+---@param target_header string?
+---@return integer index of found target header
+local function find_target_header_idx(existing, target_header)
+	local target_idx = -1
+
+	if not target_header and target_header ~= "" then
+		return target_idx
+	end
+
+	for i, line in ipairs(existing) do
+		if line == target_header then
+			target_idx = i
+			break
+		end
+	end
+
+	return target_idx
+end
+
+---@param existing string[]
 ---@param new_lines string[]
 ---@param config MemoCaptureTemplateConfig
 ---@return string[]
@@ -46,77 +66,34 @@ function M.merge_with_content(existing, new_lines, config)
 		return existing
 	end
 
-	local has_content = false
-	for _, line in ipairs(new_lines) do
-		if line:gsub("%s+", "") ~= "" then
-			has_content = true
-			break
-		end
-	end
-	if not has_content then
-		return existing
-	end
+	local header = config.target_header
+	local padding = config.header_padding or 0
+	local target_idx = find_target_header_idx(existing, header)
 
+	-- Build the "block" we want to insert
+	local block = {}
+	if target_idx == -1 and header and header ~= "" then
+		table.insert(block, header)
+	end
+	for _ = 1, padding do
+		table.insert(block, "")
+	end
+	vim.list_extend(block, new_lines)
+
+	-- Construct the result
 	local merged = {}
-	local target = config.target_header
-	local padding_count = config.header_padding or 0
-	local target_idx = -1
-
-	if target and target ~= "" then
-		for i, line in ipairs(existing) do
-			if line == target then
-				target_idx = i
-				break
-			end
-		end
-	end
-
 	if target_idx ~= -1 then
-		for i = 1, target_idx do
-			table.insert(merged, existing[i])
-		end
+		-- Insert after header: [Head] + [Block] + [Tail]
+		vim.list_extend(merged, vim.list_slice(existing, 1, target_idx))
+		vim.list_extend(merged, block)
 
-		for _ = 1, padding_count do
-			table.insert(merged, "")
-		end
-
-		for _, line in ipairs(new_lines) do
-			table.insert(merged, line)
-		end
-
-		local resume_idx = target_idx + 1
-		if existing[resume_idx] == "" then
-			resume_idx = resume_idx + 1
-		end
-
-		for i = resume_idx, #existing do
-			table.insert(merged, existing[i])
-		end
-	elseif target and target ~= "" then
-		table.insert(merged, target)
-
-		for _ = 1, padding_count do
-			table.insert(merged, "")
-		end
-
-		for _, line in ipairs(new_lines) do
-			table.insert(merged, line)
-		end
-
-		-- Push down all existing content
-		if #existing > 0 then
-			table.insert(merged, "") -- Add a separator between new and old blocks
-			for _, line in ipairs(existing) do
-				table.insert(merged, line)
-			end
-		end
+		-- Skip exactly one empty line if it follows the header to prevent gaps
+		local resume_at = (existing[target_idx + 1] == "") and (target_idx + 2) or (target_idx + 1)
+		vim.list_extend(merged, vim.list_slice(existing, resume_at))
 	else
-		for _, l in ipairs(new_lines) do
-			table.insert(merged, l)
-		end
-		for _, l in ipairs(existing) do
-			table.insert(merged, l)
-		end
+		-- Prepend to top: [Block] + [Existing]
+		vim.list_extend(merged, block)
+		vim.list_extend(merged, existing)
 	end
 
 	return merged
