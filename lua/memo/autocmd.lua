@@ -32,7 +32,6 @@ function M.setup()
 
 	local pattern = { abs_notes .. "*.{md,txt,org}", abs_notes .. "*.{md,txt,org}.gpg" }
 
-	-- 2. Reading / Decrypting
 	vim.api.nvim_create_autocmd("BufReadCmd", {
 		group = GROUP,
 		pattern = pattern,
@@ -47,7 +46,7 @@ function M.setup()
 
 			local gpg_path = utils.get_gpg_path(args.file)
 
-			-- If the .gpg file doesn't exist, it's a new note, just open it
+			-- If the .gpg file doesn't exist, it's new, just open it
 			if vim.fn.filereadable(gpg_path) == 0 or vim.fn.getfsize(gpg_path) <= 0 then
 				-- Read file - the regular way - into buffer
 				vim.cmd("silent edit " .. vim.fn.fnameescape(args.file))
@@ -69,7 +68,6 @@ function M.setup()
 		end,
 	})
 
-	-- 3. Writing / Encrypting
 	vim.api.nvim_create_autocmd("BufWriteCmd", {
 		group = GROUP,
 		pattern = pattern,
