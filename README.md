@@ -46,7 +46,7 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo) a CLI-base
           capture_file = "inbox.md.gpg",
           -- optional default values
           capture_template = {
-            template = "%Y-%m-%d %H:%M\n|",
+            template = "",
             header_padding = 1,
           },
         })
