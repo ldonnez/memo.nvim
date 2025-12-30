@@ -81,8 +81,7 @@ function M.setup()
 			local gpg_path = utils.get_gpg_path(args.file)
 			local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
-			local current_content = table.concat(lines, "\n")
-			local current_hash = vim.fn.sha256(current_content)
+			local current_hash = vim.fn.sha256(table.concat(lines, "\n"))
 
 			if current_hash == vim.b[bufnr].hash then
 				vim.notify("No changes detected", vim.log.levels.INFO)
