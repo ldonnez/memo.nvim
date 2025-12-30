@@ -98,9 +98,6 @@ function M.setup()
 				end
 				return
 			end
-
-			local err = (result.stderr and result.stderr ~= "") and result.stderr or "GPG Error"
-			vim.notify("Encryption failed: " .. err, vim.log.levels.ERROR)
 		end,
 	})
 end
