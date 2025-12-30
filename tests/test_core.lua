@@ -38,14 +38,10 @@ describe("core", function()
 			child.lua(
 				[[
         local test_lines, encrypted = ...
-        M.encrypt_from_stdin(encrypted, test_lines, function()
-          return true
-        end)
+        M.encrypt_from_stdin(encrypted, test_lines)
     ]],
 				{ test_lines, encrypted }
 			)
-
-			helpers.wait_for_event(child, events.types.ENCRYPT_DONE)
 
 			local exists = child.fn.filereadable(encrypted)
 			local lines = child.fn.readfile(encrypted)
@@ -67,8 +63,6 @@ describe("core", function()
     ]],
 				{ test_lines, encrypted }
 			)
-
-			helpers.wait_for_event(child, events.types.ENCRYPT_DONE)
 
 			local messages = child.cmd_capture("messages")
 			MiniTest.expect.equality(messages, "Memo failed: Extension: jpg not supported\n")
@@ -106,6 +100,16 @@ describe("core", function()
 			MiniTest.expect.equality(#result.lines, 3)
 			MiniTest.expect.equality(result.lines, { "Line 1", "Line 2", "Line 3" })
 			MiniTest.expect.equality(result.cursor, { 1, 0 })
+		end)
+
+		it("decrypt_to_stdout: decrypts content", function()
+			local path = "/tmp/test.md.gpg"
+
+			vim.system({ "memo", "encrypt", path }, { stdin = "Line 1\nLine 2\nLine 3" }):wait()
+
+			local result = child.lua(string.format([[ return M.decrypt_to_stdout(%q) ]], path))
+
+			MiniTest.expect.equality(vim.split(result.stdout, "\n"), { "Line 1", "Line 2", "Line 3" })
 		end)
 	end)
 
@@ -159,6 +163,28 @@ describe("core", function()
     ]])
 
 			MiniTest.expect.equality(result.lines, { "Line 1", "Line 2", "Line 3" })
+		end)
+
+		it("decrypt_to_stdout: decrypts content when gpg key has password", function()
+			local path = "/tmp/test.md.gpg"
+
+			vim.system({ "memo", "encrypt", path }, { stdin = "Line 1\nLine 2\nLine 3" }):wait()
+
+			local result = child.lua(string.format(
+				[[
+      local utils = require("memo.utils")
+
+      utils.prompt_passphrase = function()
+        return %q
+      end
+
+      return M.decrypt_to_stdout(%q)
+      ]],
+				gpg_key_password,
+				path
+			))
+
+			MiniTest.expect.equality(vim.split(result.stdout, "\n"), { "Line 1", "Line 2", "Line 3" })
 		end)
 	end)
 end)

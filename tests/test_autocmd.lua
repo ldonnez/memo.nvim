@@ -113,8 +113,6 @@ describe("autocmd", function()
 
 		child.cmd("write")
 
-		helpers.wait_for_event(child, events.types.ENCRYPT_DONE)
-
 		local result_after_write = child.lua([[
             return {
                 lines = vim.api.nvim_buf_get_lines(0, 0, -1, false),
@@ -143,7 +141,6 @@ describe("autocmd", function()
 		child.cmd("edit " .. plain)
 		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
 		child.cmd("write")
-		helpers.wait_for_event(child, events.types.ENCRYPT_DONE)
 
 		local result = child.lua(string.format(
 			[[
@@ -175,8 +172,6 @@ describe("autocmd", function()
 
 		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
 		child.cmd("write")
-
-		helpers.wait_for_event(child, events.types.ENCRYPT_DONE)
 
 		local result = child.lua(string.format(
 			[[

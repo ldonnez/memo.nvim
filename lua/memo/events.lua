@@ -3,8 +3,6 @@ local M = {}
 --- @enum MemoEvent
 M.types = {
 	DECRYPT_DONE = "MemoDecryptDone",
-	ENCRYPT_DONE = "MemoEncryptDone",
-	CAPTURE_DONE = "MemoCaptureDone",
 	BUFFER_READY = "MemoBufferReady",
 }
 

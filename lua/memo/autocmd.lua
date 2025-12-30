@@ -87,26 +87,20 @@ function M.setup()
 				return
 			end
 
-			core.encrypt_from_stdin(gpg_path, lines, function(result)
-				vim.schedule(function()
-					if not vim.api.nvim_buf_is_valid(bufnr) then
-						return
-					end
+			local result = core.encrypt_from_stdin(gpg_path, lines)
 
-					if result.code == 0 then
-						prepare_buffer_for_edit(bufnr)
+			if result.code == 0 then
+				prepare_buffer_for_edit(bufnr)
 
-						if args.file ~= gpg_path and vim.fn.filereadable(args.file) == 1 then
-							vim.fn.delete(args.file)
-							vim.api.nvim_buf_set_name(bufnr, gpg_path)
-						end
-						return
-					end
+				if args.file ~= gpg_path and vim.fn.filereadable(args.file) == 1 then
+					vim.fn.delete(args.file)
+					vim.api.nvim_buf_set_name(bufnr, gpg_path)
+				end
+				return
+			end
 
-					local err = (result.stderr and result.stderr ~= "") and result.stderr or "GPG Error"
-					vim.notify("Encryption failed: " .. err, vim.log.levels.ERROR)
-				end)
-			end)
+			local err = (result.stderr and result.stderr ~= "") and result.stderr or "GPG Error"
+			vim.notify("Encryption failed: " .. err, vim.log.levels.ERROR)
 		end,
 	})
 end

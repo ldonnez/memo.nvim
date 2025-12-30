@@ -1,6 +1,5 @@
 local core = require("memo.core")
 local utils = require("memo.utils")
-local events = require("memo.events")
 local capture_template = require("memo.capture_template")
 local memo_config = require("memo.config")
 
@@ -34,70 +33,32 @@ local function ensure_directories(file)
 	end
 end
 
----@param result vim.SystemCompleted
-local function on_encrypt_done(result)
-	if result.code == 0 then
-		vim.notify("Capture saved", vim.log.levels.INFO)
-	else
-		vim.notify("Capture failed: Encrypt error", vim.log.levels.ERROR)
-	end
-end
-
----@param bufnr integer
-local function on_capture_done(bufnr)
-	if vim.api.nvim_buf_is_valid(bufnr) then
-		vim.api.nvim_buf_delete(bufnr, { force = true })
-	end
-	events.emit(events.types.CAPTURE_DONE)
-end
-
 ---@param lines string[] The new lines from the capture window
 ---@param config CaptureConfig
----@param on_done fun() callback triggered after encryption completes
-local function append_capture(lines, config, on_done)
-	if #lines == 0 then
-		on_done()
-		return
-	end
-
+local function append_capture(lines, config)
 	local notes_dir = vim.fn.expand(memo_config.notes_dir)
 	local file = utils.get_gpg_path(vim.fn.expand(notes_dir .. "/" .. config.capture_file))
-	local temp_buf = vim.api.nvim_create_buf(false, true)
 
 	if vim.fn.filereadable(file) == 0 then
 		-- Ensure relative directories are created
 		ensure_directories(file)
 
 		local merged = capture_template.merge_with_content({}, lines, config.capture_template)
-
-		core.encrypt_from_stdin(file, merged, function(result)
-			on_encrypt_done(result)
-			on_done()
-		end)
+		core.encrypt_from_stdin(file, merged)
 		return
 	end
 
-	core.decrypt_to_buffer(file, temp_buf, function(read_result)
-		if read_result.code ~= 0 then
-			vim.notify("Capture failed: Decrypt error", vim.log.levels.ERROR)
-			on_done()
-			return
-		end
+	local read_result = core.decrypt_to_stdout(file)
 
-		vim.schedule(function()
-			local existing = vim.api.nvim_buf_get_lines(temp_buf, 0, -1, false)
-			local merged = capture_template.merge_with_content(existing, lines, config.capture_template)
+	if not read_result or (read_result and read_result.code ~= 0) then
+		vim.notify("Capture failed: Decrypt error", vim.log.levels.ERROR)
+		return
+	end
 
-			if vim.api.nvim_buf_is_valid(temp_buf) then
-				vim.api.nvim_buf_delete(temp_buf, { force = true })
-			end
+	local existing = vim.split(read_result.stdout or "", "\n", { plain = true })
+	local merged = capture_template.merge_with_content(existing, lines, config.capture_template)
 
-			core.encrypt_from_stdin(file, merged, function(result)
-				on_encrypt_done(result)
-				on_done()
-			end)
-		end)
-	end)
+	core.encrypt_from_stdin(file, merged)
 end
 
 ---@param opts CaptureConfig?
@@ -110,16 +71,17 @@ function M.register(opts)
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_win_set_buf(0, buf)
 
-	vim.bo[buf].buftype = "nofile"
+	vim.bo[buf].buftype = "acwrite"
 	vim.bo[buf].bufhidden = "wipe"
 	vim.bo[buf].filetype = vim.filetype.match({ filename = base })
 	vim.api.nvim_buf_set_name(buf, "capture://" .. config.capture_file)
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, initial_lines)
 	vim.api.nvim_win_set_cursor(0, cursor_pos)
-	vim.cmd("startinsert!")
 
-	vim.api.nvim_create_autocmd({ "BufWriteCmd", "BufUnload" }, {
+	vim.bo[buf].modified = false
+
+	vim.api.nvim_create_autocmd({ "BufWriteCmd" }, {
 		buffer = buf,
 		once = true,
 		callback = function()
@@ -132,15 +94,11 @@ function M.register(opts)
 			local is_not_empty = current_content:gsub("%s+", "") ~= ""
 
 			if has_changed and is_not_empty then
-				append_capture(lines, config, function()
-					on_capture_done(buf)
-				end)
-				return
+				append_capture(lines, config)
 			else
 				vim.notify("Capture aborted: empty content", vim.log.levels.WARN)
-				events.emit(events.types.CAPTURE_DONE)
-				return
 			end
+			vim.api.nvim_buf_delete(buf, { force = true })
 		end,
 	})
 end
