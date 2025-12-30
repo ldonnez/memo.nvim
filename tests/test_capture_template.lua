@@ -11,11 +11,11 @@ describe("capture_template", function()
 		child.stop()
 	end)
 
-	describe("resolve", function()
+	describe("resolve_header", function()
 		it("resolves basic templates and markers", function()
 			local config = { template = "## Title\n|" }
 			local capture_template = require("memo.capture_template")
-			local lines, cursor = capture_template.resolve(config)
+			local lines, cursor = capture_template.resolve_header(config)
 
 			MiniTest.expect.equality(lines, { "## Title", "" })
 			MiniTest.expect.equality(cursor, { 2, 0 })
@@ -24,7 +24,7 @@ describe("capture_template", function()
 		it("sets default template with empty config", function()
 			local config = {}
 			local capture_template = require("memo.capture_template")
-			local lines, cursor = capture_template.resolve(config)
+			local lines, cursor = capture_template.resolve_header(config)
 
 			MiniTest.expect.equality(lines, { "" })
 			MiniTest.expect.equality(cursor, { 1, 0 })
@@ -33,7 +33,7 @@ describe("capture_template", function()
 		it("sets empty string when tempale is empty", function()
 			local config = { template = "" }
 			local capture_template = require("memo.capture_template")
-			local lines, cursor = capture_template.resolve(config)
+			local lines, cursor = capture_template.resolve_header(config)
 
 			MiniTest.expect.equality(lines, { "" })
 			MiniTest.expect.equality(cursor, { 1, 0 })
@@ -42,7 +42,7 @@ describe("capture_template", function()
 		it("places cursor correctly with empty spaces in template", function()
 			local capture_template = require("memo.capture_template")
 			local opts = { template = "- [ ] |" }
-			local lines, pos = capture_template.resolve(opts)
+			local lines, pos = capture_template.resolve_header(opts)
 
 			MiniTest.expect.equality(lines[1], "- [ ] ")
 			MiniTest.expect.equality(pos[2], 6)

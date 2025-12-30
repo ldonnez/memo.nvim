@@ -104,7 +104,7 @@ end
 function M.register(opts)
 	local config = vim.tbl_deep_extend("force", defaults, opts or {})
 
-	local initial_lines, cursor_pos = capture_template.resolve(config.capture_template)
+	local initial_lines, cursor_pos = capture_template.resolve_header(config.capture_template)
 	vim.cmd(config.window.split)
 	local base = config.capture_file:gsub("%.gpg$", "")
 	local buf = vim.api.nvim_create_buf(false, true)

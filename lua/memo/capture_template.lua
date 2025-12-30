@@ -13,7 +13,7 @@ M.defaults = {
 
 ---@param opts MemoCaptureTemplateConfig
 ---@return string[], table @Returns (lines, cursor_pos)
-function M.resolve(opts)
+function M.resolve_header(opts)
 	local config = vim.tbl_deep_extend("force", M.defaults, opts or {})
 
 	local template = config.template
