@@ -90,16 +90,12 @@ describe("core", function()
 
 			helpers.wait_for_event(child, events.types.DECRYPT_DONE)
 
-			local result = child.lua([[
-        return {
-            lines = vim.api.nvim_buf_get_lines(0, 0, -1, false),
-            cursor = vim.api.nvim_win_get_cursor(0)
-        }
-    ]])
+			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+			local cursor = child.api.nvim_win_get_cursor(0)
 
-			MiniTest.expect.equality(#result.lines, 3)
-			MiniTest.expect.equality(result.lines, { "Line 1", "Line 2", "Line 3" })
-			MiniTest.expect.equality(result.cursor, { 1, 0 })
+			MiniTest.expect.equality(#lines, 3)
+			MiniTest.expect.equality(lines, { "Line 1", "Line 2", "Line 3" })
+			MiniTest.expect.equality(cursor, { 1, 0 })
 		end)
 
 		it("decrypt_to_stdout: decrypts content", function()
@@ -155,14 +151,9 @@ describe("core", function()
 
 			helpers.wait_for_event(child, events.types.DECRYPT_DONE)
 
-			local result = child.lua([[
-        return {
-            lines = vim.api.nvim_buf_get_lines(0, 0, -1, false),
-            cursor = vim.api.nvim_win_get_cursor(0)
-        }
-    ]])
+			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 
-			MiniTest.expect.equality(result.lines, { "Line 1", "Line 2", "Line 3" })
+			MiniTest.expect.equality(lines, { "Line 1", "Line 2", "Line 3" })
 		end)
 
 		it("decrypt_to_stdout: decrypts content when gpg key has password", function()

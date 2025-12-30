@@ -130,10 +130,8 @@ describe("capture", function()
 			))
 
 			-- empty the buffer
-			child.lua([[
-            local buf = vim.api.nvim_get_current_buf()
-            vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
-        ]])
+			local buf = child.api.nvim_get_current_buf()
+			child.api.nvim_buf_set_lines(buf, 0, -1, false, {})
 
 			child.cmd("write")
 			local messages = child.cmd_capture("messages")
