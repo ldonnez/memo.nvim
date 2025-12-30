@@ -7,7 +7,7 @@ function M.prompt_passphrase(label)
 	return vim.fn.inputsecret("GPG Passphrase for " .. label .. ": ")
 end
 
----Ensures a path ends in .gpg
+---Ensures path ends with .gpg
 ---@param path string
 ---@return string
 function M.get_gpg_path(path)
