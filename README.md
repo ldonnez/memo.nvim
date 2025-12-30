@@ -75,7 +75,7 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo) a CLI-base
 
 - Detection: When you open a file within your configured notes directory, the plugin detects the path.
 - Security: The decrypted content exists only in your Neovim buffer.
-- Asynchronous Execution: All encryption/decryption operations run in the background. This ensures that the editor remains responsive and non-blocking, even when processing large files.
+- Asynchronous decryption: All decryption operations run in the background. This ensures that the editor remains responsive and non-blocking, even when processing large files.
 
 > [!NOTE]
 > This "transparent" approach means you can use your favorite Neovim workflows (searching, LSP, macros) on your files, while keeping the underlying data fully encrypted.

@@ -5,25 +5,25 @@ local M = {}
 
 ---@param path string
 ---@param input string[]
----@param on_exit fun(result: vim.SystemCompleted)?
----@return vim.SystemObj?
-function M.encrypt_from_stdin(path, input, on_exit)
-	return vim.system({ "memo", "encrypt", path }, {
+---@return vim.SystemCompleted
+function M.encrypt_from_stdin(path, input)
+	local result = vim.system({ "memo", "encrypt", path }, {
 		stdin = input,
-	}, function(result)
-		vim.schedule(function()
-			if result.code ~= 0 and not on_exit then
-				local err = (result.stderr and result.stderr ~= "") and result.stderr or "Unknown encryption error"
-				return vim.notify("Memo failed: " .. err, vim.log.levels.ERROR)
-			end
+	}):wait()
 
-			if on_exit then
-				on_exit(result)
-			end
+	if result.code ~= 0 then
+		local err = (result.stderr and result.stderr ~= "") and result.stderr or "Unknown encryption error"
+		vim.notify("Memo failed: " .. err, vim.log.levels.ERROR)
+	end
 
-			events.emit(events.types.ENCRYPT_DONE)
-		end)
-	end)
+	return result
+end
+
+--- Decrypts a file and returns the content
+--- @param path string The path to the encrypted file.
+--- @return vim.SystemCompleted?
+function M.decrypt_to_stdout(path)
+	return gpg.exec_with_gpg_auth({ "memo", "decrypt", path })
 end
 
 --- Decrypts a file and handles all buffer insertions.
