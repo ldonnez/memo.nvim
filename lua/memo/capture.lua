@@ -56,7 +56,7 @@ end
 ---@param lines string[] The new lines from the capture window
 ---@param config CaptureConfig
 ---@param on_done fun() callback triggered after encryption completes
-local function append_capture_memo(lines, config, on_done)
+local function append_capture(lines, config, on_done)
 	if #lines == 0 then
 		return
 	end
@@ -134,7 +134,7 @@ function M.register(opts)
 			local is_not_empty = current_content:gsub("%s+", "") ~= ""
 
 			if has_changed and is_not_empty then
-				append_capture_memo(lines, config, function()
+				append_capture(lines, config, function()
 					on_capture_done(buf)
 				end)
 			else
