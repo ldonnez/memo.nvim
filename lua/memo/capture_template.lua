@@ -41,7 +41,11 @@ end
 ---@param new_lines string[]
 ---@param config MemoCaptureTemplateConfig
 ---@return string[]
-function M.merge(existing, new_lines, config)
+function M.merge_with_content(existing, new_lines, config)
+	if #new_lines == 0 then
+		return existing
+	end
+
 	local has_content = false
 	for _, line in ipairs(new_lines) do
 		if line:gsub("%s+", "") ~= "" then

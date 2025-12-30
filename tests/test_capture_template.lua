@@ -49,14 +49,14 @@ describe("capture_template", function()
 		end)
 	end)
 
-	describe("merge", function()
+	describe("merge_with_content", function()
 		it("injects content under a specific target header with prepended newline (default)", function()
 			local existing = { "# Inbox", "", "Previous Note" }
 			local new_lines = { "## 2024-01-01", "New Content" }
 			local config = { target_header = "# Inbox" }
 			local capture_template = require("memo.capture_template")
 
-			local result = capture_template.merge(existing, new_lines, config)
+			local result = capture_template.merge_with_content(existing, new_lines, config)
 
 			MiniTest.expect.equality(result[1], "# Inbox")
 			MiniTest.expect.equality(result[2], "## 2024-01-01")
@@ -71,7 +71,7 @@ describe("capture_template", function()
 			local config = { target_header = "# Inbox" }
 			local capture_template = require("memo.capture_template")
 
-			local result = capture_template.merge(existing, new_lines, config)
+			local result = capture_template.merge_with_content(existing, new_lines, config)
 
 			MiniTest.expect.equality(result[1], "# Inbox")
 			MiniTest.expect.equality(result[2], "## 2024-01-01")
@@ -89,7 +89,7 @@ describe("capture_template", function()
 			local config = { target_header = "# Inbox" }
 			local capture_template = require("memo.capture_template")
 
-			local result = capture_template.merge(existing, new_lines, config)
+			local result = capture_template.merge_with_content(existing, new_lines, config)
 
 			MiniTest.expect.equality(result[1], "# Inbox")
 			MiniTest.expect.equality(result[2], "New Content")
@@ -105,7 +105,7 @@ describe("capture_template", function()
 			local config = { target_header = "# Inbox", header_padding = 2 }
 			local capture_template = require("memo.capture_template")
 
-			local result = capture_template.merge(existing, new_lines, config)
+			local result = capture_template.merge_with_content(existing, new_lines, config)
 
 			MiniTest.expect.equality(result[1], "# Inbox")
 			MiniTest.expect.equality(result[2], "")
@@ -122,7 +122,7 @@ describe("capture_template", function()
 			local config = { target_header = "# Inbox" }
 			local capture_template = require("memo.capture_template")
 
-			local result = capture_template.merge(existing, new_lines, config)
+			local result = capture_template.merge_with_content(existing, new_lines, config)
 
 			MiniTest.expect.equality(result[1], "# Inbox")
 			MiniTest.expect.equality(result[2], "New Content")
@@ -135,7 +135,7 @@ describe("capture_template", function()
 			local config = { target_header = "# Inbox" }
 			local capture_template = require("memo.capture_template")
 
-			local result = capture_template.merge(existing, new_lines, config)
+			local result = capture_template.merge_with_content(existing, new_lines, config)
 
 			MiniTest.expect.equality(result[1], "# Inbox")
 			MiniTest.expect.equality(result[2], "New Content")
@@ -151,7 +151,7 @@ describe("capture_template", function()
 			local config = { target_header = "# Inbox", header_padding = 0 }
 			local capture_template = require("memo.capture_template")
 
-			local result = capture_template.merge(existing, new_lines, config)
+			local result = capture_template.merge_with_content(existing, new_lines, config)
 
 			MiniTest.expect.equality(result[1], "# Inbox")
 			MiniTest.expect.equality(result[2], "## 2024-01-01")
@@ -166,7 +166,7 @@ describe("capture_template", function()
 			local config = {}
 			local capture_template = require("memo.capture_template")
 
-			local result = capture_template.merge(existing, new_lines, config)
+			local result = capture_template.merge_with_content(existing, new_lines, config)
 
 			MiniTest.expect.equality(result[1], "New Content")
 			MiniTest.expect.equality(result[2], "# Inbox")

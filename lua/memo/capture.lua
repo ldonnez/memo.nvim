@@ -68,7 +68,7 @@ local function append_capture(lines, config, on_done)
 		-- Ensure relative directories are created
 		ensure_directories(file)
 
-		local merged = capture_template.merge({}, lines, config.capture_template)
+		local merged = capture_template.merge_with_content({}, lines, config.capture_template)
 
 		core.encrypt_from_stdin(file, merged, function(result)
 			on_encrypt_done(result)
@@ -86,7 +86,7 @@ local function append_capture(lines, config, on_done)
 
 		vim.schedule(function()
 			local existing = vim.api.nvim_buf_get_lines(temp_buf, 0, -1, false)
-			local merged = capture_template.merge(existing, lines, config.capture_template)
+			local merged = capture_template.merge_with_content(existing, lines, config.capture_template)
 
 			if vim.api.nvim_buf_is_valid(temp_buf) then
 				vim.api.nvim_buf_delete(temp_buf, { force = true })
