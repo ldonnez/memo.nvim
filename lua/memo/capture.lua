@@ -55,7 +55,7 @@ end
 
 ---@param lines string[] The new lines from the capture window
 ---@param config CaptureConfig
----@param on_done? fun() Optional callback triggered after encryption completes
+---@param on_done fun() callback triggered after encryption completes
 local function append_capture_memo(lines, config, on_done)
 	if #lines == 0 then
 		return
@@ -73,9 +73,7 @@ local function append_capture_memo(lines, config, on_done)
 
 		core.encrypt_from_stdin(file, merged, function(result)
 			on_encrypt_done(result)
-			if on_done then
-				on_done()
-			end
+			on_done()
 		end)
 		return
 	end
@@ -98,9 +96,7 @@ local function append_capture_memo(lines, config, on_done)
 
 			core.encrypt_from_stdin(file, merged, function(result)
 				on_encrypt_done(result)
-				if on_done then
-					on_done()
-				end
+				on_done()
 			end)
 		end)
 	end)
@@ -138,7 +134,9 @@ function M.register(opts)
 			local is_not_empty = current_content:gsub("%s+", "") ~= ""
 
 			if has_changed and is_not_empty then
-				append_capture_memo(lines, config, on_capture_done(buf))
+				append_capture_memo(lines, config, function()
+					on_capture_done(buf)
+				end)
 			else
 				vim.notify("Capture aborted: empty content", vim.log.levels.WARN)
 				events.emit(events.types.CAPTURE_DONE)
