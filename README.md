@@ -47,7 +47,7 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo) a CLI-base
           -- optional default values
           capture_template = {
             template = "",
-            header_padding = 1,
+            header_padding = 0,
           },
           window = {
             split = "split", -- "split" | "vsplit"

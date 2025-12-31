@@ -5,21 +5,33 @@ local M = {}
 ---@field target_header string?
 ---@field header_padding integer?
 
----@type MemoCaptureTemplateConfig
-M.defaults = {
+local defaults = {
 	template = "",
-	header_padding = 1,
+	header_padding = 0,
 }
 
----@param opts MemoCaptureTemplateConfig
----@return string[], table @Returns (lines, cursor_pos)
-function M.resolve_header(opts)
-	local config = vim.tbl_deep_extend("force", M.defaults, opts or {})
+---@class MemoCaptureTemplate
+---@field config MemoCaptureTemplateConfig
+local Template = {}
 
-	local template = config.template
-	local raw_text = ""
+Template.__index = Template
 
-	raw_text = tostring(os.date(tostring(template)))
+---Constructor: Creates a new Template instance
+---@param opts MemoCaptureTemplateConfig?
+---@return MemoCaptureTemplate
+function M.new(opts)
+	local self = setmetatable({}, Template)
+
+	self.config = vim.tbl_deep_extend("force", defaults, opts or {})
+
+	return self
+end
+
+---Resolves the template and cursor position
+---@return string[] lines, integer[] cursor_pos
+function Template:resolve_template()
+	local template = self.config.template or ""
+	local raw_text = tostring(os.date(tostring(template)))
 
 	local lines = vim.split(raw_text, "\n", { plain = true, trimempty = false })
 	local marker = "|"
@@ -37,40 +49,40 @@ function M.resolve_header(opts)
 	return lines, cursor_pos
 end
 
+---Internal helper to find header index
+---@private
 ---@param existing string[]
----@param target_header string?
----@return integer index of found target header
-local function find_target_header_idx(existing, target_header)
-	local target_idx = -1
+---@return integer
+function Template:_find_target_header_idx(existing)
+	local target_header = self.config.target_header
 
-	if not target_header and target_header ~= "" then
-		return target_idx
+	if not target_header or target_header == "" then
+		return -1
 	end
 
 	for i, line in ipairs(existing) do
 		if line == target_header then
-			target_idx = i
-			break
+			return i
 		end
 	end
 
-	return target_idx
+	return -1
 end
 
+---Merges new lines into existing content based on internal config
 ---@param existing string[]
 ---@param new_lines string[]
----@param config MemoCaptureTemplateConfig
 ---@return string[]
-function M.merge_with_content(existing, new_lines, config)
+function Template:merge_with_content(existing, new_lines)
 	if #new_lines == 0 then
 		return existing
 	end
 
-	local header = config.target_header
-	local padding = config.header_padding or 0
-	local target_idx = find_target_header_idx(existing, header)
+	local header = self.config.target_header
+	local padding = self.config.header_padding or 0
+	local target_idx = self:_find_target_header_idx(existing)
 
-	-- Build the "block" we want to insert
+	-- Build the "block" to insert
 	local block = {}
 	if target_idx == -1 and header and header ~= "" then
 		table.insert(block, header)

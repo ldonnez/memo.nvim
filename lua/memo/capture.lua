@@ -1,6 +1,6 @@
 local core = require("memo.core")
 local utils = require("memo.utils")
-local capture_template = require("memo.capture_template")
+local Template = require("memo.capture_template")
 local memo_config = require("memo.config")
 
 local M = {}
@@ -15,7 +15,7 @@ local M = {}
 ---@type CaptureConfig
 local defaults = {
 	capture_file = "inbox.md.gpg",
-	capture_template = capture_template.defaults,
+	capture_template = {},
 	window = {
 		split = "split",
 		size = 10,
@@ -68,7 +68,8 @@ end
 
 ---@param lines string[] The new lines from the capture window
 ---@param config CaptureConfig
-local function append_capture(lines, config)
+---@param capture_template MemoCaptureTemplate
+local function append_capture(lines, config, capture_template)
 	local notes_dir = vim.fn.expand(memo_config.notes_dir)
 	local file = utils.get_gpg_path(vim.fn.expand(notes_dir .. "/" .. config.capture_file))
 
@@ -76,7 +77,7 @@ local function append_capture(lines, config)
 		-- Ensure relative directories are created
 		ensure_directories(file)
 
-		local merged = capture_template.merge_with_content({}, lines, config.capture_template)
+		local merged = capture_template:merge_with_content({}, lines)
 		core.encrypt_from_stdin(file, merged)
 		return
 	end
@@ -89,7 +90,7 @@ local function append_capture(lines, config)
 	end
 
 	local existing = vim.split(read_result.stdout or "", "\n", { plain = true })
-	local merged = capture_template.merge_with_content(existing, lines, config.capture_template)
+	local merged = capture_template:merge_with_content(existing, lines)
 
 	core.encrypt_from_stdin(file, merged)
 end
@@ -98,7 +99,9 @@ end
 function M.register(opts)
 	local config = vim.tbl_deep_extend("force", defaults, opts or {})
 
-	local initial_lines, cursor_pos = capture_template.resolve_header(config.capture_template)
+	local capture_template = Template.new(config.capture_template)
+
+	local initial_lines, cursor_pos = capture_template:resolve_template()
 
 	local win, buf = create_capture_window(config)
 
@@ -120,7 +123,7 @@ function M.register(opts)
 			local is_not_empty = current_content:gsub("%s+", "") ~= ""
 
 			if has_changed and is_not_empty then
-				append_capture(lines, config)
+				append_capture(lines, config, capture_template)
 			else
 				vim.notify("Capture aborted: empty content", vim.log.levels.WARN)
 			end

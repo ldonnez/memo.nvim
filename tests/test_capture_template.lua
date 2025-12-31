@@ -1,10 +1,11 @@
 describe("capture_template", function()
-	local capture_template = require("memo.capture_template")
+	local Template = require("memo.capture_template")
 
-	describe("resolve_header", function()
+	describe("resolve_template", function()
 		it("resolves basic templates and markers", function()
 			local config = { template = "## Title\n|" }
-			local lines, cursor = capture_template.resolve_header(config)
+			local capture_template = Template.new(config)
+			local lines, cursor = capture_template:resolve_template()
 
 			MiniTest.expect.equality(lines, { "## Title", "" })
 			MiniTest.expect.equality(cursor, { 2, 0 })
@@ -12,7 +13,8 @@ describe("capture_template", function()
 
 		it("sets default template with empty config", function()
 			local config = {}
-			local lines, cursor = capture_template.resolve_header(config)
+			local capture_template = Template.new(config)
+			local lines, cursor = capture_template:resolve_template()
 
 			MiniTest.expect.equality(lines, { "" })
 			MiniTest.expect.equality(cursor, { 1, 0 })
@@ -20,15 +22,17 @@ describe("capture_template", function()
 
 		it("sets empty string when tempale is empty", function()
 			local config = { template = "" }
-			local lines, cursor = capture_template.resolve_header(config)
+			local capture_template = Template.new(config)
+			local lines, cursor = capture_template:resolve_template()
 
 			MiniTest.expect.equality(lines, { "" })
 			MiniTest.expect.equality(cursor, { 1, 0 })
 		end)
 
 		it("places cursor correctly with empty spaces in template", function()
-			local opts = { template = "- [ ] |" }
-			local lines, pos = capture_template.resolve_header(opts)
+			local config = { template = "- [ ] |" }
+			local capture_template = Template.new(config)
+			local lines, pos = capture_template:resolve_template()
 
 			MiniTest.expect.equality(lines[1], "- [ ] ")
 			MiniTest.expect.equality(pos[2], 6)
@@ -41,7 +45,8 @@ describe("capture_template", function()
 			local new_lines = { "## 2024-01-01", "New Content" }
 			local config = { target_header = "# Inbox" }
 
-			local result = capture_template.merge_with_content(existing, new_lines, config)
+			local capture_template = Template.new(config)
+			local result = capture_template:merge_with_content(existing, new_lines)
 
 			MiniTest.expect.equality(result[1], "# Inbox")
 			MiniTest.expect.equality(result[2], "## 2024-01-01")
@@ -54,8 +59,8 @@ describe("capture_template", function()
 			local existing = { "# Inbox is here", "", "Previous Note" }
 			local new_lines = { "## 2024-01-01", "New Content" }
 			local config = { target_header = "# Inbox" }
-
-			local result = capture_template.merge_with_content(existing, new_lines, config)
+			local capture_template = Template.new(config)
+			local result = capture_template:merge_with_content(existing, new_lines)
 
 			MiniTest.expect.equality(result[1], "# Inbox")
 			MiniTest.expect.equality(result[2], "## 2024-01-01")
@@ -71,7 +76,8 @@ describe("capture_template", function()
 			local new_lines = { "New Content" }
 			local config = { target_header = "# Inbox" }
 
-			local result = capture_template.merge_with_content(existing, new_lines, config)
+			local capture_template = Template.new(config)
+			local result = capture_template:merge_with_content(existing, new_lines)
 
 			MiniTest.expect.equality(result[1], "# Inbox")
 			MiniTest.expect.equality(result[2], "New Content")
@@ -86,7 +92,8 @@ describe("capture_template", function()
 			local new_lines = { "## 2024-01-01", "New Content" }
 			local config = { target_header = "# Inbox", header_padding = 2 }
 
-			local result = capture_template.merge_with_content(existing, new_lines, config)
+			local capture_template = Template.new(config)
+			local result = capture_template:merge_with_content(existing, new_lines)
 
 			MiniTest.expect.equality(result[1], "# Inbox")
 			MiniTest.expect.equality(result[2], "")
@@ -102,7 +109,8 @@ describe("capture_template", function()
 			local new_lines = { "New Content" }
 			local config = { target_header = "# Inbox" }
 
-			local result = capture_template.merge_with_content(existing, new_lines, config)
+			local capture_template = Template.new(config)
+			local result = capture_template:merge_with_content(existing, new_lines)
 
 			MiniTest.expect.equality(result[1], "# Inbox")
 			MiniTest.expect.equality(result[2], "New Content")
@@ -114,7 +122,8 @@ describe("capture_template", function()
 			local new_lines = { "New Content" }
 			local config = { target_header = "# Inbox" }
 
-			local result = capture_template.merge_with_content(existing, new_lines, config)
+			local capture_template = Template.new(config)
+			local result = capture_template:merge_with_content(existing, new_lines)
 
 			MiniTest.expect.equality(result[1], "# Inbox")
 			MiniTest.expect.equality(result[2], "New Content")
@@ -128,7 +137,8 @@ describe("capture_template", function()
 			local new_lines = { "## 2024-01-01", "New Content" }
 			local config = { target_header = "# Inbox", header_padding = 0 }
 
-			local result = capture_template.merge_with_content(existing, new_lines, config)
+			local capture_template = Template.new(config)
+			local result = capture_template:merge_with_content(existing, new_lines)
 
 			MiniTest.expect.equality(result[1], "# Inbox")
 			MiniTest.expect.equality(result[2], "## 2024-01-01")
@@ -142,7 +152,8 @@ describe("capture_template", function()
 			local new_lines = { "New Content" }
 			local config = {}
 
-			local result = capture_template.merge_with_content(existing, new_lines, config)
+			local capture_template = Template.new(config)
+			local result = capture_template:merge_with_content(existing, new_lines)
 
 			MiniTest.expect.equality(result[1], "New Content")
 			MiniTest.expect.equality(result[2], "# Inbox")
