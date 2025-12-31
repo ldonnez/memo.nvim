@@ -79,6 +79,7 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo) a CLI-base
 **memo.nvim** operates as a transparent wrapper around your notes directory. Instead of manually decrypting files, the plugin automates the lifecycle, using Neovim autocommands (autocmd):
 
 - Detection: When you open a file within your configured notes directory, the plugin detects the path.
+- Auto-Encryption: Any new file created within the notes directory is automatically encrypted upon writing.
 - Security: The decrypted content exists only in your Neovim buffer.
 - Asynchronous decryption: All decryption operations run in the background. This ensures that the editor remains responsive and non-blocking, even when processing large files.
 
