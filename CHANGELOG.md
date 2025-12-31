@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/ldonnez/memo.nvim/compare/v0.3.0...v0.3.1) (2025-12-31)
+
+
+### Bug Fixes
+
+* don't write to buffer while decrypting ([c5303a6](https://github.com/ldonnez/memo.nvim/commit/c5303a6d54a1943abda64d9b5b681a8d76ec5658))
+
 ## [0.3.0](https://github.com/ldonnez/memo.nvim/compare/v0.2.0...v0.3.0) (2025-12-31)
 
 
