@@ -18,6 +18,7 @@ local function prepare_buffer_for_edit(bufnr)
 	-- Ensure the user can edit
 	vim.bo[bufnr].modifiable = true
 	vim.bo[bufnr].modified = false
+	vim.b[bufnr].decrypting = false
 
 	vim.defer_fn(function()
 		if vim.api.nvim_buf_is_valid(bufnr) then
@@ -42,6 +43,10 @@ function M.setup()
 		callback = function(args)
 			local bufnr = args.buf
 
+			vim.bo[bufnr].modifiable = false
+			vim.bo[bufnr].modified = false
+			vim.b[bufnr].decrypting = true
+
 			-- Force filetype detection based on the name without .gpg
 			local base = args.file:gsub("%.gpg$", "")
 			vim.bo[bufnr].filetype = vim.filetype.match({ filename = base })
@@ -52,6 +57,8 @@ function M.setup()
 			if vim.fn.filereadable(gpg_path) == 0 or vim.fn.getfsize(gpg_path) <= 0 then
 				-- Read file - the regular way - into buffer
 				vim.cmd("silent edit " .. vim.fn.fnameescape(args.file))
+				vim.bo[bufnr].modifiable = true
+				vim.b[bufnr].decrypting = false
 				return
 			end
 
@@ -61,6 +68,7 @@ function M.setup()
 						vim.bo[bufnr].modifiable = true
 						vim.api.nvim_buf_delete(bufnr, { force = true })
 						vim.notify("Decryption failed", vim.log.levels.ERROR)
+						vim.b[bufnr].decrypting = false
 						return
 					end
 
@@ -75,6 +83,11 @@ function M.setup()
 		pattern = pattern,
 		callback = function(args)
 			local bufnr = args.buf
+
+			if vim.b[bufnr].decrypting then
+				return
+			end
+
 			local gpg_path = utils.get_gpg_path(args.file)
 			local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 

@@ -65,6 +65,7 @@ function M.decrypt_to_buffer(path, bufnr, on_exit)
 					vim.api.nvim_win_set_cursor(winid, { 1, 0 })
 				end
 
+				vim.bo[bufnr].modified = false
 				vim.bo[bufnr].modifiable = false
 			end)
 		end,
@@ -72,6 +73,7 @@ function M.decrypt_to_buffer(path, bufnr, on_exit)
 		vim.schedule(function()
 			on_exit(result)
 
+			vim.bo[bufnr].modified = false
 			events.emit(events.types.DECRYPT_DONE)
 		end)
 	end)
