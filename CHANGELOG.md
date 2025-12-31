@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/ldonnez/memo.nvim/compare/v0.2.0...v0.3.0) (2025-12-31)
+
+
+### Features
+
+* make capture window size and position configurable ([5da155e](https://github.com/ldonnez/memo.nvim/commit/5da155ec63b2e0864e5228cd3e13ed1e1ee2f4b2))
+
 ## [0.2.0](https://github.com/ldonnez/memo.nvim/compare/v0.1.1...v0.2.0) (2025-12-30)
 
 
