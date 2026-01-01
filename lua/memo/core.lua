@@ -1,5 +1,4 @@
 local gpg = require("memo.gpg")
-local events = require("memo.events")
 
 local M = {}
 
@@ -72,9 +71,6 @@ function M.decrypt_to_buffer(path, bufnr, on_exit)
 	}, function(result)
 		vim.schedule(function()
 			on_exit(result)
-
-			vim.bo[bufnr].modified = false
-			events.emit(events.types.DECRYPT_DONE)
 		end)
 	end)
 end

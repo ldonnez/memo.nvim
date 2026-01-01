@@ -1,6 +1,5 @@
 local helpers = require("tests.helpers")
-local events = require("memo.events")
-local child = MiniTest.new_child_neovim()
+local child = helpers.new_child_neovim()
 
 describe("core", function()
 	local TEST_HOME = vim.fn.tempname()
@@ -88,7 +87,9 @@ describe("core", function()
 				path
 			))
 
-			helpers.wait_for_event(child, events.types.DECRYPT_DONE)
+			child.wait_until(function()
+				return child.bo.modifiable == false
+			end)
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 			local cursor = child.api.nvim_win_get_cursor(0)
@@ -149,7 +150,9 @@ describe("core", function()
 				path
 			))
 
-			helpers.wait_for_event(child, events.types.DECRYPT_DONE)
+			child.wait_until(function()
+				return child.bo.modifiable == false
+			end)
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 

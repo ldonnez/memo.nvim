@@ -1,6 +1,5 @@
 local helpers = require("tests.helpers")
-local events = require("memo.events")
-local child = MiniTest.new_child_neovim()
+local child = helpers.new_child_neovim()
 
 describe("autocmd", function()
 	local TEST_HOME = vim.fn.resolve("/tmp/memo.nvim")
@@ -46,7 +45,9 @@ describe("autocmd", function()
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
 
-		helpers.wait_for_event(child, events.types.DECRYPT_DONE)
+		child.wait_until(function()
+			return child.b.decrypting == false
+		end)
 
 		local swap = child.bo.swapfile
 		local undo = child.bo.undofile
@@ -69,7 +70,10 @@ describe("autocmd", function()
 
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
-		helpers.wait_for_event(child, events.types.DECRYPT_DONE)
+
+		child.wait_until(function()
+			return child.b.decrypting == false
+		end)
 
 		local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 		local buffer_name = child.api.nvim_buf_get_name(0)
@@ -80,6 +84,56 @@ describe("autocmd", function()
 
 		MiniTest.expect.equality(lines, { "Hello world!" })
 		MiniTest.expect.equality(vim.fn.fnamemodify(buffer_name, ":t"), "secret.md.gpg")
+	end)
+
+	it("ensures not writing when decrypting", function()
+		local plain = NOTES_DIR .. "/secret.md"
+		local encrypted = plain .. ".gpg"
+
+		local cmd = {
+			"memo",
+			"encrypt",
+			encrypted,
+		}
+		vim.system(cmd, { stdin = "Hello world!" }):wait()
+
+		child.lua([[
+      local core = require('memo.core')
+
+      core.decrypt_to_buffer = function(path, bufnr, on_exit)
+        return vim.defer_fn(function()
+				    vim.bo[bufnr].modifiable = true
+            vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {"Hello world!"})
+    				vim.bo[bufnr].modified = false
+	    			vim.bo[bufnr].modifiable = false
+
+            on_exit({ code = 0 })
+        end, 1000)
+      end
+
+      M.setup()
+    ]])
+
+		child.cmd("edit " .. encrypted)
+
+		MiniTest.expect.equality(child.b.decrypting, true)
+		MiniTest.expect.equality(child.b.hash ~= vim.NIL, false)
+
+		child.cmd("write")
+
+		MiniTest.expect.equality(child.b.decrypting, true)
+		MiniTest.expect.equality(child.b.hash ~= vim.NIL, false)
+
+		child.wait_until(function()
+			return child.b.decrypting == false
+		end)
+
+		MiniTest.expect.equality(child.b.decrypting, false)
+		MiniTest.expect.equality(child.b.hash ~= vim.NIL, true)
+
+		local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+
+		MiniTest.expect.equality(lines, { "Hello world!" })
 	end)
 
 	it("does not trigger decryption when existing .md file is opened; reencrypts it after saving", function()
@@ -139,7 +193,9 @@ describe("autocmd", function()
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
 
-		helpers.wait_for_event(child, events.types.DECRYPT_DONE)
+		child.wait_until(function()
+			return child.b.decrypting == false
+		end)
 
 		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
 		child.cmd("write")
@@ -165,9 +221,15 @@ describe("autocmd", function()
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
 
-		helpers.wait_for_event(child, events.types.BUFFER_READY)
+		child.wait_until(function()
+			return child.b.decrypting == false
+		end)
+
 		child.cmd("write")
-		helpers.wait_for_event(child, events.types.BUFFER_READY)
+
+		child.wait_until(function()
+			return child.b.decrypting == false
+		end)
 
 		local messages = child.cmd_capture("messages")
 		MiniTest.expect.equality(messages, "No changes detected")
@@ -175,13 +237,19 @@ describe("autocmd", function()
 		child.cmd("messages clear")
 		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
 		child.cmd("write")
-		helpers.wait_for_event(child, events.types.BUFFER_READY)
+
+		child.wait_until(function()
+			return child.b.decrypting == false
+		end)
 
 		local messages2 = child.cmd_capture("messages")
 		MiniTest.expect.equality(messages2, "")
 
 		child.cmd("write")
-		helpers.wait_for_event(child, events.types.BUFFER_READY)
+
+		child.wait_until(function()
+			return child.b.decrypting == false
+		end)
 
 		local messages3 = child.cmd_capture("messages")
 		MiniTest.expect.equality(messages3, "No changes detected")
@@ -192,12 +260,19 @@ describe("autocmd", function()
 		vim.fn.writefile({ "not a gpg file" }, test_file)
 
 		child.lua([[ M.setup() ]])
-		child.lua(string.format([[ pcall(vim.cmd, "edit %s") ]], test_file))
 
-		helpers.wait_for_event(child, events.types.DECRYPT_DONE)
+		local target_bufnr = child.lua(string.format(
+			[[
+        pcall(vim.cmd, "edit %s")
 
-		local buf_name = child.api.nvim_buf_get_name(0)
-		MiniTest.expect.no_equality(buf_name, test_file)
+        return vim.api.nvim_get_current_buf()
+    ]],
+			test_file
+		))
+
+		child.sleep(1000)
+		local is_valid = child.api.nvim_buf_is_valid(target_bufnr)
+		MiniTest.expect.equality(is_valid, false)
 	end)
 
 	it("does not trigger logic for files outside notes_dir", function()

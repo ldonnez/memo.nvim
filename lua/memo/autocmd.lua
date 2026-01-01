@@ -1,7 +1,6 @@
 local utils = require("memo.utils")
 local core = require("memo.core")
 local config = require("memo.config")
-local events = require("memo.events")
 
 local M = {}
 
@@ -18,16 +17,13 @@ local function prepare_buffer_for_edit(bufnr)
 	-- Ensure the user can edit
 	vim.bo[bufnr].modifiable = true
 	vim.bo[bufnr].modified = false
-	vim.b[bufnr].decrypting = false
 
-	vim.defer_fn(function()
-		if vim.api.nvim_buf_is_valid(bufnr) then
-			local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-			vim.b[bufnr].hash = vim.fn.sha256(table.concat(lines, "\n"))
+	if vim.api.nvim_buf_is_valid(bufnr) then
+		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+		vim.b[bufnr].hash = vim.fn.sha256(table.concat(lines, "\n"))
 
-			events.emit(events.types.BUFFER_READY)
-		end
-	end, 10)
+		vim.b[bufnr].decrypting = false
+	end
 end
 
 function M.setup()
@@ -63,15 +59,13 @@ function M.setup()
 			end
 
 			core.decrypt_to_buffer(args.file, bufnr, function(result)
-				vim.schedule(function()
-					if result.code ~= 0 then
-						vim.bo[bufnr].modifiable = true
-						vim.api.nvim_buf_delete(bufnr, { force = true })
-						vim.notify("Decryption failed", vim.log.levels.ERROR)
-						vim.b[bufnr].decrypting = false
-						return
-					end
+				if result.code ~= 0 then
+					vim.api.nvim_buf_delete(bufnr, { force = true })
+					vim.notify("Decryption failed", vim.log.levels.ERROR)
+					return
+				end
 
+				vim.schedule(function()
 					prepare_buffer_for_edit(bufnr)
 				end)
 			end)
@@ -96,7 +90,6 @@ function M.setup()
 			if current_hash == vim.b[bufnr].hash then
 				vim.notify("No changes detected", vim.log.levels.INFO)
 				vim.bo[bufnr].modified = false
-				events.emit(events.types.BUFFER_READY)
 				return
 			end
 
