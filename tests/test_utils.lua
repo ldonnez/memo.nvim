@@ -1,4 +1,5 @@
-local child = MiniTest.new_child_neovim()
+local helpers = require("tests.helpers")
+local child = helpers.new_child_neovim()
 
 describe("utils", function()
 	local util = require("memo.utils")
