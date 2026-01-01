@@ -107,38 +107,12 @@ function M.setup_test_env(home, notes_dir)
 	vim.fn.system({ "chmod", "700", home .. "/.gnupg" })
 end
 
---- @param child  unknown
---- @param event_type MemoEvent One of events.MemoEvent
-function M.wait_for_event(child, event_type)
-	child.lua(string.format(
-		[[
-        _G.memo_done = false
-        vim.api.nvim_create_autocmd("User", {
-            pattern = %q,
-            once = true,
-            callback = function() _G.memo_done = true end,
-        })
-    ]],
-		event_type
-	))
-	child.lua([[vim.wait(5000, function() return _G.memo_done end)]])
-end
-
-function M.wait_until(child, expr, timeout)
-	timeout = timeout or 5000
-	local start = child.loop.now()
-
-	while child.loop.now() - start < timeout do
-		child.lua_get(expr)
-		child.loop.sleep(50) -- small sleep to allow child to process scheduled callbacks
-	end
-
-	error("wait_until timed out: " .. expr)
-end
-
 function M.new_child_neovim()
 	local child = MiniTest.new_child_neovim()
 
+	--- @param condition fun()
+	--- @param timeout? integer
+	--- @param interval? integer
 	child.wait_until = function(condition, timeout, interval)
 		local max = timeout or 5000
 		local inc = interval or 100
@@ -163,40 +137,6 @@ function M.new_child_neovim()
 	child.sleep = function(ms)
 		--- @diagnostic disable-next-line: undefined-field
 		vim.uv.sleep(math.max(ms, 1))
-	end
-
-	function child.wait_for_event(event_type, timeout)
-		child.api.nvim_create_autocmd("User", {
-			pattern = event_type,
-			once = true,
-			callback = function()
-				child.done = true
-			end,
-		})
-
-		-- 2. Use your working polling loop in the parent
-		local max = timeout or 5000
-		local inc = 100
-
-		for _ = 0, max, inc do
-			-- Check if the child's global variable flipped to true
-			if child.done == true then
-				return -- Success!
-			else
-				--- @diagnostic disable-next-line: undefined-field
-				vim.uv.sleep(inc)
-			end
-		end
-
-		-- 3. If we reach here, it timed out
-		error(
-			string.format(
-				"Timed out waiting for event: %q after %d ms\n\nChild Messages:\n%s",
-				event_type,
-				max,
-				tostring(child.cmd_capture("messages"))
-			)
-		)
 	end
 
 	return child
