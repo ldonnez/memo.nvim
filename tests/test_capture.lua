@@ -1,5 +1,5 @@
 local helpers = require("tests.helpers")
-local child = MiniTest.new_child_neovim()
+local child = helpers.new_child_neovim()
 
 describe("capture", function()
 	local TEST_HOME = vim.fn.tempname()
