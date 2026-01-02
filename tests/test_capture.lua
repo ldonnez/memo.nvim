@@ -2,9 +2,6 @@ local helpers = require("tests.helpers")
 local child = helpers.new_child_neovim()
 
 describe("capture", function()
-	local TEST_HOME = vim.fn.tempname()
-	local NOTES_DIR = TEST_HOME .. "/notes"
-
 	before_each(function()
 		child.restart({
 			"-u",
@@ -20,7 +17,7 @@ describe("capture", function()
     config.setup({ notes_dir = %q })
     M = require('memo.capture')
     ]],
-			NOTES_DIR
+			vim.env.NOTES_DIR
 		))
 	end)
 
@@ -30,18 +27,18 @@ describe("capture", function()
 
 	describe("with gpg key without password", function()
 		setup(function()
-			helpers.setup_test_env(TEST_HOME, NOTES_DIR)
+			helpers.setup_test_env()
 			helpers.create_gpg_key("mock@example.com")
 		end)
 
 		teardown(function()
-			vim.fn.delete(TEST_HOME, "rf")
+      helpers.cleanup_test_env()
 			helpers.kill_gpg_agent()
 		end)
 
 		it("captures text when capture file exists", function()
 			local capture_file = "capture.md"
-			local capture_file_path = NOTES_DIR .. "/" .. capture_file
+			local capture_file_path = vim.env.NOTES_DIR .. "/" .. capture_file
 			local encrypted = capture_file_path .. ".gpg"
 
 			local cmd = {
@@ -80,7 +77,7 @@ describe("capture", function()
 
 		it("aborts capture when capture window only contains header", function()
 			local capture_file = "capture.md"
-			local capture_file_path = NOTES_DIR .. "/" .. capture_file
+			local capture_file_path = vim.env.NOTES_DIR .. "/" .. capture_file
 			local encrypted = capture_file_path .. ".gpg"
 
 			local cmd = {
@@ -123,7 +120,7 @@ describe("capture", function()
 
 		it("captures text when capture file and target header does not exists", function()
 			local capture_file = "capture.md.gpg"
-			local capture_file_path = NOTES_DIR .. "/capture.md.gpg"
+			local capture_file_path = vim.env.NOTES_DIR .. "/capture.md.gpg"
 
 			child.lua(string.format(
 				[[
@@ -152,7 +149,7 @@ describe("capture", function()
 
 		it("ensures relative directories from capture_file are created", function()
 			local capture_file = "journals/capture.md.gpg"
-			local capture_file_path = NOTES_DIR .. "/journals/capture.md.gpg"
+			local capture_file_path = vim.env.NOTES_DIR .. "/journals/capture.md.gpg"
 
 			child.lua(string.format(
 				[[
@@ -184,12 +181,12 @@ describe("capture", function()
 		local gpg_key_password = "test"
 
 		setup(function()
-			helpers.setup_test_env(TEST_HOME, NOTES_DIR)
+			helpers.setup_test_env()
 			helpers.create_gpg_key("mock-password@example.com", gpg_key_password)
 		end)
 
 		teardown(function()
-			vim.fn.delete(TEST_HOME, "rf")
+      helpers.cleanup_test_env()
 		end)
 
 		after_each(function()
@@ -198,7 +195,7 @@ describe("capture", function()
 
 		it("captures text when capture file does not exists and gpg key has password", function()
 			local capture_file = "capture-test-password.md.gpg"
-			local capture_file_path = NOTES_DIR .. "/capture-test-password.md.gpg"
+			local capture_file_path = vim.env.NOTES_DIR .. "/capture-test-password.md.gpg"
 
 			child.lua(string.format(
 				[[
@@ -232,7 +229,7 @@ describe("capture", function()
 
 		it("captures text when capture file exists", function()
 			local capture_file = "second-capture-test-with-password.md"
-			local capture_file_path = NOTES_DIR .. "/" .. capture_file
+			local capture_file_path = vim.env.NOTES_DIR .. "/" .. capture_file
 			local encrypted = capture_file_path .. ".gpg"
 
 			local cmd = {

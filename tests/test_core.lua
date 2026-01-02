@@ -2,9 +2,6 @@ local helpers = require("tests.helpers")
 local child = helpers.new_child_neovim()
 
 describe("core", function()
-	local TEST_HOME = vim.fn.tempname()
-	local NOTES_DIR = TEST_HOME .. "/notes"
-
 	before_each(function()
 		child.restart({
 			"-u",
@@ -21,17 +18,17 @@ describe("core", function()
 
 	describe("with gpg key without password", function()
 		setup(function()
-			helpers.setup_test_env(TEST_HOME, NOTES_DIR)
+			helpers.setup_test_env()
 			helpers.create_gpg_key("mock@example.com")
 		end)
 
 		teardown(function()
-			vim.fn.delete(TEST_HOME, "rf")
+			helpers.cleanup_test_env()
 			helpers.kill_gpg_agent()
 		end)
 
 		it("correctly encrypts from stdin", function()
-			local encrypted = TEST_HOME .. "/stdin_test.md.gpg"
+			local encrypted = vim.env.HOME .. "/stdin_test.md.gpg"
 			local test_lines = { "Hello World", "Line 2" }
 
 			child.lua(
@@ -49,7 +46,7 @@ describe("core", function()
 		end)
 
 		it("fails encrypting - unsupported extension jpeg", function()
-			local encrypted = TEST_HOME .. "/stdin_test.jpg.gpg"
+			local encrypted = vim.env.HOME .. "/stdin_test.jpg.gpg"
 			local test_lines = { "Hello World", "Line 2" }
 
 			child.lua(
@@ -114,12 +111,12 @@ describe("core", function()
 		local gpg_key_password = "test"
 
 		setup(function()
-			helpers.setup_test_env(TEST_HOME, NOTES_DIR)
+			helpers.setup_test_env()
 			helpers.create_gpg_key("mock-password@example.com", gpg_key_password)
 		end)
 
 		teardown(function()
-			vim.fn.delete(TEST_HOME, "rf")
+			helpers.cleanup_test_env()
 		end)
 
 		after_each(function()

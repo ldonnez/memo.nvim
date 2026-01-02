@@ -97,14 +97,22 @@ function M.kill_gpg_agent()
 	return vim.system(cmd):wait()
 end
 
-function M.setup_test_env(home, notes_dir)
+function M.setup_test_env()
+	local home = vim.fn.resolve("/tmp/memo.nvim")
+	local notes_dir = home .. "/notes"
+
 	vim.env.HOME = home
 	vim.env.GNUPGHOME = home .. "/.gnupg"
+	vim.env.NOTES_DIR = home .. "/notes"
 
 	vim.fn.mkdir(home, "p")
 	vim.fn.mkdir(notes_dir, "p")
 	vim.fn.mkdir(home .. "/.gnupg", "p")
 	vim.fn.system({ "chmod", "700", home .. "/.gnupg" })
+end
+
+function M.cleanup_test_env()
+	vim.fn.delete(vim.env.HOME, "rf")
 end
 
 function M.new_child_neovim()
