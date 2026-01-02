@@ -70,7 +70,7 @@ describe("core", function()
 		it("decrypt_to_buffer: decrypts content and ensures cursor stays on top of file", function()
 			local path = "/tmp/test.md.gpg"
 
-			vim.system({ "memo", "encrypt", path }, { stdin = "Line 1\nLine 2\nLine 3\n" }):wait()
+			helpers.encrypt_file(path, "Line 1\nLine 2\nLine 3\n")
 
 			child.lua(string.format(
 				[[
@@ -99,7 +99,7 @@ describe("core", function()
 		it("decrypt_to_stdout: decrypts content", function()
 			local path = "/tmp/test.md.gpg"
 
-			vim.system({ "memo", "encrypt", path }, { stdin = "Line 1\nLine 2\nLine 3" }):wait()
+			helpers.encrypt_file(path, "Line 1\nLine 2\nLine 3")
 
 			local result = child.lua(string.format([[ return M.decrypt_to_stdout(%q) ]], path))
 
@@ -126,7 +126,7 @@ describe("core", function()
 		it("decrypt_to_buffer: decrypts content when gpg key has password", function()
 			local path = "/tmp/test-password.md.gpg"
 
-			vim.system({ "memo", "encrypt", path }, { stdin = "Line 1\nLine 2\nLine 3" }):wait()
+			helpers.encrypt_file(path, "Line 1\nLine 2\nLine 3")
 
 			child.lua(string.format(
 				[[
@@ -159,7 +159,7 @@ describe("core", function()
 		it("decrypt_to_stdout: decrypts content when gpg key has password", function()
 			local path = "/tmp/test.md.gpg"
 
-			vim.system({ "memo", "encrypt", path }, { stdin = "Line 1\nLine 2\nLine 3" }):wait()
+			helpers.encrypt_file(path, "Line 1\nLine 2\nLine 3")
 
 			local result = child.lua(string.format(
 				[[

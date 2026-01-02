@@ -32,12 +32,7 @@ describe("autocmd", function()
 		local plain = vim.env.NOTES_DIR .. "/secret.md"
 		local encrypted = plain .. ".gpg"
 
-		local cmd = {
-			"memo",
-			"encrypt",
-			encrypted,
-		}
-		vim.system(cmd, { stdin = "Hello World!" }):wait()
+		helpers.encrypt_file(encrypted, "Hello World!")
 
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
@@ -57,13 +52,7 @@ describe("autocmd", function()
 		local plain = vim.env.NOTES_DIR .. "/secret.md"
 		local encrypted = plain .. ".gpg"
 
-		local cmd = {
-			"memo",
-			"encrypt",
-			encrypted,
-			plain,
-		}
-		vim.system(cmd, { stdin = "Hello world!" }):wait()
+		helpers.encrypt_file(encrypted, "Hello world!")
 
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
@@ -87,12 +76,7 @@ describe("autocmd", function()
 		local plain = vim.env.NOTES_DIR .. "/secret.md"
 		local encrypted = plain .. ".gpg"
 
-		local cmd = {
-			"memo",
-			"encrypt",
-			encrypted,
-		}
-		vim.system(cmd, { stdin = "Hello world!" }):wait()
+		helpers.encrypt_file(encrypted, "Hello world!")
 
 		child.lua([[
       local core = require('memo.core')
@@ -150,12 +134,7 @@ describe("autocmd", function()
 
 		local new_buffer_name_after_write = child.api.nvim_buf_get_name(0)
 
-		local cmd = {
-			"memo",
-			"decrypt",
-			plain .. ".gpg",
-		}
-		local decrypted_result = vim.system(cmd):wait()
+		local decrypted_result = helpers.decrypt_file(plain .. ".gpg")
 
 		MiniTest.expect.equality(decrypted_result.stdout, "Hello world\n")
 		MiniTest.expect.equality(new_buffer_name_after_write, plain .. ".gpg")
@@ -209,12 +188,8 @@ describe("autocmd", function()
 	it("does not re-encrypt (no-op) if content hasn't changed", function()
 		local encrypted = vim.env.NOTES_DIR .. "/unchanged.md.gpg"
 
-		local cmd = {
-			"memo",
-			"encrypt",
-			encrypted,
-		}
-		vim.system(cmd, { stdin = "Hello world!", text = true }):wait()
+		helpers.encrypt_file(encrypted, "Hello world!")
+
 		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
 
