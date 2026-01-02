@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.2](https://github.com/ldonnez/memo.nvim/compare/v0.3.1...v0.3.2) (2026-01-02)
+
+
+### Bug Fixes
+
+* ensure loading encrypted buffers acts the same regular opening ([5e29968](https://github.com/ldonnez/memo.nvim/commit/5e29968d2ee30af9d7a8d4f07ac2ad92a8c08928))
+
+
+### Code Refactoring
+
+* simplify decrypting state ([3de4031](https://github.com/ldonnez/memo.nvim/commit/3de4031247231e124712410d6c772dd73d025282))
+
 ## [0.3.1](https://github.com/ldonnez/memo.nvim/compare/v0.3.0...v0.3.1) (2025-12-31)
 
 
