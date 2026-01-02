@@ -91,8 +91,8 @@ describe("core", function()
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 			local cursor = child.api.nvim_win_get_cursor(0)
 
-			MiniTest.expect.equality(#lines, 3)
-			MiniTest.expect.equality(lines, { "Line 1", "Line 2", "Line 3" })
+			MiniTest.expect.equality(#lines, 4)
+			MiniTest.expect.equality(lines, { "Line 1", "Line 2", "Line 3", "" })
 			MiniTest.expect.equality(cursor, { 1, 0 })
 		end)
 
