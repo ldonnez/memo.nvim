@@ -2,11 +2,8 @@ local helpers = require("tests.helpers")
 local child = helpers.new_child_neovim()
 
 describe("gpg", function()
-	local TEST_HOME = vim.fn.tempname()
-	local NOTES_DIR = TEST_HOME .. "/notes"
-
 	before_each(function()
-		helpers.setup_test_env(TEST_HOME, NOTES_DIR)
+		helpers.setup_test_env()
 
 		child.restart({
 			"-u",
@@ -18,7 +15,7 @@ describe("gpg", function()
 	end)
 
 	after_each(function()
-		vim.fn.delete(TEST_HOME, "rf")
+		helpers.cleanup_test_env()
 		child.stop()
 		helpers.kill_gpg_agent()
 	end)

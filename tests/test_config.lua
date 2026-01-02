@@ -2,11 +2,8 @@ local helpers = require("tests.helpers")
 local child = helpers.new_child_neovim()
 
 describe("config", function()
-	local TEST_HOME = vim.fn.resolve("/tmp/memo.nvim")
-	local NOTES_DIR = TEST_HOME .. "/notes"
-
 	before_each(function()
-		helpers.setup_test_env(TEST_HOME, NOTES_DIR)
+		helpers.setup_test_env()
 
 		child.restart({
 			"-u",
@@ -15,21 +12,19 @@ describe("config", function()
 	end)
 
 	after_each(function()
-		vim.fn.delete(TEST_HOME, "rf")
+		helpers.cleanup_test_env()
 		child.stop()
 	end)
 
 	it("correctly loads default notes_dir", function()
-		vim.fn.mkdir(TEST_HOME .. "/notes", "p")
-
 		child.lua([[ require('memo.config').setup() ]])
 		local result_dir = child.lua([[ return require('memo.config').notes_dir ]])
 
-		MiniTest.expect.equality(result_dir, TEST_HOME .. "/notes")
+		MiniTest.expect.equality(result_dir, vim.env.NOTES_DIR)
 	end)
 
 	it("errors when notes dir does not exist", function()
-		local notes_dir = TEST_HOME .. "/i-do-not-exist"
+		local notes_dir = vim.env.HOME .. "/i-do-not-exist"
 
 		child.lua(string.format(
 			[[
@@ -43,7 +38,7 @@ describe("config", function()
 	end)
 
 	it("correctly loads given notes_dir", function()
-		local notes_dir = TEST_HOME .. "/my-notes"
+		local notes_dir = vim.env.HOME .. "/my-notes"
 		vim.fn.mkdir(notes_dir, "p")
 
 		child.lua(string.format(
