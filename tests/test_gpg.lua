@@ -64,17 +64,10 @@ describe("gpg", function()
 	end)
 
 	it("gets correct gpg key from encrypted file", function()
-		local plain = "/tmp/plain.txt"
 		local encrypted = "/tmp/plain.txt.gpg"
 		local key_id = helpers.create_gpg_key("mock@example.com")
 
-		local cmd = {
-			"memo",
-			"encrypt",
-			encrypted,
-			plain,
-		}
-		vim.system(cmd, { stdin = "Hello world!", text = true }):wait()
+		helpers.encrypt_file(encrypted, "Hello world!")
 
 		local result = child.lua(string.format([[ return M.get_file_key_ids(%q) ]], encrypted))
 
@@ -99,12 +92,7 @@ describe("gpg", function()
 		local id1 = helpers.create_gpg_key(key1, "pass1")
 		local id2 = helpers.create_gpg_key(key2, "pass2")
 
-		local cmd = {
-			"memo",
-			"encrypt",
-			encrypted,
-		}
-		vim.system(cmd, { env = { GPG_RECIPIENTS = key1 .. "," .. key2 }, stdin = "Hello world!", text = true }):wait()
+		helpers.encrypt_file(encrypted, "Hello world!", { env = { GPG_RECIPIENTS = key1 .. "," .. key2 } })
 
 		local result = child.lua(string.format([[ return M.get_file_key_ids(%q) ]], encrypted))
 
@@ -122,13 +110,7 @@ describe("gpg", function()
 		local my_id = helpers.create_gpg_key("me@example.com", password)
 		local foreign_id = "ABCDEF1234567890"
 
-		local cmd = {
-			"memo",
-			"encrypt",
-			encrypted,
-		}
-		vim.system(cmd, { env = { GPG_RECIPIENTS = my_id .. "," .. foreign_id }, stdin = "Hello world!", text = true })
-			:wait()
+		helpers.encrypt_file(encrypted, "Hello world!", { env = { GPG_RECIPIENTS = my_id .. "," .. foreign_id } })
 
 		-- It should ask for my_id, NOT foreign_id
 		local result_id = child.lua(string.format(

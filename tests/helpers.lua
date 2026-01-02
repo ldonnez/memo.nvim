@@ -11,6 +11,32 @@ function M.write_file(path, content)
 	f:close()
 end
 
+--- @param path string
+--- @param content string
+--- @param opts vim.SystemOpts?
+--- @return vim.SystemCompleted
+function M.encrypt_file(path, content, opts)
+	local cmd = {
+		"memo",
+		"encrypt",
+		path,
+	}
+
+	return vim.system(cmd, vim.tbl_deep_extend("force", { stdin = content }, opts or {})):wait()
+end
+
+--- @param path string
+--- @return vim.SystemCompleted
+function M.decrypt_file(path)
+	local cmd = {
+		"memo",
+		"decrypt",
+		path,
+	}
+
+	return vim.system(cmd):wait()
+end
+
 local function determine_gen_key_string(keyid, passphrase)
 	local lines = {}
 

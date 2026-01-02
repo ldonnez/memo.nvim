@@ -32,7 +32,7 @@ describe("capture", function()
 		end)
 
 		teardown(function()
-      helpers.cleanup_test_env()
+			helpers.cleanup_test_env()
 			helpers.kill_gpg_agent()
 		end)
 
@@ -41,12 +41,7 @@ describe("capture", function()
 			local capture_file_path = vim.env.NOTES_DIR .. "/" .. capture_file
 			local encrypted = capture_file_path .. ".gpg"
 
-			local cmd = {
-				"memo",
-				"encrypt",
-				encrypted,
-			}
-			vim.system(cmd, { stdin = "CAPTURE" }):wait()
+			helpers.encrypt_file(encrypted, "CAPTURE")
 
 			child.lua(string.format(
 				[[
@@ -69,7 +64,8 @@ describe("capture", function()
 			local head = child.fn.readfile(encrypted)[1]
 			MiniTest.expect.equality(head, "-----BEGIN PGP MESSAGE-----")
 
-			local result = vim.system({ "memo", "decrypt", encrypted }):wait()
+			local result = helpers.decrypt_file(encrypted)
+
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(result.stdout:find("Integration Test Content") ~= nil, true)
@@ -80,12 +76,7 @@ describe("capture", function()
 			local capture_file_path = vim.env.NOTES_DIR .. "/" .. capture_file
 			local encrypted = capture_file_path .. ".gpg"
 
-			local cmd = {
-				"memo",
-				"encrypt",
-				encrypted,
-			}
-			vim.system(cmd, { stdin = "CAPTURE" }):wait()
+			helpers.encrypt_file(encrypted, "CAPTURE")
 
 			child.lua(string.format(
 				[[
@@ -139,7 +130,8 @@ describe("capture", function()
 			local head = child.fn.readfile(capture_file_path)[1]
 			MiniTest.expect.equality(head, "-----BEGIN PGP MESSAGE-----")
 
-			local result = vim.system({ "memo", "decrypt", capture_file_path }):wait()
+			local result = helpers.decrypt_file(capture_file_path)
+
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(result.stdout:find("Integration Test Content") ~= nil, true)
@@ -168,7 +160,8 @@ describe("capture", function()
 			local head = child.fn.readfile(capture_file_path)[1]
 			MiniTest.expect.equality(head, "-----BEGIN PGP MESSAGE-----")
 
-			local result = vim.system({ "memo", "decrypt", capture_file_path }):wait()
+			local result = helpers.decrypt_file(capture_file_path)
+
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(result.stdout:find("Integration Test Content") ~= nil, true)
@@ -186,7 +179,7 @@ describe("capture", function()
 		end)
 
 		teardown(function()
-      helpers.cleanup_test_env()
+			helpers.cleanup_test_env()
 		end)
 
 		after_each(function()
@@ -216,12 +209,7 @@ describe("capture", function()
 
 			helpers.cache_gpg_password(gpg_key_password)
 
-			local cmd = {
-				"memo",
-				"decrypt",
-				capture_file_path,
-			}
-			local result = vim.system(cmd):wait()
+			local result = helpers.decrypt_file(capture_file_path)
 
 			MiniTest.expect.equality(result.code, 0)
 			MiniTest.expect.equality((result.stdout or ""):find("Integration Test Content 1") ~= nil, true)
@@ -232,12 +220,7 @@ describe("capture", function()
 			local capture_file_path = vim.env.NOTES_DIR .. "/" .. capture_file
 			local encrypted = capture_file_path .. ".gpg"
 
-			local cmd = {
-				"memo",
-				"encrypt",
-				encrypted,
-			}
-			vim.system(cmd, { stdin = "CAPTURE" }):wait()
+			helpers.encrypt_file(encrypted, "CAPTURE")
 
 			child.lua(string.format(
 				[[
@@ -263,7 +246,7 @@ describe("capture", function()
 			local head = child.fn.readfile(encrypted)[1]
 			MiniTest.expect.equality(head, "-----BEGIN PGP MESSAGE-----")
 
-			local result = vim.system({ "memo", "decrypt", encrypted }):wait()
+			local result = helpers.decrypt_file(encrypted)
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(result.stdout:find("Integration Test Content 2") ~= nil, true)
