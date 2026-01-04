@@ -117,9 +117,8 @@ function M.register(opts)
 			local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
 
 			local current_content = table.concat(lines, "\n")
-			local template_content = table.concat(initial_lines, "\n")
 
-			local has_changed = current_content ~= template_content
+			local has_changed = not vim.deep_equal(lines, initial_lines)
 			local is_not_empty = current_content:gsub("%s+", "") ~= ""
 
 			if has_changed and is_not_empty then
