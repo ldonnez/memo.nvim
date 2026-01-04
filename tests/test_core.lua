@@ -70,7 +70,7 @@ describe("core", function()
 		it("decrypt_to_buffer: decrypts content and ensures cursor stays on top of file", function()
 			local path = "/tmp/test.md.gpg"
 
-			helpers.encrypt_file(path, "Line 1\nLine 2\nLine 3\n")
+			helpers.encrypt_file(path, "Line 1\nLine 2\nLine 3\n\n")
 
 			child.lua(string.format(
 				[[
@@ -94,6 +94,43 @@ describe("core", function()
 			MiniTest.expect.equality(#lines, 4)
 			MiniTest.expect.equality(lines, { "Line 1", "Line 2", "Line 3", "" })
 			MiniTest.expect.equality(cursor, { 1, 0 })
+		end)
+
+		it("decrypt_to_buffer: correctly assembles fragmented data chunks without adding extra new lines", function()
+			local path = "/tmp/chunk_test.md.gpg"
+			helpers.encrypt_file(path, "Line 1\nLine 2\nLine 3\n\n")
+
+			child.lua(string.format(
+				[[
+        local gpg = require("memo.gpg")
+
+        local bufnr = vim.api.nvim_create_buf(true, false)
+        vim.api.nvim_win_set_buf(0, bufnr)
+
+        -- We mock gpg call to return chunks
+        gpg.exec_with_gpg_auth = function(cmd, opts, on_exit)
+          opts.stdout(nil, "Line 1\nLi")
+          opts.stdout(nil, "ne 2\nLine 3")
+          opts.stdout(nil, "\n\n")
+
+          on_exit({ code = 0 })
+          return
+        end
+
+        M.decrypt_to_buffer(%q, bufnr, function(obj)
+            _G.finished = true
+        end)
+    ]],
+				path
+			))
+
+			child.wait_until(function()
+				return child.lua_get("_G.finished") == true
+			end)
+
+			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+
+			MiniTest.expect.equality(lines, { "Line 1", "Line 2", "Line 3", "" })
 		end)
 
 		it("decrypt_to_stdout: decrypts content", function()

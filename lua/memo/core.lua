@@ -31,45 +31,56 @@ end
 --- @param on_exit fun(result: vim.SystemCompleted)
 --- @return vim.SystemObj?
 function M.decrypt_to_buffer(path, bufnr, on_exit)
+	local accumulator = ""
+	local first_write = true
+
 	return gpg.exec_with_gpg_auth({ "memo", "decrypt", path }, {
 		stdout = function(_, data)
 			if not data or data == "" then
 				return
 			end
 
+			accumulator = accumulator .. data
+
 			vim.schedule(function()
 				if not vim.api.nvim_buf_is_valid(bufnr) then
 					return
 				end
 
-				vim.bo[bufnr].modifiable = true
+				-- Only process if we have at least one newline
+				if accumulator:find("\n") then
+					local lines = vim.split(accumulator, "\n", { plain = true })
+					-- Keep the part after the last newline in the accumulator
+					accumulator = table.remove(lines)
 
-				local line_count = vim.api.nvim_buf_line_count(bufnr)
-				local last_line_idx = line_count - 1
-				local last_line_content = vim.api.nvim_buf_get_lines(bufnr, -2, -1, false)[1] or ""
-				local last_col = #last_line_content
-
-				vim.api.nvim_buf_set_text(
-					bufnr,
-					last_line_idx,
-					last_col,
-					last_line_idx,
-					last_col,
-					vim.split(data, "\n", { plain = true })
-				)
-
-				-- Ensure cursor stays on top
-				local winid = vim.fn.bufwinid(bufnr)
-				if winid ~= -1 then
-					vim.api.nvim_win_set_cursor(winid, { 1, 0 })
+					vim.bo[bufnr].modifiable = true
+					if first_write then
+						vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+						first_write = false
+					else
+						-- Append completed lines
+						vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, lines)
+					end
+					vim.bo[bufnr].modifiable = false
+					vim.bo[bufnr].modified = false
 				end
-
-				vim.bo[bufnr].modified = false
-				vim.bo[bufnr].modifiable = false
 			end)
 		end,
 	}, function(result)
 		vim.schedule(function()
+			if result.code == 0 and vim.api.nvim_buf_is_valid(bufnr) then
+				vim.bo[bufnr].modifiable = true
+
+				if first_write then
+					vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { accumulator })
+				elseif accumulator ~= "" then
+					vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, { accumulator })
+				end
+
+				vim.bo[bufnr].modifiable = false
+				vim.bo[bufnr].modified = false
+			end
+
 			on_exit(result)
 		end)
 	end)
