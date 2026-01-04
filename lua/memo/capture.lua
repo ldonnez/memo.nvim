@@ -90,6 +90,11 @@ local function append_capture(lines, config, capture_template)
 	end
 
 	local existing = vim.split(read_result.stdout or "", "\n", { plain = true })
+
+	if read_result.stdout and read_result.stdout:sub(-1) == "\n" and existing[#existing] == "" then
+		table.remove(existing)
+	end
+
 	local merged = capture_template:merge_with_content(existing, lines)
 
 	core.encrypt_from_stdin(file, merged)

@@ -36,12 +36,12 @@ describe("capture", function()
 			helpers.kill_gpg_agent()
 		end)
 
-		it("captures text when capture file exists", function()
+		it("captures text when capture file exists and keeps new lines in place", function()
 			local capture_file = "capture.md"
 			local capture_file_path = vim.env.NOTES_DIR .. "/" .. capture_file
 			local encrypted = capture_file_path .. ".gpg"
 
-			helpers.encrypt_file(encrypted, "CAPTURE")
+			helpers.encrypt_file(encrypted, "CAPTURE\n")
 
 			child.lua(string.format(
 				[[
@@ -68,7 +68,8 @@ describe("capture", function()
 
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
-			MiniTest.expect.equality(result.stdout:find("Integration Test Content") ~= nil, true)
+			local lines = vim.split(result.stdout, "\n", { plain = true })
+			MiniTest.expect.equality(lines, { "Integration Test Content", "CAPTURE", "" })
 		end)
 
 		it("aborts capture when capture window only contains header", function()
