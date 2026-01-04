@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.3](https://github.com/ldonnez/memo.nvim/compare/v0.3.2...v0.3.3) (2026-01-04)
+
+
+### Bug Fixes
+
+* ensure no new lines are added when capturing ([8cbc9a2](https://github.com/ldonnez/memo.nvim/commit/8cbc9a26cd095ae6fa455fb81e311377d578de1c))
+* ensure no new lines are appended when decrypting ([f063136](https://github.com/ldonnez/memo.nvim/commit/f063136f8752b225e34c45b7bdd2dfbd52645e8b))
+
 ## [0.3.2](https://github.com/ldonnez/memo.nvim/compare/v0.3.1...v0.3.2) (2026-01-02)
 
 
