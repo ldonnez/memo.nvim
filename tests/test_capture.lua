@@ -36,6 +36,29 @@ describe("capture", function()
 			helpers.kill_gpg_agent()
 		end)
 
+		it("captures window contains correct buffer options", function()
+			local capture_file = "capture.md"
+			local capture_file_path = vim.env.NOTES_DIR .. "/" .. capture_file
+			local encrypted = capture_file_path .. ".gpg"
+
+			helpers.encrypt_file(encrypted, "CAPTURE\n")
+
+			child.lua(string.format(
+				[[
+	       M.register({ capture_file = %q })
+	   ]],
+				capture_file .. ".gpg"
+			))
+
+			local swap = child.bo.swapfile
+			local bufhidden = child.bo.bufhidden
+			local encoding = child.bo.fileencoding
+
+			MiniTest.expect.equality(swap, false)
+			MiniTest.expect.equality(bufhidden, "wipe")
+			MiniTest.expect.equality(encoding, "utf-8")
+		end)
+
 		it("captures text when capture file exists and keeps new lines in place", function()
 			local capture_file = "capture.md"
 			local capture_file_path = vim.env.NOTES_DIR .. "/" .. capture_file

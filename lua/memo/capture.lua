@@ -53,6 +53,7 @@ local function create_capture_window(config)
 	vim.bo[buf].buftype = "acwrite"
 	vim.bo[buf].bufhidden = "wipe"
 	vim.bo[buf].swapfile = false
+	vim.bo[buf].fileencoding = "utf-8"
 	vim.bo[buf].filetype = vim.filetype.match({ filename = base })
 
 	if config.window.split == "vsplit" then

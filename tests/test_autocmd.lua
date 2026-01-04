@@ -43,9 +43,11 @@ describe("autocmd", function()
 
 		local swap = child.bo.swapfile
 		local undo = child.bo.undofile
+		local encoding = child.bo.fileencoding
 
 		MiniTest.expect.equality(swap, false)
 		MiniTest.expect.equality(undo, false)
+		MiniTest.expect.equality(encoding, "utf-8")
 	end)
 
 	it("triggers decryption when opening a .gpg file", function()

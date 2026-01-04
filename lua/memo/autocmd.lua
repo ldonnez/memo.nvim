@@ -16,6 +16,7 @@ local function prepare_buffer_for_edit(bufnr)
 
 	-- Ensure the user can edit
 	vim.bo[bufnr].modifiable = true
+	vim.bo[bufnr].fileencoding = "utf-8"
 	vim.bo[bufnr].modified = false
 
 	if vim.api.nvim_buf_is_valid(bufnr) then
