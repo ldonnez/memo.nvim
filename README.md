@@ -16,7 +16,8 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo) a CLI-base
 - [Features](#features)
   - [Transparant editing](#transparant-editing)
   - [Capture workflow](#capture-workflow)
-  - [Fzf lua picker](#fzf-lua-picker)
+  - [Fzf lua files picker](#fzf-lua-picker)
+  - [Fzf lua current buffer todo picker](#fzf-lua-current-buffer-todo-picker)
 - [Requirements](#requirements)
 - [User commands](#user-commands)
 - [Development](#development-guide)
@@ -160,7 +161,7 @@ or as keys with **lazy.nvim** package manager
 },
 ```
 
-### Fzf lua picker
+### Fzf lua files picker
 
 memo.nvim provides a built-in picker to quickly browse and open your encrypted files. It leverages `require("fzf-lua").files` while scoping the search your configured notes directory.
 
@@ -190,11 +191,33 @@ or as keys with **lazy.nvim** package manager
 },
 ```
 
-## Requirements
+### Fzf lua current buffer todo picker
 
-- Neovim >= 0.11.0
-- [memo](https://github.com/ldonnez/memo)
-- GPG
+A built-in picker to list all TODO items in the **current buffer** is provided.
+The picker supports 3 arguments:
+
+- `"todo"` finding TODO (`[ ]`) items
+- `"done"` finding DONE (`[x]`) items
+- `"all"` finding all items
+
+#### Usage
+
+```lua
+require("memo.pickers.fzf_lua").current_buffer_todo_picker("todo" | "done" | "all")
+```
+
+or with lazy.nvim
+
+```lua
+{
+  "<leader>mt",
+  function()
+    require("memo").fzf_lua_current_buffer_todo_picker("todo" | "done" | "all")
+  end,
+  desc = "Memo: current buffer todos",
+}
+
+```
 
 ## User commands
 
