@@ -62,9 +62,9 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo) a CLI-base
     {
       "<leader>mf",
       function()
-        require("memo").fzf_lua_picker()
+        require("memo.pickers.fzf_lua").files_picker()
       end,
-      desc = "Fzf lua picker",
+      desc = "Fzf lua files picker",
     },
   },
 }
@@ -168,14 +168,14 @@ memo.nvim provides a built-in picker to quickly browse and open your encrypted f
 #### Usage
 
 ```lua
-  require("memo").fzf_lua_picker()
+  require("memo.pickers.fzf_lua").files_picker()
 ```
 
 #### Keybinding example
 
 ```lua
 vim.keymap.set("n", "<leader>mf", function()
-  require("memo").fzf_lua_picker()
+  require("memo.pickers.fzf_lua").files_picker()
 end, { desc = "Memo: file picker" })
 ```
 

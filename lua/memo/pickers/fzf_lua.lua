@@ -85,4 +85,14 @@ function M.current_buffer_todo_picker(state)
 	})
 end
 
+function M.files_picker()
+	local fzf = get_fzf_lua()
+
+	local config = require("memo.config")
+	local notes_dir = config.notes_dir
+
+	--- @diagnostic disable-next-line: need-check-nil
+	fzf.files({ cwd = notes_dir, previewer = false })
+end
+
 return M

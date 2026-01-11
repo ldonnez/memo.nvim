@@ -12,10 +12,6 @@ function M.register_capture(opts)
 	require("memo.capture").register(opts)
 end
 
-function M.fzf_lua_picker()
-	require("memo.fzf_lua_picker").setup()
-end
-
 function M.sync_git()
 	return require("memo.core").sync_git()
 end
