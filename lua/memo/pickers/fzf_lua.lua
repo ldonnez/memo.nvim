@@ -1,3 +1,4 @@
+local message = require("memo.message")
 local M = {}
 
 ---@alias MemoTodoState "todo" | "all" | "done"
@@ -7,7 +8,7 @@ local function get_fzf_lua()
 	local has_fzf, fzf = pcall(require, "fzf-lua")
 
 	if not has_fzf then
-		vim.notify("memo.nvim: fzf-lua is not found", vim.log.levels.ERROR)
+		message.error("fzf-lua is not found")
 		return
 	end
 

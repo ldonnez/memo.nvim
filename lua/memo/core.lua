@@ -1,4 +1,5 @@
 local gpg = require("memo.gpg")
+local message = require("memo.message")
 
 local M = {}
 
@@ -12,7 +13,7 @@ function M.encrypt_from_stdin(path, input)
 
 	if result.code ~= 0 then
 		local err = (result.stderr and result.stderr ~= "") and result.stderr or "Unknown encryption error"
-		vim.notify("Memo failed: " .. err, vim.log.levels.ERROR)
+		message.error("%s", err)
 	end
 
 	return result
@@ -88,9 +89,9 @@ function M.sync_git()
 
 	local result = vim.system(cmd):wait()
 	if result and result.code == 0 then
-		return vim.notify("Sync complete: git", vim.log.levels.INFO)
+		return message.info("Sync complete: git")
 	end
-	return vim.notify("Something went wrong syncing git ", vim.log.levels.ERROR)
+	return message.error("Something went wrong syncing git")
 end
 
 return M

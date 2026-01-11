@@ -1,6 +1,7 @@
 local utils = require("memo.utils")
 local core = require("memo.core")
 local config = require("memo.config")
+local message = require("memo.message")
 
 local M = {}
 
@@ -62,7 +63,7 @@ function M.setup()
 			core.decrypt_to_buffer(args.file, bufnr, function(result)
 				if result.code ~= 0 then
 					vim.api.nvim_buf_delete(bufnr, { force = true })
-					vim.notify("Decryption failed", vim.log.levels.ERROR)
+					message.error("Decryption failed")
 					return
 				end
 
@@ -89,7 +90,7 @@ function M.setup()
 			local current_hash = vim.fn.sha256(table.concat(lines, "\n"))
 
 			if current_hash == vim.b[bufnr].hash then
-				vim.notify("No changes detected", vim.log.levels.INFO)
+				message.info("No changes detected")
 				vim.bo[bufnr].modified = false
 				return
 			end

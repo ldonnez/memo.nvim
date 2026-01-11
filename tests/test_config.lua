@@ -34,7 +34,7 @@ describe("config", function()
 		))
 		local messages = child.cmd_capture("messages")
 
-		MiniTest.expect.equality(messages, string.format("Memo: Directory '%s' does not exist.", notes_dir))
+		MiniTest.expect.equality(messages, string.format("Directory '%s' does not exist", notes_dir))
 	end)
 
 	it("correctly loads given notes_dir", function()

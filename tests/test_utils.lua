@@ -46,7 +46,7 @@ describe("utils", function()
 			local messages = child.cmd_capture("messages")
 
 			MiniTest.expect.equality(result, false)
-			MiniTest.expect.equality(messages, string.format("Memo.nvim: '%s' binary not found", cmd))
+			MiniTest.expect.equality(messages, string.format("'%s' binary not found", cmd))
 		end)
 	end)
 end)

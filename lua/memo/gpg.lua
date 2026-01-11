@@ -1,4 +1,5 @@
 local M = {}
+local message = require("memo.message")
 
 --- Check if a specific key (or default) is unlocked in gpg-agent
 --- @param id string?
@@ -53,7 +54,7 @@ local function cache_passphrase(pass, id)
 	local obj = vim.system(cmd):wait()
 
 	if obj.code ~= 0 then
-		vim.notify("GPG: Incorrect passphrase", vim.log.levels.ERROR)
+		message.error("GPG: incorrect passphrase")
 		return false
 	end
 	return true
@@ -146,7 +147,7 @@ function M.exec_with_gpg_auth(cmd, opts, on_exit)
 			if obj.code ~= 0 then
 				local err = (obj.stderr and obj.stderr ~= "") and obj.stderr or "Process exited with code " .. obj.code
 				vim.schedule(function()
-					vim.notify(err, vim.log.levels.ERROR)
+					message.error(err)
 				end)
 			end
 			on_exit(obj)
@@ -157,7 +158,7 @@ function M.exec_with_gpg_auth(cmd, opts, on_exit)
 
 	if obj.code ~= 0 then
 		local err = (obj.stderr and obj.stderr ~= "") and obj.stderr or "Process exited with code " .. obj.code
-		vim.notify(err, vim.log.levels.ERROR)
+		message.error(err)
 	end
 
 	return obj

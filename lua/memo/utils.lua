@@ -1,3 +1,5 @@
+local message = require("memo.message")
+
 local M = {}
 
 ---Ensures path ends with .gpg
@@ -14,11 +16,7 @@ end
 ---@return boolean
 function M.check_exec(cmd)
 	if vim.fn.executable(cmd) == 0 then
-		vim.notify(
-			string.format("Memo.nvim: '%s' binary not found", cmd),
-			vim.log.levels.ERROR,
-			{ title = "Dependency Missing" }
-		)
+		message.error("'%s' binary not found", cmd)
 		return false
 	end
 	return true

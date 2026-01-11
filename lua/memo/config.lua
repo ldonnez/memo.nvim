@@ -1,4 +1,5 @@
 local utils = require("memo.utils")
+local message = require("memo.message")
 
 ---@class MemoConfig
 ---@field notes_dir string
@@ -26,11 +27,7 @@ function M.setup(opts)
 	utils.check_exec("memo")
 
 	if vim.fn.isdirectory(config.notes_dir) == 0 then
-		vim.notify(
-			string.format("Memo: Directory '%s' does not exist.", config.notes_dir),
-			vim.log.levels.WARN,
-			{ title = "memo.nvim" }
-		)
+		message.warn("Directory '%s' does not exist", config.notes_dir)
 	end
 end
 

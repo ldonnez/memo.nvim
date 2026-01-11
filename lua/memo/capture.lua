@@ -2,6 +2,7 @@ local core = require("memo.core")
 local utils = require("memo.utils")
 local Template = require("memo.capture_template")
 local memo_config = require("memo.config")
+local message = require("memo.message")
 
 local M = {}
 ---@alias CaptureSplit "split" | "vsplit"
@@ -30,7 +31,7 @@ local function ensure_directories(file)
 	if vim.fn.isdirectory(dir) == 0 then
 		local success, err = pcall(vim.fn.mkdir, dir, "p")
 		if not success then
-			vim.notify("Memo: Could not create directory " .. dir .. "\nError: " .. tostring(err), vim.log.levels.ERROR)
+			message.error("Error: %s", tostring(err))
 			return
 		end
 	end
@@ -86,7 +87,7 @@ local function append_capture(lines, config, capture_template)
 	local read_result = core.decrypt_to_stdout(file)
 
 	if not read_result or (read_result and read_result.code ~= 0) then
-		vim.notify("Capture failed: Decrypt error", vim.log.levels.ERROR)
+		message.error("Capture failed: decryption error")
 		return
 	end
 
@@ -132,7 +133,7 @@ function M.register(opts)
 			if has_changed and is_not_empty then
 				append_capture(lines, config, capture_template)
 			else
-				vim.notify("Capture aborted: empty content", vim.log.levels.WARN)
+				message.warn("Capture aborted: empty content")
 			end
 			vim.api.nvim_buf_delete(buf, { force = true })
 		end,

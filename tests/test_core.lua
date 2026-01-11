@@ -61,7 +61,7 @@ describe("core", function()
 			)
 
 			local messages = child.cmd_capture("messages")
-			MiniTest.expect.equality(messages, "Memo failed: Extension: jpg not supported\n")
+			MiniTest.expect.equality(messages, "Extension: jpg not supported\n")
 
 			local exists = child.fn.filereadable(encrypted)
 			MiniTest.expect.equality(exists, 0)
