@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.0](https://github.com/ldonnez/memo.nvim/compare/v0.3.3...v0.4.0) (2026-01-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* move fzf-lua files picker to pickers/fzf_lua.lua
+
+### Features
+
+* add fzf-lua picker to find todos in current buffer ([5ef1174](https://github.com/ldonnez/memo.nvim/commit/5ef1174c5d85bef2a600614c334f83e561c768d8))
+
+
+### Code Refactoring
+
+* move fzf-lua files picker to pickers/fzf_lua.lua ([71d9b4a](https://github.com/ldonnez/memo.nvim/commit/71d9b4acf6dca2ab9b723e315a7e5456fc278198))
+
 ## [0.3.3](https://github.com/ldonnez/memo.nvim/compare/v0.3.2...v0.3.3) (2026-01-04)
 
 
