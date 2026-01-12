@@ -51,6 +51,32 @@ local function build_items(lines)
 	return items
 end
 
+--- @param bufnr integer
+--- @param selected string[]
+local function send_to_qf(bufnr, selected)
+	if #selected > 0 then
+		local qf_list = {}
+		for _, entry in ipairs(selected) do
+			local lnum_str, text = entry:match("^(%d+):%s*(.*)")
+			if lnum_str then
+				table.insert(qf_list, {
+					bufnr = bufnr,
+					lnum = tonumber(lnum_str),
+					col = 1,
+					text = text,
+				})
+			end
+		end
+
+		vim.fn.setqflist(qf_list, "r")
+		vim.fn.setqflist({}, "a", { title = "Todos" })
+
+		vim.cmd("set switchbuf=useopen,usetab")
+
+		vim.cmd("copen")
+	end
+end
+
 --- @param state MemoTodoState
 function M.current_buffer_todo_picker(state)
 	local fzf = get_fzf_lua()
@@ -61,10 +87,22 @@ function M.current_buffer_todo_picker(state)
 	--- @diagnostic disable-next-line: need-check-nil
 	fzf.fzf_exec(build_items(lines), {
 		prompt = state:upper() .. "> ",
+		keymap = {
+			fzf = {
+				["ctrl-a"] = "toggle-all",
+			},
+		},
+		fzf_opts = {
+			["--multi"] = true,
+		},
 		actions = {
 			["default"] = function(selected)
 				if not selected or #selected == 0 then
 					return
+				end
+
+				if #selected > 1 then
+					return send_to_qf(bufnr, selected)
 				end
 
 				local entry = selected[1]
@@ -81,6 +119,13 @@ function M.current_buffer_todo_picker(state)
 					vim.api.nvim_win_set_cursor(0, { lnum, 0 })
 					vim.cmd("normal! zvzz")
 				end
+			end,
+			["ctrl-q"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				send_to_qf(bufnr, selected)
 			end,
 		},
 	})
