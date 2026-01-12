@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/ldonnez/memo.nvim/compare/v0.4.0...v0.5.0) (2026-01-12)
+
+
+### Features
+
+* **picker:** add multi-select support for quickfix export ([038b49c](https://github.com/ldonnez/memo.nvim/commit/038b49c13540255122f1dc713e080c7e2aa06a38))
+
 ## [0.4.0](https://github.com/ldonnez/memo.nvim/compare/v0.3.3...v0.4.0) (2026-01-11)
 
 
