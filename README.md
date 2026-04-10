@@ -12,6 +12,7 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo) a CLI-base
 ## Table of Contents
 
 - [Installation with example configuration](#installation-with-default-configuration)
+  - [Install with vim.pack](#install-with-vimpack)
   - [Install with lazy.nvim](#install-with-lazynvim)
 - [Features](#features)
   - [Transparant editing](#transparant-editing)
@@ -29,15 +30,68 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo) a CLI-base
 
 ## Installation with default configuration
 
+Lazy loading is already handled inside the plugin!
+
+### Install with vim.pack
+
+```lua
+
+-- Should be set before running vim.pack.add!
+vim.g.memo_notes_dir = "~/my-notes-dir" -- Default is ~/notes when not set.
+
+vim.pack.add({
+	{ src = "https://github.com/ldonnez/memo.nvim", version = vim.version.range("*") },
+})
+
+local keymap = vim.keymap
+
+keymap.set("n", "<leader>mc", function()
+  require("memo").register_capture({
+    -- default capture file relative path from notes_dir. Will be created if it does not exist.
+    capture_file = "inbox.md.gpg",
+    -- optional default values
+    capture_template = {
+      template = "",
+      header_padding = 0,
+    },
+    window = {
+      split = "split", -- "split" | "vsplit"
+      size = 10,
+      position = "botright", -- "botright" | "topleft" | "leftabove" | "rightbelow"
+    },
+  })
+end, { desc = "Capture to braindump" })
+
+keymap.set("n", "<leader>mf", function()
+  require("memo.pickers.fzf_lua").files_picker()
+end, { desc = "Memo files picker" })
+
+keymap.set("n", "<leader>ms", function()
+  require("memo").sync_git()
+end, { desc = "Sync with git" })
+
+keymap.set("n", "<leader>mt", function()
+  require("memo.pickers.fzf_lua").current_buffer_todo_picker("todo")
+end, { desc = "Find TODOs in buffer" })
+
+keymap.set("n", "<leader>ma", function()
+  require("memo.pickers.fzf_lua").current_buffer_todo_picker("all")
+end, { desc = "Find all TODOs in buffer" })
+
+keymap.set("n", "<leader>md", function()
+  require("memo.pickers.fzf_lua").current_buffer_todo_picker("done")
+end, { desc = "Find done TODOs in buffer" })
+
+```
+
 ### Install with [lazy.nvim](https://lazy.folke.io/)
 
 ```lua
 {
   "ldonnez/memo.nvim",
-  event = { "VeryLazy" },
-  opts = {
-    notes_dir = "~/notes",
-  },
+  init = function()
+    vim.g.memo_notes_dir = "~/my-notes-dir" -- Default is ~/notes when not set.
+  end,
   keys = {
     {
       "<leader>mc",

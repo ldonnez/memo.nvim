@@ -1,4 +1,5 @@
 local message = require("memo.message")
+local utils = require("memo.utils")
 local M = {}
 
 ---@alias MemoTodoState "todo" | "all" | "done"
@@ -134,8 +135,7 @@ end
 function M.files_picker()
 	local fzf = get_fzf_lua()
 
-	local config = require("memo.config")
-	local notes_dir = config.notes_dir
+	local notes_dir = utils.get_notes_dir()
 
 	--- @diagnostic disable-next-line: need-check-nil
 	fzf.files({ cwd = notes_dir, previewer = false })

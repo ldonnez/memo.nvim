@@ -1,3 +1,4 @@
+local utils = require("memo.utils")
 local M = {}
 
 M.check = function()
@@ -17,11 +18,12 @@ M.check = function()
 	end
 
 	-- Check Directories
-	local config = require("memo.config")
-	if vim.fn.isdirectory(config.notes_dir) == 1 then
-		vim.health.ok("Notes directory exists: " .. config.notes_dir)
+	local notes_dir = utils.get_notes_dir()
+
+	if vim.fn.isdirectory(notes_dir) == 1 then
+		vim.health.ok("Notes directory exists: " .. notes_dir)
 	else
-		vim.health.warn("Notes directory not found: " .. config.notes_dir)
+		vim.health.warn("Notes directory not found: " .. notes_dir)
 	end
 end
 
