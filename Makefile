@@ -18,8 +18,10 @@ EMMYLUA_RELEASE_TAR := deps/emmylua_check-$(EMMYLUA_REF)-$(OS)-$(ARCH).tar.gz
 EMMYLUA_DIR := deps/emmylua
 EMMYLUA_BIN := $(EMMYLUA_DIR)/emmylua_check
 
-# Install all development dependencies
+# Install all development dependencies and symlink to vim.pack runtimepath
 dev: deps/mini.nvim deps/memo deps/emmylua_check
+	mkdir -p ~/.local/share/nvim-vim-pack/site/pack/local/opt
+	ln -sfn "$(CURDIR)" ~/.local/share/nvim-vim-pack/site/pack/local/opt/$(notdir $(CURDIR))
 
 # Run all test files
 test: deps/mini.nvim
