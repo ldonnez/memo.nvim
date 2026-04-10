@@ -104,9 +104,9 @@ local function append_capture(lines, config, capture_template)
 	core.encrypt_from_stdin(file, merged)
 end
 
----@param opts CaptureConfig?
+---@param opts CaptureConfig
 function M.register(opts)
-	local config = vim.tbl_deep_extend("force", defaults, opts or {})
+	local config = vim.tbl_deep_extend("force", defaults, opts)
 
 	local capture_template = Template.new(config.capture_template)
 
