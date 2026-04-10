@@ -20,9 +20,7 @@ describe("autocmd", function()
 
 		child.lua(string.format(
 			[[
-            local config = require('memo.config')
-            config.setup({ notes_dir = %q })
-            M = require('memo.autocmd')
+          require('tests.helpers').register_autocmds(%q)
         ]],
 			vim.env.NOTES_DIR
 		))
@@ -34,7 +32,6 @@ describe("autocmd", function()
 
 		helpers.encrypt_file(encrypted, "Hello World!")
 
-		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
 
 		child.wait_until(function()
@@ -56,7 +53,6 @@ describe("autocmd", function()
 
 		helpers.encrypt_file(encrypted, "Hello world!")
 
-		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
 
 		child.wait_until(function()
@@ -85,16 +81,14 @@ describe("autocmd", function()
 
       core.decrypt_to_buffer = function(path, bufnr, on_exit)
         return vim.defer_fn(function()
-				    vim.bo[bufnr].modifiable = true
-            vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {"Hello world!"})
-    				vim.bo[bufnr].modified = false
-	    			vim.bo[bufnr].modifiable = false
+          vim.bo[bufnr].modifiable = true
+          vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {"Hello world!"})
+          vim.bo[bufnr].modified = false
+          vim.bo[bufnr].modifiable = false
 
-            on_exit({ code = 0 })
+          on_exit({ code = 0 })
         end, 1000)
       end
-
-      M.setup()
     ]])
 
 		child.cmd("edit " .. encrypted)
@@ -123,7 +117,6 @@ describe("autocmd", function()
 		local plain = vim.env.NOTES_DIR .. "/existing.md"
 		helpers.write_file(plain, "Hello world")
 
-		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. plain)
 
 		local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
@@ -148,7 +141,6 @@ describe("autocmd", function()
 
 		vim.system({ "touch", plain }):wait()
 
-		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. plain)
 		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
 		child.cmd("write")
@@ -168,7 +160,6 @@ describe("autocmd", function()
 
 		vim.system({ "touch", encrypted }):wait()
 
-		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
 
 		child.wait_until(function()
@@ -192,7 +183,6 @@ describe("autocmd", function()
 
 		helpers.encrypt_file(encrypted, "Hello world!")
 
-		child.lua([[ M.setup() ]])
 		child.cmd("edit " .. encrypted)
 
 		child.wait_until(function()
@@ -232,8 +222,6 @@ describe("autocmd", function()
 	it("wipes buffer if decryption fails", function()
 		local test_file = vim.env.NOTES_DIR .. "/broken.md.gpg"
 		vim.fn.writefile({ "not a gpg file" }, test_file)
-
-		child.lua([[ M.setup() ]])
 
 		local target_bufnr = child.lua(string.format(
 			[[

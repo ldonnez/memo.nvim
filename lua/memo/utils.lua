@@ -22,4 +22,9 @@ function M.check_exec(cmd)
 	return true
 end
 
+---@return string
+function M.get_notes_dir()
+	return vim.fn.expand(vim.g.memo_notes_dir or "~/notes")
+end
+
 return M

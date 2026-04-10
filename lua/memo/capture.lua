@@ -1,7 +1,6 @@
 local core = require("memo.core")
 local utils = require("memo.utils")
 local Template = require("memo.capture_template")
-local memo_config = require("memo.config")
 local message = require("memo.message")
 
 local M = {}
@@ -72,7 +71,8 @@ end
 ---@param config CaptureConfig
 ---@param capture_template MemoCaptureTemplate
 local function append_capture(lines, config, capture_template)
-	local notes_dir = vim.fn.expand(memo_config.notes_dir)
+	local notes_dir = utils.get_notes_dir()
+
 	local file = utils.get_gpg_path(vim.fn.expand(notes_dir .. "/" .. config.capture_file))
 
 	if vim.fn.filereadable(file) == 0 then

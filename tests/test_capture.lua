@@ -11,10 +11,10 @@ describe("capture", function()
 		-- Load tested plugin
 		child.lua(string.format(
 			[[
-    config = require("memo.config")
     core = require("memo.core")
 
-    config.setup({ notes_dir = %q })
+    vim.g.memo_notes_dir = %q
+
     M = require('memo.capture')
     ]],
 			vim.env.NOTES_DIR

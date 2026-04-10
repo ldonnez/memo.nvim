@@ -141,6 +141,12 @@ function M.cleanup_test_env()
 	vim.fn.delete(vim.env.HOME, "rf")
 end
 
+--- @param notes_dir string
+function M.register_autocmds(notes_dir)
+	vim.g.memo_notes_dir = notes_dir
+	require("plugin.memo")
+end
+
 function M.new_child_neovim()
 	local child = MiniTest.new_child_neovim()
 
