@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.6.0](https://github.com/ldonnez/memo.nvim/compare/v0.5.0...v0.6.0) (2026-04-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* correctly lazy load plugin
+
+### Features
+
+* correctly lazy load plugin ([6182cbe](https://github.com/ldonnez/memo.nvim/commit/6182cbecc1f94e7c22a8be9a9df3566ba58a2e6d))
+
+
+### Bug Fixes
+
+* ensure correct type ([2029042](https://github.com/ldonnez/memo.nvim/commit/20290421a23eec41cb0d1004f653beeba17c6a9f))
+
 ## [0.5.0](https://github.com/ldonnez/memo.nvim/compare/v0.4.0...v0.5.0) (2026-01-12)
 
 
