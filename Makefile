@@ -20,8 +20,8 @@ EMMYLUA_BIN := $(EMMYLUA_DIR)/emmylua_check
 
 # Install all development dependencies and symlink to vim.pack runtimepath
 dev: deps/mini.nvim deps/memo deps/emmylua_check
-	mkdir -p ~/.local/share/nvim-vim-pack/site/pack/local/opt
-	ln -sfn "$(CURDIR)" ~/.local/share/nvim-vim-pack/site/pack/local/opt/$(notdir $(CURDIR))
+	mkdir -p ~/.local/share/nvim/site/pack/local/opt
+	ln -sfn "$(CURDIR)" ~/.local/share/nvim/site/pack/local/opt/$(notdir $(CURDIR))
 
 # Run all test files
 test: deps/mini.nvim
