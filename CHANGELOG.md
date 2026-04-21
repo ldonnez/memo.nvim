@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/ldonnez/memo.nvim/compare/v0.6.0...v0.6.1) (2026-04-21)
+
+
+### Bug Fixes
+
+* don't set buffer type to acwrite ([8ff077e](https://github.com/ldonnez/memo.nvim/commit/8ff077e07917a19b433f0def92b8f25bb40dca3a))
+
 ## [0.6.0](https://github.com/ldonnez/memo.nvim/compare/v0.5.0...v0.6.0) (2026-04-11)
 
 
