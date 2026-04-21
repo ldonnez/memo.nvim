@@ -8,7 +8,6 @@ local function prepare_buffer_for_edit(bufnr)
 
 	vim.bo[bufnr].swapfile = false
 	vim.bo[bufnr].undofile = false
-	vim.bo[bufnr].buftype = "acwrite"
 
 	-- Ensure the user can edit
 	vim.bo[bufnr].modifiable = true
