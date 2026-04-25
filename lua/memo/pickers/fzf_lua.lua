@@ -1,20 +1,8 @@
-local message = require("memo.message")
 local utils = require("memo.utils")
 local M = {}
 
 ---@alias MemoTodoState "todo" | "all" | "done"
 ---@alias TodoLines {lnum: integer, raw: string}[]
-
-local function get_fzf_lua()
-	local has_fzf, fzf = pcall(require, "fzf-lua")
-
-	if not has_fzf then
-		message.error("fzf-lua is not found")
-		return
-	end
-
-	return fzf
-end
 
 --- @param bufnr integer
 --- @param state MemoTodoState
@@ -80,7 +68,11 @@ end
 
 --- @param state MemoTodoState
 function M.current_buffer_todo_picker(state)
-	local fzf = get_fzf_lua()
+	local fzf = utils.load_plugin("fzf-lua")
+
+	if not fzf then
+		return
+	end
 
 	local bufnr = vim.api.nvim_get_current_buf()
 	local lines = M.collect_todos(bufnr, state)
@@ -133,7 +125,11 @@ function M.current_buffer_todo_picker(state)
 end
 
 function M.files_picker()
-	local fzf = get_fzf_lua()
+	local fzf = utils.load_plugin("fzf-lua")
+
+	if not fzf then
+		return
+	end
 
 	local notes_dir = utils.get_notes_dir()
 
