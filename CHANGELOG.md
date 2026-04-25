@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/ldonnez/memo.nvim/compare/v0.6.1...v0.7.0) (2026-04-25)
+
+
+### Features
+
+* conform.nvim integration ([6b480dc](https://github.com/ldonnez/memo.nvim/commit/6b480dc8943302c8caed5ccfd12c0e31f5fdace5))
+
 ## [0.6.1](https://github.com/ldonnez/memo.nvim/compare/v0.6.0...v0.6.1) (2026-04-21)
 
 
