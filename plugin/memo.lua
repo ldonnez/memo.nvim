@@ -34,6 +34,19 @@ function M.setup()
 		end,
 	})
 
+	if vim.g.memo_conform_integration ~= false then
+		vim.api.nvim_create_autocmd("BufReadCmd", {
+			once = true,
+			pattern = {
+				abs_notes .. "*.{md,txt,org}",
+				abs_notes .. "*.{md,txt,org}.gpg",
+			},
+			callback = function()
+				require("memo.autocmd_callbacks").setup_conform()
+			end,
+		})
+	end
+
 	vim.api.nvim_create_user_command("MemoSync", function(opts)
 		local core = require("memo.core")
 		local message = require("memo.message")

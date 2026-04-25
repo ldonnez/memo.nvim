@@ -27,4 +27,19 @@ function M.get_notes_dir()
 	return vim.fn.expand(vim.g.memo_notes_dir or "~/notes")
 end
 
+---Lazily load a plugin with fallback to packadd (only for Neovim 0.12+)
+---@param import_name string e.g. "conform"
+---@param plugin_name string? e.g. "conform.nvim", defaults to import_name
+---@return any?
+function M.load_plugin(import_name, plugin_name)
+	local ok, mod = pcall(require, import_name)
+
+	if not ok and vim.fn.has("nvim-0.12") == 1 then
+		local pack_name = plugin_name or import_name
+		pcall(vim.cmd.packadd, pack_name)
+		_, mod = pcall(require, import_name)
+	end
+	return mod
+end
+
 return M

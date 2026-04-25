@@ -97,4 +97,48 @@ function M.on_write(args)
 	end
 end
 
+function M.setup_conform()
+	local utils = require("memo.utils")
+
+	local conform = utils.load_plugin("conform", "conform.nvim")
+	if not conform then
+		return
+	end
+
+	if not conform.formatters then
+		return
+	end
+
+	local notes_dir = utils.get_notes_dir()
+
+	local function is_memo_buffer(bufnr)
+		local name = vim.api.nvim_buf_get_name(bufnr or 0)
+		return name:sub(1, #notes_dir) == notes_dir
+	end
+
+	local function get_logical_name(bufnr)
+		local name = vim.api.nvim_buf_get_name(bufnr)
+		return name:gsub("%.gpg$", "")
+	end
+
+	local function make_prettier_formatter(cmd)
+		return function(bufnr)
+			if not is_memo_buffer(bufnr) then
+				return nil
+			end
+
+			local logical = get_logical_name(bufnr)
+
+			return {
+				command = cmd,
+				args = { "--stdin-filepath", logical },
+				stdin = true,
+			}
+		end
+	end
+
+	conform.formatters.prettierd = make_prettier_formatter("prettierd")
+	conform.formatters.prettier = make_prettier_formatter("prettier")
+end
+
 return M

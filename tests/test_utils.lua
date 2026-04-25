@@ -49,4 +49,18 @@ describe("utils", function()
 			MiniTest.expect.equality(messages, string.format("'%s' binary not found", cmd))
 		end)
 	end)
+
+	describe("load_plugin", function()
+		it("returns module when already loaded", function()
+			local result = util.load_plugin("memo.utils", "memo.nvim")
+
+			MiniTest.expect.equality(type(result), "table")
+		end)
+
+		it("returns module when only import_name is passed", function()
+			local result = util.load_plugin("memo.utils")
+
+			MiniTest.expect.equality(type(result), "table")
+		end)
+	end)
 end)
