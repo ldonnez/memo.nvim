@@ -141,6 +141,16 @@ end, { desc = "Find done TODOs in buffer" })
 > [!NOTE]
 > This "transparent" approach means you can use your favorite Neovim workflows (searching, LSP, macros) on your files, while keeping the underlying data fully encrypted.
 
+### Formatter integration
+
+**memo.nvim** integrates with [conform.nvim](https://github.com/stevearc/conform.nvim) to format your notes using `prettierd` or `prettier`. Since your note files are stored with a `.gpg` extension, formatters cannot infer the correct parser. This integration patches the formatter to pass `--stdin-filepath` with a transformed filename (stripping `.gpg`) so prettier can infer the markdown parser.
+
+To disable this integration, set before loading the plugin:
+
+```lua
+vim.g.memo_conform_integration = false
+```
+
 ### Capture workflow
 
 **memo.nvim** includes a feature that allows you to quickly write down text into a temporary buffer. Once you save and close the window, the content is automatically appended to your configured `capture_file`.
