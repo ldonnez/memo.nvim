@@ -42,6 +42,7 @@ end
 local function create_capture_window(config)
 	local base = config.capture_file:gsub("%.gpg$", "")
 	local buf = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_exec_autocmds("BufReadPre", { buffer = buf, modeline = false })
 
 	local cmd = string.format("%s %d%s", config.window.position, config.window.size, config.window.split)
 	vim.cmd(cmd)
@@ -63,6 +64,7 @@ local function create_capture_window(config)
 	end
 
 	vim.api.nvim_buf_set_name(buf, "capture://" .. config.capture_file)
+	vim.api.nvim_exec_autocmds("BufReadPost", { buffer = buf, modeline = false })
 
 	return win, buf
 end
@@ -123,6 +125,7 @@ function M.register(opts)
 		buffer = buf,
 		once = true,
 		callback = function()
+			vim.api.nvim_exec_autocmds("BufWritePre", { buffer = buf, modeline = false })
 			local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
 
 			local current_content = table.concat(lines, "\n")
@@ -135,6 +138,7 @@ function M.register(opts)
 			else
 				message.warn("Capture aborted: empty content")
 			end
+			vim.api.nvim_exec_autocmds("BufWritePost", { buffer = buf, modeline = false })
 			vim.api.nvim_buf_delete(buf, { force = true })
 		end,
 	})

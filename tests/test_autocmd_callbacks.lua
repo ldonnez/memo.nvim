@@ -53,6 +53,8 @@ describe("autocmd", function()
 
 		helpers.encrypt_file(encrypted, "Hello world!")
 
+		helpers.track_autocmds(child, { "BufReadPre", "BufReadPost" }, encrypted)
+
 		child.cmd("edit " .. encrypted)
 
 		child.wait_until(function()
@@ -68,6 +70,8 @@ describe("autocmd", function()
 
 		MiniTest.expect.equality(lines, { "Hello world!" })
 		MiniTest.expect.equality(vim.fn.fnamemodify(buffer_name, ":t"), "secret.md.gpg")
+		MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPre"), true)
+		MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPost"), true)
 	end)
 
 	it("ensures not writing when decrypting", function()
@@ -123,7 +127,7 @@ describe("autocmd", function()
 		local buffer_name = child.api.nvim_buf_get_name(0)
 
 		MiniTest.expect.equality(lines, { "Hello world" })
-		MiniTest.expect.equality(buffer_name, plain)
+		MiniTest.expect.equality(buffer_name, plain .. ".gpg")
 
 		child.cmd("write")
 
@@ -141,6 +145,8 @@ describe("autocmd", function()
 
 		vim.system({ "touch", plain }):wait()
 
+		helpers.track_autocmds(child, { "BufNewFile", "BufReadPre", "BufReadPost" }, plain)
+
 		child.cmd("edit " .. plain)
 		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
 		child.cmd("write")
@@ -152,6 +158,9 @@ describe("autocmd", function()
 		MiniTest.expect.equality(new_buffer_name, plain .. ".gpg")
 		MiniTest.expect.equality(plaintext_file_exists, false)
 		MiniTest.expect.equality(gpg_file_exists, true)
+		MiniTest.expect.equality(helpers.autocmd_fired(child, "BufNewFile"), true)
+		MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPre"), false)
+		MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPost"), false)
 	end)
 
 	it("automatically encrypts a new .md.gpg file saved in notes dir", function()
@@ -182,6 +191,8 @@ describe("autocmd", function()
 		local encrypted = vim.env.NOTES_DIR .. "/unchanged.md.gpg"
 
 		helpers.encrypt_file(encrypted, "Hello world!")
+
+		helpers.track_autocmds(child, { "BufWritePre", "BufWritePost" }, encrypted)
 
 		child.cmd("edit " .. encrypted)
 
@@ -217,6 +228,8 @@ describe("autocmd", function()
 
 		local messages3 = child.cmd_capture("messages")
 		MiniTest.expect.equality(messages3, "No changes detected")
+		MiniTest.expect.equality(helpers.autocmd_fired(child, "BufWritePre"), true)
+		MiniTest.expect.equality(helpers.autocmd_fired(child, "BufWritePost"), true)
 	end)
 
 	it("wipes buffer if decryption fails", function()

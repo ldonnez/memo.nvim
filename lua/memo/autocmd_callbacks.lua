@@ -29,14 +29,6 @@ function M.on_read(args)
 	local core = require("memo.core")
 	local message = require("memo.message")
 
-	vim.bo[bufnr].modifiable = false
-	vim.bo[bufnr].modified = false
-	vim.b[bufnr].decrypting = true
-
-	-- Force filetype detection based on the name without .gpg
-	local base = args.file:gsub("%.gpg$", "")
-	vim.bo[bufnr].filetype = vim.filetype.match({ filename = base })
-
 	local gpg_path = utils.get_gpg_path(args.file)
 
 	-- If the .gpg file doesn't exist, it's new, just open it
@@ -45,8 +37,21 @@ function M.on_read(args)
 		vim.cmd("silent edit " .. vim.fn.fnameescape(args.file))
 		vim.bo[bufnr].modifiable = true
 		vim.b[bufnr].decrypting = false
+
+		vim.api.nvim_exec_autocmds("BufNewFile", { buffer = bufnr, modeline = false })
+		vim.api.nvim_buf_set_name(bufnr, gpg_path)
+		vim.fn.delete(args.file)
 		return
 	end
+
+	vim.bo[bufnr].modifiable = false
+	vim.bo[bufnr].modified = false
+	vim.b[bufnr].decrypting = true
+	vim.api.nvim_exec_autocmds("BufReadPre", { buffer = bufnr, modeline = false })
+
+	-- Force filetype detection based on the name without .gpg
+	local base = args.file:gsub("%.gpg$", "")
+	vim.bo[bufnr].filetype = vim.filetype.match({ filename = base })
 
 	core.decrypt_to_buffer(args.file, bufnr, function(result)
 		if result.code ~= 0 then
@@ -59,6 +64,8 @@ function M.on_read(args)
 			prepare_buffer_for_edit(bufnr)
 		end)
 	end)
+
+	vim.api.nvim_exec_autocmds("BufReadPost", { buffer = bufnr, modeline = false })
 end
 
 --- @param args vim.api.keyset.create_autocmd.callback_args
@@ -82,6 +89,7 @@ function M.on_write(args)
 		vim.bo[bufnr].modified = false
 		return
 	end
+	vim.api.nvim_exec_autocmds("BufWritePre", { buffer = bufnr, modeline = false })
 
 	local result = core.encrypt_from_stdin(gpg_path, lines)
 
@@ -93,8 +101,9 @@ function M.on_write(args)
 		end
 
 		prepare_buffer_for_edit(bufnr)
-		return
 	end
+
+	vim.api.nvim_exec_autocmds("BufWritePost", { buffer = bufnr, modeline = false })
 end
 
 function M.setup_conform()
