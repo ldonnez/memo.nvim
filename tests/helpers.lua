@@ -182,4 +182,25 @@ function M.new_child_neovim()
 	return child
 end
 
+--- Track autocmd events in a child neovim instance
+--- @param child table The child neovim instance
+--- @param events string[] The events to track (e.g., {"BufReadPre", "BufReadPost"})
+--- @param pattern? string The autocmd pattern (default: "*")
+function M.track_autocmds(child, events, pattern)
+	pattern = pattern or "*"
+
+	child.cmd("lua _G.autocmd_fired = {}")
+	for _, event in ipairs(events) do
+		child.cmd(string.format([[autocmd %s %s lua _G.autocmd_fired["%s"] = true]], event, pattern, event))
+	end
+end
+
+--- Check if a tracked autocmd event fired
+--- @param child table The child neovim instance
+--- @param event string The event to check
+--- @return boolean
+function M.autocmd_fired(child, event)
+	return child.lua(string.format([[return _G.autocmd_fired["%s"] or false]], event))
+end
+
 return M

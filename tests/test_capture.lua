@@ -43,6 +43,8 @@ describe("capture", function()
 
 			helpers.encrypt_file(encrypted, "CAPTURE\n")
 
+			helpers.track_autocmds(child, { "BufReadPre", "BufReadPost" })
+
 			child.lua(string.format(
 				[[
 	       M.register({ capture_file = %q })
@@ -57,6 +59,8 @@ describe("capture", function()
 			MiniTest.expect.equality(swap, false)
 			MiniTest.expect.equality(bufhidden, "wipe")
 			MiniTest.expect.equality(encoding, "utf-8")
+			MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPre"), true)
+			MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPost"), true)
 		end)
 
 		it("captures text when capture file exists and keeps new lines in place", function()
@@ -72,6 +76,8 @@ describe("capture", function()
 	   ]],
 				capture_file .. ".gpg"
 			))
+
+			helpers.track_autocmds(child, { "BufWritePre", "BufWritePost" })
 
 			child.type_keys("i", "Integration Test Content", "<Esc>")
 
@@ -93,6 +99,8 @@ describe("capture", function()
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			local lines = vim.split(result.stdout, "\n", { plain = true })
 			MiniTest.expect.equality(lines, { "Integration Test Content", "CAPTURE", "" })
+			MiniTest.expect.equality(helpers.autocmd_fired(child, "BufWritePre"), true)
+			MiniTest.expect.equality(helpers.autocmd_fired(child, "BufWritePost"), true)
 		end)
 
 		it("aborts capture when capture window only contains header", function()
