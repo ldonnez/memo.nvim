@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/ldonnez/memo.nvim/compare/v0.7.0...v0.7.1) (2026-05-04)
+
+
+### Bug Fixes
+
+* ensure correct autocmd events fire when reading/writing buffer ([82d71b6](https://github.com/ldonnez/memo.nvim/commit/82d71b6867fae671ccf5fee4869fbef716715a7e))
+
 ## [0.7.0](https://github.com/ldonnez/memo.nvim/compare/v0.6.1...v0.7.0) (2026-04-25)
 
 
