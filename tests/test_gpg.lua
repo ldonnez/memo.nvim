@@ -129,7 +129,7 @@ describe("gpg", function()
 			encrypted
 		))
 
-		MiniTest.expect.equality(result_id, "key " .. my_id)
+		MiniTest.expect.equality(result_id, "Mock Test Key <me@example.com> (" .. my_id .. ")")
 	end)
 
 	it("aborts execution when passphrase authentication fails", function()
