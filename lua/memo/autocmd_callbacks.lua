@@ -39,8 +39,6 @@ function M.on_read(args)
 		vim.b[bufnr].decrypting = false
 
 		vim.api.nvim_exec_autocmds("BufNewFile", { buffer = bufnr, modeline = false })
-		vim.api.nvim_buf_set_name(bufnr, gpg_path)
-		vim.fn.delete(args.file)
 		return
 	end
 
@@ -94,9 +92,11 @@ function M.on_write(args)
 	local result = core.encrypt_from_stdin(gpg_path, lines)
 
 	if result.code == 0 then
-		-- If saving a plain text file for the first time, delete the unencrypted original and change the buffer to the new .gpg path.
-		if args.file ~= gpg_path and vim.fn.filereadable(args.file) == 1 then
-			vim.fn.delete(args.file)
+		if args.file ~= gpg_path then
+			-- If saving a plain text file for the first time, delete the unencrypted original and change the buffer to the new .gpg path.
+			if vim.fn.filereadable(args.file) == 1 then
+				vim.fn.delete(args.file)
+			end
 			vim.api.nvim_buf_set_name(bufnr, gpg_path)
 		end
 

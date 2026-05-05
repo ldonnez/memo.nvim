@@ -127,7 +127,7 @@ describe("autocmd", function()
 		local buffer_name = child.api.nvim_buf_get_name(0)
 
 		MiniTest.expect.equality(lines, { "Hello world" })
-		MiniTest.expect.equality(buffer_name, plain .. ".gpg")
+		MiniTest.expect.equality(buffer_name, plain)
 
 		child.cmd("write")
 
