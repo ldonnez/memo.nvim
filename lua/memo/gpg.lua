@@ -26,7 +26,7 @@ local function has_secret_key(id)
 		"--batch",
 		"--with-colons",
 		"--list-secret-keys",
-		id,
+		id .. "!",
 	}):wait()
 	return obj.code == 0
 end
