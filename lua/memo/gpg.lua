@@ -100,7 +100,7 @@ function M.get_gpg_passphrase(target_path)
 		end
 	end
 
-	local prompt_label = target_id and ("key: " .. target_id) or "default"
+	local prompt_label = target_id and ("key " .. target_id) or "default"
 	local pass = M.prompt_passphrase(prompt_label)
 
 	if pass == "" then
