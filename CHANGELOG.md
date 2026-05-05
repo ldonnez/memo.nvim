@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.7.2](https://github.com/ldonnez/memo.nvim/compare/v0.7.1...v0.7.2) (2026-05-05)
+
+
+### Features
+
+* show key name and email when asking for GPG passphrase ([330d20a](https://github.com/ldonnez/memo.nvim/commit/330d20a3f751497bb7edd46ceabe04dc08c98cd3))
+
+
+### Bug Fixes
+
+* correctly handle opening existing unencrypted file in notes dir ([ce461d9](https://github.com/ldonnez/memo.nvim/commit/ce461d949e4aac4b0b3341180108b5633e8af59e))
+* ensure looking for exact key ID ([2e8fb09](https://github.com/ldonnez/memo.nvim/commit/2e8fb09cc8c2c6f931b894183b5bd5fbb40f8315))
+* remove unnecessary colon when asking for passphrase ([170e67c](https://github.com/ldonnez/memo.nvim/commit/170e67c419e9ae9cc259ec70764dd9bde2a290c3))
+
 ## [0.7.1](https://github.com/ldonnez/memo.nvim/compare/v0.7.0...v0.7.1) (2026-05-04)
 
 
