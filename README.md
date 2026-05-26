@@ -18,7 +18,6 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo) a CLI-base
   - [Transparant editing](#transparant-editing)
   - [Capture workflow](#capture-workflow)
   - [Fzf lua files picker](#fzf-lua-picker)
-  - [Fzf lua current buffer todo picker](#fzf-lua-current-buffer-todo-picker)
 - [Requirements](#requirements)
 - [User commands](#user-commands)
 - [Development](#development-guide)
@@ -69,18 +68,6 @@ end, { desc = "Memo files picker" })
 keymap.set("n", "<leader>ms", function()
   require("memo").sync_git()
 end, { desc = "Sync with git" })
-
-keymap.set("n", "<leader>mt", function()
-  require("memo.pickers.fzf_lua").current_buffer_todo_picker("todo")
-end, { desc = "Find TODOs in buffer" })
-
-keymap.set("n", "<leader>ma", function()
-  require("memo.pickers.fzf_lua").current_buffer_todo_picker("all")
-end, { desc = "Find all TODOs in buffer" })
-
-keymap.set("n", "<leader>md", function()
-  require("memo.pickers.fzf_lua").current_buffer_todo_picker("done")
-end, { desc = "Find done TODOs in buffer" })
 
 ```
 
@@ -253,34 +240,6 @@ or as keys with **lazy.nvim** package manager
   end,
   desc = "Memo: file picker",
 },
-```
-
-### Fzf lua current buffer todo picker
-
-A built-in picker to list all TODO items in the **current buffer** is provided.
-The picker supports 3 arguments:
-
-- `"todo"` finding TODO (`[ ]`) items
-- `"done"` finding DONE (`[x]`) items
-- `"all"` finding all items
-
-#### Usage
-
-```lua
-require("memo.pickers.fzf_lua").current_buffer_todo_picker("todo" | "done" | "all")
-```
-
-or with lazy.nvim
-
-```lua
-{
-  "<leader>mt",
-  function()
-    require("memo").fzf_lua_current_buffer_todo_picker("todo" | "done" | "all")
-  end,
-  desc = "Memo: current buffer todos",
-}
-
 ```
 
 ## User commands
