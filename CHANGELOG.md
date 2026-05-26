@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.8.0](https://github.com/ldonnez/memo.nvim/compare/v0.7.2...v0.8.0) (2026-05-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove TODO picker logic
+
+### Code Refactoring
+
+* remove TODO picker logic ([e523150](https://github.com/ldonnez/memo.nvim/commit/e523150da8afd4e94ef22178c0dc46fff8703923))
+
 ## [0.7.2](https://github.com/ldonnez/memo.nvim/compare/v0.7.1...v0.7.2) (2026-05-05)
 
 
