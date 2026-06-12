@@ -75,7 +75,8 @@ end
 local function append_capture(lines, config, capture_template)
 	local notes_dir = utils.get_notes_dir()
 
-	local file = utils.get_gpg_path(vim.fn.expand(notes_dir .. "/" .. config.capture_file))
+	local expanded = vim.fn.expand(notes_dir .. "/" .. config.capture_file) --[[@as string]]
+	local file = utils.get_gpg_path(expanded)
 
 	if vim.fn.filereadable(file) == 0 then
 		-- Ensure relative directories are created

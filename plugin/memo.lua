@@ -1,7 +1,7 @@
 local M = {}
 
 function M.setup()
-	local notes_dir = vim.fn.expand(vim.g.memo_notes_dir or "~/notes")
+	local notes_dir = vim.fn.expand(vim.g.memo_notes_dir or "~/notes") --[[@as string]]
 
 	if not notes_dir or notes_dir == "" then
 		return

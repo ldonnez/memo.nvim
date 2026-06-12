@@ -24,7 +24,8 @@ end
 
 ---@return string
 function M.get_notes_dir()
-	return vim.fn.expand(vim.g.memo_notes_dir or "~/notes")
+	local dir = vim.fn.expand(vim.g.memo_notes_dir or "~/notes") --[[@as string]]
+	return dir
 end
 
 ---Lazily load a plugin with fallback to packadd (only for Neovim 0.12+)
