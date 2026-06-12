@@ -12,7 +12,7 @@ else
 endif
 
 
-EMMYLUA_REF := 0.22.0
+EMMYLUA_REF := 0.23.2
 EMMYLUA_RELEASE_URL := https://github.com/EmmyLuaLs/emmylua-analyzer-rust/releases/download/$(EMMYLUA_REF)/emmylua_check-$(OS)-$(ARCH).tar.gz
 EMMYLUA_RELEASE_TAR := deps/emmylua_check-$(EMMYLUA_REF)-$(OS)-$(ARCH).tar.gz
 EMMYLUA_DIR := deps/emmylua
@@ -61,7 +61,7 @@ EMMYLUA_CFG := $(CURDIR)/.emmyrc.json
 NVIM_RUNTIME := /usr/share/nvim/runtime
 
 # Conditional assignment for macOS
-ifeq ($(UNAME_S),darwin)
+ifeq ($(OS),darwin)
     # Darwin is the kernel name for macOS
     NVIM_RUNTIME := /usr/local/share/nvim/runtime/
 endif
