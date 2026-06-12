@@ -12,6 +12,10 @@ updates:
       interval: "daily"
     commit-message:
       prefix: "chore(deps)"
+    groups:
+      commitlint:
+        patterns:
+          - "@commitlint/*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
