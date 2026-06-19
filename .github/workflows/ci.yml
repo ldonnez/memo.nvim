@@ -12,7 +12,7 @@ jobs:
   commitlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Setup node
@@ -42,7 +42,7 @@ jobs:
     name: stylua
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: JohnnyMorganz/stylua-action@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -59,7 +59,7 @@ jobs:
         with:
           neovim: true
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup emmylua_check
         run: make deps/emmylua_check
@@ -82,7 +82,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup neovim
         uses: rhysd/action-setup-vim@v1
