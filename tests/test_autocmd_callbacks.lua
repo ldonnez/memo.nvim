@@ -245,7 +245,9 @@ describe("autocmd", function()
 			test_file
 		))
 
-		child.sleep(1000)
+		child.wait_until(function()
+			return not child.api.nvim_buf_is_valid(target_bufnr)
+		end)
 		local is_valid = child.api.nvim_buf_is_valid(target_bufnr)
 		MiniTest.expect.equality(is_valid, false)
 	end)
