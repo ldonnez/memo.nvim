@@ -80,6 +80,13 @@ function M.setup()
 		desc = "Open an encrypted scratch buffer",
 	})
 
+	vim.api.nvim_create_user_command("MemoSaveToNote", function()
+		require("memo.core").save_to_note()
+	end, {
+		nargs = 0,
+		desc = "Save the current buffer as an encrypted note in the notes dir",
+	})
+
 	vim.api.nvim_create_user_command("MemoSync", function(opts)
 		local core = require("memo.core")
 		local message = require("memo.message")

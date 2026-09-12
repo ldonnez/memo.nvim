@@ -17,6 +17,7 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo) a CLI-base
 - [Features](#features)
 - [Transparant editing](#transparant-editing)
 - [Encrypted scratch buffers](#encrypted-scratch-buffers)
+- [Save a buffer as a note](#save-a-buffer-as-a-note)
 - [Capture workflow](#capture-workflow)
 - [Fzf lua files picker](#fzf-lua-picker)
 - [Requirements](#requirements)
@@ -162,6 +163,20 @@ Or use the built-in command: `:MemoScratch <horizontal|vertical|tab>`.
 > [!NOTE]
 > Scratch content is throwaway by design: deleting or wiping the buffer (`:bd`/`:bwipeout`) also deletes its encrypted file. Leaving the buffer open keeps it around, and the encrypted file is only created once you write content.
 
+### Save a buffer as a note
+
+**memo.nvim** lets you turn any buffer into a note in your notes directory with `:MemoSaveToNote` (or `require("memo").save_to_note()`). It prompts for a note name (defaulting to the current buffer's name without the `.gpg` extension) and encrypts the buffer contents into `<notes_dir>/<name>.gpg`. Saving refuses to overwrite an existing note, and the name must not be empty.
+
+This pairs naturally with scratch buffers: write something ephemeral in a `:MemoScratch` window, then promote it to a permanent note. When the current buffer is a scratch buffer, saving closes it (its on-disk temp file is removed); regular buffers are left open so you can keep working.
+
+```lua
+vim.keymap.set("n", "<leader>msn", function()
+  require("memo").save_to_note()
+end, { desc = "Memo: Save buffer as note" })
+```
+
+Or use the built-in command: `:MemoSaveToNote`.
+
 ### Capture workflow
 
 **memo.nvim** includes a feature that allows you to quickly write down text into a temporary buffer. Once you save and close the window, the content is automatically appended to your configured `capture_file`.
@@ -271,6 +286,7 @@ or as keys with **lazy.nvim** package manager
 | Command         | Lua function                | Description                                                            |
 | --------------- | --------------------------- | ---------------------------------------------------------------------- |
 | `:MemoScratch`  | `require("memo").scratch()` | Opens a new encrypted scratch buffer, durable across sessions.         |
+| `:MemoSaveToNote` | `require("memo").save_to_note()` | Prompts for a note name and encrypts the current buffer to `<notes_dir>/<name>.gpg`. |
 | `:MemoSetup`    | `require("memo").setup()`   | Initializes configuration and registers required autocmds.             |
 | `:MemoSync`     | require("memo").sync_git()  | Calls `memo sync git` to trigger a synchronisation of the git backend. |
 

@@ -94,4 +94,56 @@ function M.sync_git()
 	return message.error("Something went wrong syncing git")
 end
 
+---Saves the current buffer as a note in the notes dir.
+---Prompts for the note name, encrypts the buffer contents and writes it to
+---`<notes_dir>/<name>.gpg`. Scratch buffers are closed afterward (their
+---on-disk temp file is removed by the BufDelete autocmd registered in
+---plugin/memo.lua); other buffers are left open.
+---@return boolean success
+function M.save_to_note()
+	local utils = require("memo.utils")
+
+	local bufnr = vim.api.nvim_get_current_buf()
+	local current = vim.api.nvim_buf_get_name(bufnr)
+	local scratch_dir = vim.fn.fnamemodify(utils.get_scratch_dir(), ":p")
+	local is_scratch = current:sub(1, #scratch_dir) == scratch_dir
+
+	local default_name = vim.fn.fnamemodify(current, ":t"):gsub("%.gpg$", "")
+	local name = vim.fn.input("Note name: ", default_name)
+	if name == "" then
+		message.warn("MemoSaveToNote: empty note name")
+		return false
+	end
+
+	local notes_dir = utils.get_notes_dir() --[[@as string]]
+	local target = vim.fn.expand(notes_dir .. "/" .. name) --[[@as string]]
+	local gpg_path = utils.get_gpg_path(target)
+
+	if vim.fn.filereadable(gpg_path) == 1 then
+		message.error("MemoSaveToNote: note already exists (%s)", gpg_path)
+		return false
+	end
+
+	local dir = vim.fn.fnamemodify(gpg_path, ":h")
+	if vim.fn.isdirectory(dir) == 0 then
+		vim.fn.mkdir(dir, "p")
+	end
+
+	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+	local result = M.encrypt_from_stdin(gpg_path, lines)
+
+	if result.code ~= 0 then
+		message.error("MemoSaveToNote: encryption failed")
+		return false
+	end
+
+	message.info("Saved note: %s", gpg_path)
+
+	if is_scratch then
+		vim.api.nvim_buf_delete(bufnr, { force = true })
+	end
+
+	return true
+end
+
 return M

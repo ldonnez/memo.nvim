@@ -173,6 +173,119 @@ describe("core", function()
 
 			MiniTest.expect.equality(vim.split(result.stdout, "\n"), { "Line 1", "Line 2", "Line 3" })
 		end)
+
+		it("save_to_note: saves a plain buffer in the notes dir and keeps it open", function()
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.type_keys("i", "Plain buffer content", "<Esc>")
+
+			child.lua("vim.fn.input = function() return 'plain' end")
+			child.cmd("MemoSaveToNote")
+
+			local note = vim.env.NOTES_DIR .. "/plain.gpg"
+			MiniTest.expect.equality(child.fn.filereadable(note), 1)
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), source)
+
+			local result = helpers.decrypt_file(note)
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout:find("Plain buffer content") ~= nil, true)
+		end)
+
+		it("save_to_note: saves a buffer not under the notes dir", function()
+			local source = vim.env.HOME .. "/todo.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.type_keys("i", "Unrelated content", "<Esc>")
+
+			child.lua("vim.fn.input = function() return 'imported' end")
+			child.cmd("MemoSaveToNote")
+
+			local note = vim.env.NOTES_DIR .. "/imported.gpg"
+			MiniTest.expect.equality(child.fn.filereadable(note), 1)
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), source)
+		end)
+
+		it("save_to_note: defaults to the buffer name without .gpg", function()
+			local note = vim.env.NOTES_DIR .. "/my-note.md.gpg"
+			child.cmd("edit " .. vim.fn.fnameescape(note))
+			child.type_keys("i", "content", "<Esc>")
+
+			child.lua([[
+        vim.g.input_default = nil
+        vim.fn.input = function(_prompt, default)
+          vim.g.input_default = default
+          return default
+        end
+      ]])
+			child.cmd("MemoSaveToNote")
+
+			local saved = vim.env.NOTES_DIR .. "/my-note.md.gpg"
+			MiniTest.expect.equality(child.g.input_default, "my-note.md")
+			MiniTest.expect.equality(child.fn.filereadable(saved), 1)
+
+			local result = helpers.decrypt_file(saved)
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout:find("content") ~= nil, true)
+		end)
+
+		it("save_to_note: defaults to the buffer basename for non-gpg buffers", function()
+			local path = vim.env.HOME .. "/todo.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(path))
+
+			child.lua([[
+        vim.g.input_default = nil
+        vim.fn.input = function(_prompt, default)
+          vim.g.input_default = default
+          return default
+        end
+      ]])
+			child.cmd("MemoSaveToNote")
+
+			MiniTest.expect.equality(child.g.input_default, "todo.txt")
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/todo.txt.gpg"), 1)
+		end)
+
+		it("save_to_note: creates subdirectories for nested note names", function()
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.type_keys("i", "nested", "<Esc>")
+
+			child.lua("vim.fn.input = function() return 'projects/idea' end")
+			child.cmd("MemoSaveToNote")
+
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/projects/idea.gpg"), 1)
+		end)
+
+		it("save_to_note: aborts when the note name is empty", function()
+			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
+
+			child.lua("vim.fn.input = function() return '' end")
+			local result = child.lua([[return { pcall(function() return M.save_to_note() end) }]])
+
+			MiniTest.expect.equality(result[1], true)
+			MiniTest.expect.equality(result[2], false)
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), vim.env.NOTES_DIR .. "/random.txt")
+		end)
+
+		it("save_to_note: refuses to overwrite an existing note", function()
+			local existing = vim.env.NOTES_DIR .. "/occupied.gpg"
+			helpers.encrypt_file(existing, "old content\n")
+
+			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
+			child.type_keys("i", "new content", "<Esc>")
+
+			child.lua("vim.fn.input = function() return 'occupied' end")
+			local result = child.lua([[return { pcall(function() return M.save_to_note() end) }]])
+
+			MiniTest.expect.equality(result[1], true)
+			MiniTest.expect.equality(result[2], false)
+
+			local decrypted = helpers.decrypt_file(existing)
+			MiniTest.expect.equality(decrypted.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(decrypted.stdout:find("old content") ~= nil, true)
+		end)
 	end)
 
 	describe("with gpg key with password", function()
@@ -245,6 +358,24 @@ describe("core", function()
 			))
 
 			MiniTest.expect.equality(vim.split(result.stdout, "\n"), { "Line 1", "Line 2", "Line 3" })
+		end)
+
+		it("save_to_note: saves a plain buffer when gpg key has password", function()
+			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
+			child.type_keys("i", "Secret plain content", "<Esc>")
+
+			helpers.cache_gpg_password(gpg_key_password)
+			child.lua("vim.fn.input = function() return 'pw-plain' end")
+			child.cmd("MemoSaveToNote")
+
+			local note = vim.env.NOTES_DIR .. "/pw-plain.gpg"
+			MiniTest.expect.equality(child.fn.filereadable(note), 1)
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), vim.env.NOTES_DIR .. "/random.txt")
+
+			local result = helpers.decrypt_file(note)
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout:find("Secret plain content") ~= nil, true)
 		end)
 	end)
 end)
