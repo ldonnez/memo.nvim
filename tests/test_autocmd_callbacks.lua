@@ -163,6 +163,25 @@ describe("autocmd", function()
 		MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPost"), false)
 	end)
 
+	it("automatically encrypts a new file without extension saved in notes dir", function()
+		local plain = vim.env.NOTES_DIR .. "/new_note"
+		local encrypted = plain .. ".gpg"
+
+		vim.system({ "touch", plain }):wait()
+
+		child.cmd("edit " .. plain)
+		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My new private note" })
+		child.cmd("write")
+
+		local new_buffer_name = child.api.nvim_buf_get_name(0)
+		local plaintext_file_exists = vim.fn.filereadable(plain) == 1
+		local gpg_file_exists = vim.fn.filereadable(encrypted) == 1
+
+		MiniTest.expect.equality(new_buffer_name, plain .. ".gpg")
+		MiniTest.expect.equality(plaintext_file_exists, false)
+		MiniTest.expect.equality(gpg_file_exists, true)
+	end)
+
 	it("automatically encrypts a new .md.gpg file saved in notes dir", function()
 		local plain = vim.env.NOTES_DIR .. "/new_note.md"
 		local encrypted = plain .. ".gpg"
@@ -234,7 +253,7 @@ describe("autocmd", function()
 
 	it("wipes buffer if decryption fails", function()
 		local test_file = vim.env.NOTES_DIR .. "/broken.md.gpg"
-		vim.fn.writefile({ "not a gpg file" }, test_file)
+		vim.fn.writefile({ "-----BEGIN PGP MESSAGE-----", "not really encrypted" }, test_file)
 
 		local target_bufnr = child.lua(string.format(
 			[[
