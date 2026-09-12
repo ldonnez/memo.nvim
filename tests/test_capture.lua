@@ -200,6 +200,135 @@ describe("capture", function()
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(result.stdout:find("inbox") ~= nil, true)
 		end)
+
+		it("pre-fills the capture window with the characterwise visual selection", function()
+			local capture_file = "visual-capture.md.gpg"
+
+			child.lua("vim.cmd.edit('" .. vim.env.NOTES_DIR .. "/source.txt')")
+			child.api.nvim_buf_set_lines(0, 0, -1, false, {
+				"alpha beta gamma",
+				"delta epsilon",
+			})
+
+			child.api.nvim_win_set_cursor(0, { 1, 6 })
+			child.cmd("normal! v")
+			child.api.nvim_win_set_cursor(0, { 1, 9 })
+
+			child.lua(string.format(
+				[[
+        M.register({ capture_file = %q })
+        ]],
+				capture_file
+			))
+
+			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+			MiniTest.expect.equality(lines, { "beta" })
+		end)
+
+		it("pre-fills the capture window with the linewise visual selection", function()
+			local capture_file = "visual-line-capture.md.gpg"
+
+			child.lua("vim.cmd.edit('" .. vim.env.NOTES_DIR .. "/source.txt')")
+			child.api.nvim_buf_set_lines(0, 0, -1, false, {
+				"alpha",
+				"beta",
+				"gamma",
+				"delta",
+			})
+
+			-- Put cursor on beta.
+			child.api.nvim_win_set_cursor(0, { 2, 0 })
+			-- Select beta + gamma linewise
+			child.cmd("normal! v")
+			child.api.nvim_win_set_cursor(0, { 3, 4 })
+
+			child.lua(string.format(
+				[[
+			M.register({ capture_file = %q })
+		]],
+				capture_file
+			))
+
+			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+			MiniTest.expect.equality(lines, { "beta", "gamma" })
+		end)
+
+		it("pre-fills the capture window when visual selection is made backwards", function()
+			local capture_file = "reverse-visual-capture.md.gpg"
+
+			child.lua("vim.cmd.edit('" .. vim.env.NOTES_DIR .. "/source.txt')")
+			child.api.nvim_buf_set_lines(0, 0, -1, false, {
+				"alpha beta gamma",
+			})
+
+			child.api.nvim_win_set_cursor(0, { 1, 9 })
+			child.cmd("normal! v")
+			child.api.nvim_win_set_cursor(0, { 1, 6 })
+
+			child.lua(string.format(
+				[[
+        M.register({ capture_file = %q })
+        ]],
+				capture_file
+			))
+
+			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+			MiniTest.expect.equality(lines, { "beta" })
+		end)
+
+		it("captures the visual selection through the capture mapping", function()
+			child.lua([[
+		vim.keymap.set({ "n", "v" }, "<leader>mc", function()
+			require("memo.capture").register({
+				capture_file = "visual-mapping.md.gpg",
+			})
+		end, { desc = "Capture to braindump" })
+	]])
+
+			child.lua("vim.cmd.edit('" .. vim.env.NOTES_DIR .. "/source.txt')")
+			child.api.nvim_buf_set_lines(0, 0, -1, false, {
+				"alpha beta gamma",
+				"delta epsilon",
+			})
+
+			-- Select "beta".
+			child.api.nvim_win_set_cursor(0, { 1, 6 })
+			child.cmd("normal! v")
+			child.api.nvim_win_set_cursor(0, { 1, 9 })
+
+			-- Invoke the visual mapping while the selection is active.
+			child.lua([[
+		vim.api.nvim_feedkeys(
+			vim.api.nvim_replace_termcodes("<leader>mc", true, false, true),
+			"x",
+			false
+		)
+	]])
+
+			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+			MiniTest.expect.equality(lines, { "beta" })
+		end)
+
+		it("aborts when the source buffer is empty", function()
+			local capture_file = "empty-capture.md.gpg"
+
+			child.lua("vim.cmd.edit('" .. vim.env.NOTES_DIR .. "/source.txt')")
+
+			child.lua(string.format(
+				[[
+        M.register({ capture_file = %q, range = { 1, -1 } })
+        ]],
+				capture_file
+			))
+
+			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+			MiniTest.expect.equality(lines, { "" })
+
+			child.cmd("write")
+			local messages = child.cmd_capture("messages")
+			MiniTest.expect.equality(messages, "Capture aborted: empty content")
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/empty-capture.md.gpg"), 0)
+		end)
 	end)
 
 	describe("with gpg key with password", function()
