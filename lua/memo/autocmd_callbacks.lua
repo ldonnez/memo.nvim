@@ -119,10 +119,11 @@ function M.setup_conform()
 	end
 
 	local notes_dir = utils.get_notes_dir()
+	local scratch_dir = utils.get_scratch_dir()
 
 	local function is_memo_buffer(bufnr)
 		local name = vim.api.nvim_buf_get_name(bufnr or 0)
-		return name:sub(1, #notes_dir) == notes_dir
+		return name:sub(1, #notes_dir) == notes_dir or name:sub(1, #scratch_dir) == scratch_dir
 	end
 
 	local function get_logical_name(bufnr)

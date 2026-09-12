@@ -3,11 +3,15 @@ local M = {}
 function M.setup()
 	local notes_dir = vim.fn.expand(vim.g.memo_notes_dir or "~/notes") --[[@as string]]
 
+	local scratch_dir = vim.fn.expand(vim.fn.stdpath("data") .. "/memo-scratch") --[[@as string]]
+
 	if not notes_dir or notes_dir == "" then
 		return
 	end
 
 	local abs_notes = vim.fn.fnamemodify(notes_dir, ":p")
+	local abs_scratch = vim.fn.fnamemodify(scratch_dir, ":p")
+
 	local GROUP = vim.api.nvim_create_augroup("MemoGpg", { clear = true })
 
 	vim.api.nvim_create_autocmd("BufReadCmd", {
@@ -15,6 +19,7 @@ function M.setup()
 		pattern = {
 			abs_notes .. "*.{md,txt,org}",
 			abs_notes .. "*.{md,txt,org}.gpg",
+			abs_scratch .. "*.gpg",
 		},
 		callback = function(args)
 			local memo = require("memo.autocmd_callbacks")
@@ -27,6 +32,7 @@ function M.setup()
 		pattern = {
 			abs_notes .. "*.{md,txt,org}",
 			abs_notes .. "*.{md,txt,org}.gpg",
+			abs_scratch .. "*.gpg",
 		},
 		callback = function(args)
 			local memo = require("memo.autocmd_callbacks")
@@ -40,12 +46,42 @@ function M.setup()
 			pattern = {
 				abs_notes .. "*.{md,txt,org}",
 				abs_notes .. "*.{md,txt,org}.gpg",
+				abs_scratch .. "*.gpg",
 			},
 			callback = function()
 				require("memo.autocmd_callbacks").setup_conform()
 			end,
 		})
 	end
+
+	vim.api.nvim_create_autocmd("BufDelete", {
+		group = GROUP,
+		pattern = abs_scratch .. "*.gpg",
+		callback = function(args)
+			local path = vim.api.nvim_buf_get_name(args.buf)
+
+			if vim.fn.filereadable(path) == 1 then
+				vim.fn.delete(path)
+			end
+		end,
+	})
+
+	vim.api.nvim_create_user_command("MemoScratch", function(opts)
+		local direction = opts.args
+
+		if direction ~= "horizontal" and direction ~= "vertical" and direction ~= "tab" then
+			require("memo.scratch").create()
+			return
+		end
+
+		require("memo.scratch").create(direction)
+	end, {
+		nargs = "?",
+		complete = function()
+			return { "horizontal", "vertical", "tab" }
+		end,
+		desc = "Open an encrypted scratch buffer",
+	})
 
 	vim.api.nvim_create_user_command("MemoSync", function(opts)
 		local core = require("memo.core")
