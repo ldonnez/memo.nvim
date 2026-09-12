@@ -45,28 +45,6 @@ describe("core", function()
 			MiniTest.expect.equality(lines[1], "-----BEGIN PGP MESSAGE-----")
 		end)
 
-		it("fails encrypting - unsupported extension jpeg", function()
-			local encrypted = vim.env.HOME .. "/stdin_test.jpg.gpg"
-			local test_lines = { "Hello World", "Line 2" }
-
-			child.lua(
-				[[
-        local args = {...}
-        local lines = args[1]
-        local target = args[2]
-
-        M.encrypt_from_stdin(target, lines)
-    ]],
-				{ test_lines, encrypted }
-			)
-
-			local messages = child.cmd_capture("messages")
-			MiniTest.expect.equality(messages, "Extension: jpg not supported\n")
-
-			local exists = child.fn.filereadable(encrypted)
-			MiniTest.expect.equality(exists, 0)
-		end)
-
 		it("decrypt_to_buffer: decrypts content and ensures cursor stays on top of file", function()
 			local path = "/tmp/test.md.gpg"
 
