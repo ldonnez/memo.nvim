@@ -22,6 +22,14 @@ local function prepare_buffer_for_edit(bufnr)
 	end
 end
 
+---@param path string
+---@return boolean
+local function is_armored_gpg(path)
+	local lines = vim.fn.readfile(path, "b", 1)
+
+	return lines[1] == "-----BEGIN PGP MESSAGE-----"
+end
+
 --- @param args vim.api.keyset.create_autocmd.callback_args
 function M.on_read(args)
 	local bufnr = args.buf
@@ -30,6 +38,10 @@ function M.on_read(args)
 	local message = require("memo.message")
 
 	local gpg_path = utils.get_gpg_path(args.file)
+
+	-- Force filetype detection based on the name without .gpg
+	local base = args.file:gsub("%.gpg$", "")
+	vim.bo[bufnr].filetype = vim.filetype.match({ filename = base })
 
 	-- If the .gpg file doesn't exist, it's new, just open it
 	if vim.fn.filereadable(gpg_path) == 0 or vim.fn.getfsize(gpg_path) <= 0 then
@@ -42,14 +54,15 @@ function M.on_read(args)
 		return
 	end
 
+	if not is_armored_gpg(gpg_path) then
+		vim.cmd("silent edit " .. vim.fn.fnameescape(args.file))
+		return
+	end
+
 	vim.bo[bufnr].modifiable = false
 	vim.bo[bufnr].modified = false
 	vim.b[bufnr].decrypting = true
 	vim.api.nvim_exec_autocmds("BufReadPre", { buffer = bufnr, modeline = false })
-
-	-- Force filetype detection based on the name without .gpg
-	local base = args.file:gsub("%.gpg$", "")
-	vim.bo[bufnr].filetype = vim.filetype.match({ filename = base })
 
 	core.decrypt_to_buffer(args.file, bufnr, function(result)
 		if result.code ~= 0 then

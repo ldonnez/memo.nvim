@@ -17,9 +17,8 @@ function M.setup()
 	vim.api.nvim_create_autocmd("BufReadCmd", {
 		group = GROUP,
 		pattern = {
-			abs_notes .. "*.{md,txt,org}",
-			abs_notes .. "*.{md,txt,org}.gpg",
-			abs_scratch .. "*.gpg",
+			abs_notes .. "*",
+			abs_scratch .. "*",
 		},
 		callback = function(args)
 			local memo = require("memo.autocmd_callbacks")
@@ -30,9 +29,8 @@ function M.setup()
 	vim.api.nvim_create_autocmd("BufWriteCmd", {
 		group = GROUP,
 		pattern = {
-			abs_notes .. "*.{md,txt,org}",
-			abs_notes .. "*.{md,txt,org}.gpg",
-			abs_scratch .. "*.gpg",
+			abs_notes .. "*",
+			abs_scratch .. "*",
 		},
 		callback = function(args)
 			local memo = require("memo.autocmd_callbacks")
@@ -44,9 +42,8 @@ function M.setup()
 		vim.api.nvim_create_autocmd("BufReadCmd", {
 			once = true,
 			pattern = {
-				abs_notes .. "*.{md,txt,org}",
-				abs_notes .. "*.{md,txt,org}.gpg",
-				abs_scratch .. "*.gpg",
+				abs_notes .. "*",
+				abs_scratch .. "*",
 			},
 			callback = function()
 				require("memo.autocmd_callbacks").setup_conform()
