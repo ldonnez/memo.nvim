@@ -28,6 +28,11 @@ function M.get_notes_dir()
 	return dir
 end
 
+---@return string
+function M.get_scratch_dir()
+	return vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
+end
+
 ---Lazily load a plugin with fallback to packadd (only for Neovim 0.12+)
 ---@param import_name string e.g. "conform"
 ---@param plugin_name string? e.g. "conform.nvim", defaults to import_name

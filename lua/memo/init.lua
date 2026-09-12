@@ -9,4 +9,10 @@ function M.sync_git()
 	return require("memo.core").sync_git()
 end
 
+--Opens a new encrypted scratch buffer.
+---@param direction? "horizontal"|"vertical"|"tab"
+function M.scratch(direction)
+	require("memo.scratch").create(direction)
+end
+
 return M

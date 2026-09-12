@@ -15,9 +15,10 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo) a CLI-base
   - [Install with vim.pack](#install-with-vimpack)
   - [Install with lazy.nvim](#install-with-lazynvim)
 - [Features](#features)
-  - [Transparant editing](#transparant-editing)
-  - [Capture workflow](#capture-workflow)
-  - [Fzf lua files picker](#fzf-lua-picker)
+- [Transparant editing](#transparant-editing)
+- [Encrypted scratch buffers](#encrypted-scratch-buffers)
+- [Capture workflow](#capture-workflow)
+- [Fzf lua files picker](#fzf-lua-picker)
 - [Requirements](#requirements)
 - [User commands](#user-commands)
 - [Development](#development-guide)
@@ -138,6 +139,29 @@ To disable this integration, set before loading the plugin:
 vim.g.memo_conform_integration = false
 ```
 
+### Encrypted scratch buffers
+
+**memo.nvim** provides an encrypted scratch buffer for throwaway, sensitive content. Content is encrypted with your GPG key on each write into a `.gpg` file under Neovim's data directory (`data/memo-scratch/`, where `data` is `vim.fn.stdpath("data")`, e.g. `~/.local/share/nvim`), avoiding plaintext on disk and keeping it out of your notes git sync. Each file is named after the `cwd` it was created in plus a timestamp, so buffers opened from different projects never collide. Because the buffer is an ordinary file in your data directory, it reuses the regular memo read/write autocmds: the file is transparently decrypted when opened and re-encrypted on write. The encrypted files persist, so scratch buffers survive restarts and sessions (e.g. [auto-session](https://github.com/rmagatti/auto-session)) like any other memo note.
+
+```lua
+vim.keymap.set("n", "<leader>ms", function()
+  require("memo").scratch("horizontal")
+end, { desc = "Memo: New scratch buffer (horizontal split)" })
+
+vim.keymap.set("n", "<leader>mv", function()
+  require("memo").scratch("vertical")
+end, { desc = "Memo: New scratch buffer (vertical split)" })
+
+vim.keymap.set("n", "<leader>mt", function()
+  require("memo").scratch("tab")
+end, { desc = "Memo: New scratch buffer (new tab)" })
+```
+
+Or use the built-in command: `:MemoScratch <horizontal|vertical|tab>`.
+
+> [!NOTE]
+> Scratch content is throwaway by design: deleting or wiping the buffer (`:bd`/`:bwipeout`) also deletes its encrypted file. Leaving the buffer open keeps it around, and the encrypted file is only created once you write content.
+
 ### Capture workflow
 
 **memo.nvim** includes a feature that allows you to quickly write down text into a temporary buffer. Once you save and close the window, the content is automatically appended to your configured `capture_file`.
@@ -244,10 +268,11 @@ or as keys with **lazy.nvim** package manager
 
 ## User commands
 
-| Command      | Lua function               | Description                                                            |
-| ------------ | -------------------------- | ---------------------------------------------------------------------- |
-| `:MemoSetup` | `require("memo").setup()`  | Initializes configuration and registers required autocmds.             |
-| `:MemoSync`  | require("memo").sync_git() | Calls `memo sync git` to trigger a synchronisation of the git backend. |
+| Command         | Lua function                | Description                                                            |
+| --------------- | --------------------------- | ---------------------------------------------------------------------- |
+| `:MemoScratch`  | `require("memo").scratch()` | Opens a new encrypted scratch buffer, durable across sessions.         |
+| `:MemoSetup`    | `require("memo").setup()`   | Initializes configuration and registers required autocmds.             |
+| `:MemoSync`     | require("memo").sync_git()  | Calls `memo sync git` to trigger a synchronisation of the git backend. |
 
 ## Development
 

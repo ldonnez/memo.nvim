@@ -271,4 +271,82 @@ describe("autocmd", function()
 		MiniTest.expect.equality(result.swap, true)
 		MiniTest.expect.equality(result.is_gpg, false)
 	end)
+
+	it("triggers decryption when opening a scratch .gpg file", function()
+		local scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
+		local encrypted = vim.fs.joinpath(scratch_dir, "test.gpg")
+
+		vim.fn.mkdir(scratch_dir, "p")
+		helpers.encrypt_file(encrypted, "Scratch secret!")
+
+		child.cmd("edit " .. encrypted)
+
+		child.wait_until(function()
+			return child.b.decrypting == false
+		end)
+
+		local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+		local buffer_name = child.api.nvim_buf_get_name(0)
+
+		MiniTest.expect.equality(lines, { "Scratch secret!" })
+		MiniTest.expect.equality(buffer_name, encrypted)
+	end)
+
+	it("encrypts changes when writing a scratch .gpg file", function()
+		local scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
+		local encrypted = vim.fs.joinpath(scratch_dir, "test.gpg")
+
+		vim.fn.mkdir(scratch_dir, "p")
+		helpers.encrypt_file(encrypted, "Original")
+
+		child.cmd("edit " .. encrypted)
+
+		child.wait_until(function()
+			return child.b.decrypting == false
+		end)
+
+		child.api.nvim_buf_set_lines(0, 0, -1, false, { "Updated scratch" })
+		child.cmd("write")
+
+		local decrypted = helpers.decrypt_file(encrypted)
+
+		MiniTest.expect.equality(decrypted.stdout, "Updated scratch\n")
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), encrypted)
+	end)
+
+	it("deletes a scratch .gpg file when its buffer is deleted", function()
+		local scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
+		local encrypted = vim.fs.joinpath(scratch_dir, "test.gpg")
+
+		vim.fn.mkdir(scratch_dir, "p")
+		helpers.encrypt_file(encrypted, "Temporary scratch")
+
+		child.cmd("edit " .. encrypted)
+
+		child.wait_until(function()
+			return child.b.decrypting == false
+		end)
+
+		MiniTest.expect.equality(vim.fn.filereadable(encrypted), 1)
+
+		child.cmd("bdelete!")
+
+		MiniTest.expect.equality(vim.fn.filereadable(encrypted), 0)
+	end)
+
+	it("does not delete a regular gpg file outside notes and scratch directories", function()
+		local outside_dir = vim.fs.joinpath(vim.env.HOME, "outside")
+		local encrypted = vim.fs.joinpath(outside_dir, "important.gpg")
+
+		vim.fn.mkdir(outside_dir, "p")
+		helpers.encrypt_file(encrypted, "Do not delete")
+
+		child.cmd("edit " .. encrypted)
+
+		MiniTest.expect.equality(vim.fn.filereadable(encrypted), 1)
+
+		child.cmd("bdelete!")
+
+		MiniTest.expect.equality(vim.fn.filereadable(encrypted), 1)
+	end)
 end)

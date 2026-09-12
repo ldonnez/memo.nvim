@@ -126,13 +126,16 @@ end
 function M.setup_test_env()
 	local home = vim.fn.resolve("/tmp/memo.nvim")
 	local notes_dir = home .. "/notes"
+	local scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
 
 	vim.env.HOME = home
 	vim.env.GNUPGHOME = home .. "/.gnupg"
 	vim.env.NOTES_DIR = home .. "/notes"
+	vim.env.SCRATCH_DIR = scratch_dir
 
 	vim.fn.mkdir(home, "p")
 	vim.fn.mkdir(notes_dir, "p")
+	vim.fn.mkdir(scratch_dir, "p")
 	vim.fn.mkdir(home .. "/.gnupg", "p")
 	vim.fn.system({ "chmod", "700", home .. "/.gnupg" })
 end
