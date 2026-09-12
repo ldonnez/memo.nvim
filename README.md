@@ -237,6 +237,14 @@ vim.keymap.set("n", "<leader>mc", function()
 end, { desc = "Memo: Quick Capture" })
 ```
 
+A visual selection is detected automatically: select text in visual mode (or select then leave visual mode) and call `register_capture` — the selected lines are pre-filled into the capture window.
+
+```lua
+vim.keymap.set("v", "<leader>mc", function()
+  require("memo").register_capture({ capture_file = "inbox.md.gpg" })
+end, { desc = "Memo: Quick Capture selection" })
+```
+
 or as keys with **lazy.nvim** package manager
 
 ```lua

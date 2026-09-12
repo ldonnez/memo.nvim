@@ -107,15 +107,44 @@ local function append_capture(lines, config, capture_template)
 	core.encrypt_from_stdin(file, merged)
 end
 
+---Resolves the current buffer's visual selection into its lines.
+---@return string[]|nil
+local function resolve_selection()
+	if not vim.fn.mode():match("[vV\22]") then
+		return nil
+	end
+
+	local start = vim.fn.getpos("v")
+	local finish = vim.fn.getpos(".")
+
+	if start[2] == 0 or finish[2] == 0 then
+		return nil
+	end
+
+	return vim.fn.getregion(start, finish)
+end
+
 ---@param opts CaptureConfig
 function M.register(opts)
-	local config = vim.tbl_deep_extend("force", defaults, opts)
+	local cfg = opts --[[@as CaptureConfig]]
+	local config = vim.tbl_deep_extend("force", defaults, cfg) --[[@as CaptureConfig]]
 
 	local capture_template = Template.new(config.capture_template)
 
-	local initial_lines, cursor_pos = capture_template:resolve_template()
+	local template_lines, template_cursor = capture_template:resolve_template()
+
+	local range_lines = resolve_selection()
 
 	local win, buf = create_capture_window(config)
+
+	local initial_lines, cursor_pos
+	if range_lines then
+		initial_lines = range_lines
+		cursor_pos = { #initial_lines, 0 }
+	else
+		initial_lines = template_lines
+		cursor_pos = template_cursor
+	end
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, initial_lines)
 	vim.api.nvim_win_set_cursor(win, cursor_pos)
@@ -131,7 +160,7 @@ function M.register(opts)
 
 			local current_content = table.concat(lines, "\n")
 
-			local has_changed = not vim.deep_equal(lines, initial_lines)
+			local has_changed = not vim.deep_equal(lines, template_lines)
 			local is_not_empty = current_content:gsub("%s+", "") ~= ""
 
 			if has_changed and is_not_empty then
