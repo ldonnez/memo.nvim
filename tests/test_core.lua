@@ -56,6 +56,7 @@ describe("core", function()
         vim.api.nvim_win_set_buf(0, bufnr)
 
         M.decrypt_to_buffer(%q, bufnr, function(obj)
+          vim.b.decrypting = false
           return true
         end)
     ]],
@@ -63,10 +64,8 @@ describe("core", function()
 			))
 
 			child.wait_until(function()
-				return child.bo.modifiable == false
+				return child.b.decrypting == false
 			end)
-
-			child.sleep(50)
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 			local cursor = child.api.nvim_win_get_cursor(0)
@@ -86,6 +85,7 @@ describe("core", function()
         vim.api.nvim_win_set_buf(0, bufnr)
 
         M.decrypt_to_buffer(%q, bufnr, function(obj)
+          vim.b.decrypting = false
           return true
         end)
     ]],
@@ -93,10 +93,8 @@ describe("core", function()
 			))
 
 			child.wait_until(function()
-				return child.bo.modifiable == false
+				return child.b.decrypting == false
 			end)
-
-			child.sleep(50)
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 			MiniTest.expect.equality(#lines, 1)
@@ -113,6 +111,7 @@ describe("core", function()
         vim.api.nvim_win_set_buf(0, bufnr)
 
         M.decrypt_to_buffer(%q, bufnr, function(obj)
+          vim.b.decrypting = false
           return true
         end)
     ]],
@@ -120,10 +119,8 @@ describe("core", function()
 			))
 
 			child.wait_until(function()
-				return child.bo.modifiable == false
+				return child.b.decrypting == false
 			end)
-
-			child.sleep(50)
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 			MiniTest.expect.equality(lines, { "Line 1", "Line 2", "Line 3" })
@@ -151,6 +148,7 @@ describe("core", function()
         end
 
         M.decrypt_to_buffer(%q, bufnr, function(obj)
+          vim.b.decrypting = false
           return true
         end)
     ]],
@@ -158,10 +156,8 @@ describe("core", function()
 			))
 
 			child.wait_until(function()
-				return child.bo.modifiable == false
+				return child.b.decrypting == false
 			end)
-
-			child.sleep(50)
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 
@@ -212,6 +208,7 @@ describe("core", function()
         end
 
         M.decrypt_to_buffer(%q, bufnr, function(obj)
+          vim.b.decrypting = false
           return true
         end)
     ]],
@@ -220,10 +217,8 @@ describe("core", function()
 			))
 
 			child.wait_until(function()
-				return child.bo.modifiable == false
+				return child.b.decrypting == false
 			end)
-
-			child.sleep(50)
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 
