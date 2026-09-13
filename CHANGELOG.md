@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.9.0](https://github.com/ldonnez/memo.nvim/compare/v0.8.0...v0.9.0) (2026-09-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* drop conform integration
+
+### Features
+
+* add :MemoFiles cmd ([4adba6b](https://github.com/ldonnez/memo.nvim/commit/4adba6bb23eb016ae48e38c9c00a29d4bd35e992))
+* add fzf-lua picker for scratch files ([bcda9ad](https://github.com/ldonnez/memo.nvim/commit/bcda9ad7b8ea172711340a362be761d92a7815d3))
+* add save to note ([55b8c63](https://github.com/ldonnez/memo.nvim/commit/55b8c63051310c593bef37ea20f36fe479342fb0))
+* capture with range selection ([9abc5bd](https://github.com/ldonnez/memo.nvim/commit/9abc5bd7e60392ec1eab01ccb47abdcccb5bfb22))
+* encrypt any filetype in notes dir ([b39912b](https://github.com/ldonnez/memo.nvim/commit/b39912b1b568d3eca2c7732f00cfe53ebdd4395d))
+* encrypted scratch buffers ([2e4d767](https://github.com/ldonnez/memo.nvim/commit/2e4d767f9e73a3eccb1c64dc98e9b29e8f383832))
+
+
+### Code Refactoring
+
+* drop conform integration ([d01d747](https://github.com/ldonnez/memo.nvim/commit/d01d747da07a4ff1be0bd3ada7a46ebbfab9b547))
+
 ## [0.8.0](https://github.com/ldonnez/memo.nvim/compare/v0.7.2...v0.8.0) (2026-05-26)
 
 
