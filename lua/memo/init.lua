@@ -9,8 +9,8 @@ function M.sync_git()
 	return require("memo.core").sync_git()
 end
 
-function M.save_to_note()
-	return require("memo.core").save_to_note()
+function M.save_as_note()
+	return require("memo.core").save_as_note()
 end
 
 --Opens a new encrypted scratch buffer.

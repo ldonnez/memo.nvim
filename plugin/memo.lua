@@ -81,8 +81,8 @@ function M.setup()
 		desc = "Browse and open encrypted scratch files",
 	})
 
-	vim.api.nvim_create_user_command("MemoSaveToNote", function()
-		require("memo.core").save_to_note()
+	vim.api.nvim_create_user_command("MemoSaveAsNote", function()
+		require("memo.core").save_as_note()
 	end, {
 		nargs = 0,
 		desc = "Save the current buffer as an encrypted note in the notes dir",

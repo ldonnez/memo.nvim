@@ -100,7 +100,7 @@ end
 ---on-disk temp file is removed by the BufDelete autocmd registered in
 ---plugin/memo.lua); other buffers are left open.
 ---@return boolean success
-function M.save_to_note()
+function M.save_as_note()
 	local utils = require("memo.utils")
 
 	local bufnr = vim.api.nvim_get_current_buf()
@@ -111,7 +111,7 @@ function M.save_to_note()
 	local default_name = vim.fn.fnamemodify(current, ":t"):gsub("%.gpg$", "")
 	local name = vim.fn.input("Note name: ", default_name)
 	if name == "" then
-		message.warn("MemoSaveToNote: empty note name")
+		message.warn("MemoSaveAsNote: empty note name")
 		return false
 	end
 
@@ -120,7 +120,7 @@ function M.save_to_note()
 	local gpg_path = utils.get_gpg_path(target)
 
 	if vim.fn.filereadable(gpg_path) == 1 then
-		message.error("MemoSaveToNote: note already exists (%s)", gpg_path)
+		message.error("MemoSaveAsNote: note already exists (%s)", gpg_path)
 		return false
 	end
 
@@ -133,7 +133,7 @@ function M.save_to_note()
 	local result = M.encrypt_from_stdin(gpg_path, lines)
 
 	if result.code ~= 0 then
-		message.error("MemoSaveToNote: encryption failed")
+		message.error("MemoSaveAsNote: encryption failed")
 		return false
 	end
 

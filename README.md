@@ -190,17 +190,17 @@ The scratch picker also supports deleting the selected scratch files (scratch co
 
 ### Save a buffer as a note
 
-**memo.nvim** lets you turn any buffer into a note in your notes directory with `:MemoSaveToNote` (or `require("memo").save_to_note()`). It prompts for a note name (defaulting to the current buffer's name without the `.gpg` extension) and encrypts the buffer contents into `<notes_dir>/<name>.gpg`. Saving refuses to overwrite an existing note, and the name must not be empty.
+**memo.nvim** lets you turn any buffer into a note in your notes directory with `:MemoSaveAsNote` (or `require("memo").save_as_note()`). It prompts for a note name (defaulting to the current buffer's name without the `.gpg` extension) and encrypts the buffer contents into `<notes_dir>/<name>.gpg`. Saving refuses to overwrite an existing note, and the name must not be empty.
 
 This pairs naturally with scratch buffers: write something ephemeral in a `:MemoScratch` window, then promote it to a permanent note. When the current buffer is a scratch buffer, saving closes it (its on-disk temp file is removed); regular buffers are left open so you can keep working.
 
 ```lua
 vim.keymap.set("n", "<leader>msn", function()
-  require("memo").save_to_note()
+  require("memo").save_as_note()
 end, { desc = "Memo: Save buffer as note" })
 ```
 
-Or use the built-in command: `:MemoSaveToNote`.
+Or use the built-in command: `:MemoSaveAsNote`.
 
 ### Capture workflow
 
@@ -332,7 +332,7 @@ or as keys with **lazy.nvim** package manager
 | ------------------ | --------------------------- | ---------------------------------------------------------------------- |
 | `:MemoScratch`     | `require("memo").scratch()` | Opens a new encrypted scratch buffer, durable across sessions.         |
 | `:MemoScratchFiles` | `require("memo.pickers.fzf_lua").scratch_files_picker()` | Browse and open encrypted scratch files.          |
-| `:MemoSaveToNote`  | `require("memo").save_to_note()` | Prompts for a note name and encrypts the current buffer to `<notes_dir>/<name>.gpg`. |
+| `:MemoSaveAsNote`  | `require("memo").save_as_note()` | Prompts for a note name and encrypts the current buffer to `<notes_dir>/<name>.gpg`. |
 | `:MemoSetup`       | `require("memo").setup()`   | Initializes configuration and registers required autocmds.             |
 | `:MemoSync`        | require("memo").sync_git()  | Calls `memo sync git` to trigger a synchronisation of the git backend. |
 
