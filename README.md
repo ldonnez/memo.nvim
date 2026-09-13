@@ -19,7 +19,7 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo) a CLI-base
 - [Encrypted scratch buffers](#encrypted-scratch-buffers)
 - [Save a buffer as a note](#save-a-buffer-as-a-note)
 - [Capture workflow](#capture-workflow)
-- [Fzf lua files picker](#fzf-lua-picker)
+- [Fzf lua pickers](#fzf-lua-pickers)
 - [Requirements](#requirements)
 - [User commands](#user-commands)
 - [Development](#development-guide)
@@ -173,6 +173,18 @@ end, { desc = "Memo: New scratch buffer (new tab)" })
 
 Or use the built-in command: `:MemoScratch <horizontal|vertical|tab>`.
 
+To browse and reopen existing scratch files (e.g. after a restart), use the fzf-lua scratch picker:
+
+```lua
+vim.keymap.set("n", "<leader>mfs", function()
+  require("memo.pickers.fzf_lua").scratch_files_picker()
+end, { desc = "Memo: Scratch files picker" })
+```
+
+Or use the built-in command: `:MemoScratchFiles`.
+
+The scratch picker also supports deleting the selected scratch files (scratch content is throwaway by design): multi-select with `tab`/`alt-a`, then confirm with `ctrl-x`. Any buffer holding a deleted file is wiped too, so no orphaned state remains.
+
 > [!NOTE]
 > Scratch content is throwaway by design: deleting or wiping the buffer (`:bd`/`:bwipeout`) also deletes its encrypted file. Leaving the buffer open keeps it around, and the encrypted file is only created once you write content.
 
@@ -272,14 +284,15 @@ or as keys with **lazy.nvim** package manager
 },
 ```
 
-### Fzf lua files picker
+### Fzf lua pickers
 
-memo.nvim provides a built-in picker to quickly browse and open your encrypted files. It leverages `require("fzf-lua").files` while scoping the search your configured notes directory.
+memo.nvim provides a built-in picker to quickly browse and open your encrypted files. It leverages `require("fzf-lua").files` while scoping the search to your configured notes directory (or your encrypted scratch files). The scratch picker additionally binds `ctrl-x` to delete the selected scratch files (multi-select with `tab`) without closing the picker.
 
 #### Usage
 
 ```lua
-  require("memo.pickers.fzf_lua").files_picker()
+  require("memo.pickers.fzf_lua").files_picker()          -- notes dir
+  require("memo.pickers.fzf_lua").scratch_files_picker()  -- scratch dir
 ```
 
 #### Keybinding example
@@ -288,6 +301,10 @@ memo.nvim provides a built-in picker to quickly browse and open your encrypted f
 vim.keymap.set("n", "<leader>mf", function()
   require("memo.pickers.fzf_lua").files_picker()
 end, { desc = "Memo: file picker" })
+
+vim.keymap.set("n", "<leader>mFs", function()
+  require("memo.pickers.fzf_lua").scratch_files_picker()
+end, { desc = "Memo: scratch files picker" })
 ```
 
 or as keys with **lazy.nvim** package manager
@@ -300,16 +317,24 @@ or as keys with **lazy.nvim** package manager
   end,
   desc = "Memo: file picker",
 },
+{
+  "<leader>mFs",
+  function()
+    require("memo.pickers.fzf_lua").scratch_files_picker()
+  end,
+  desc = "Memo: scratch files picker",
+},
 ```
 
 ## User commands
 
-| Command         | Lua function                | Description                                                            |
-| --------------- | --------------------------- | ---------------------------------------------------------------------- |
-| `:MemoScratch`  | `require("memo").scratch()` | Opens a new encrypted scratch buffer, durable across sessions.         |
-| `:MemoSaveToNote` | `require("memo").save_to_note()` | Prompts for a note name and encrypts the current buffer to `<notes_dir>/<name>.gpg`. |
-| `:MemoSetup`    | `require("memo").setup()`   | Initializes configuration and registers required autocmds.             |
-| `:MemoSync`     | require("memo").sync_git()  | Calls `memo sync git` to trigger a synchronisation of the git backend. |
+| Command            | Lua function                | Description                                                            |
+| ------------------ | --------------------------- | ---------------------------------------------------------------------- |
+| `:MemoScratch`     | `require("memo").scratch()` | Opens a new encrypted scratch buffer, durable across sessions.         |
+| `:MemoScratchFiles` | `require("memo.pickers.fzf_lua").scratch_files_picker()` | Browse and open encrypted scratch files.          |
+| `:MemoSaveToNote`  | `require("memo").save_to_note()` | Prompts for a note name and encrypts the current buffer to `<notes_dir>/<name>.gpg`. |
+| `:MemoSetup`       | `require("memo").setup()`   | Initializes configuration and registers required autocmds.             |
+| `:MemoSync`        | require("memo").sync_git()  | Calls `memo sync git` to trigger a synchronisation of the git backend. |
 
 ## Development
 
