@@ -38,19 +38,6 @@ function M.setup()
 		end,
 	})
 
-	if vim.g.memo_conform_integration ~= false then
-		vim.api.nvim_create_autocmd("BufReadCmd", {
-			once = true,
-			pattern = {
-				abs_notes .. "*",
-				abs_scratch .. "*",
-			},
-			callback = function()
-				require("memo.autocmd_callbacks").setup_conform()
-			end,
-		})
-	end
-
 	vim.api.nvim_create_autocmd("BufDelete", {
 		group = GROUP,
 		pattern = abs_scratch .. "*.gpg",

@@ -130,15 +130,28 @@ end, { desc = "Sync with git" })
 > [!NOTE]
 > This "transparent" approach means you can use your favorite Neovim workflows (searching, LSP, macros) on your files, while keeping the underlying data fully encrypted.
 
-### Formatter integration
+### Formatting with conform.nvim
 
-**memo.nvim** integrates with [conform.nvim](https://github.com/stevearc/conform.nvim) to format your notes using `prettierd` or `prettier`. Since your note files are stored with a `.gpg` extension, formatters cannot infer the correct parser. This integration patches the formatter to pass `--stdin-filepath` with a transformed filename (stripping `.gpg`) so prettier can infer the markdown parser.
-
-To disable this integration, set before loading the plugin:
+If you want to format your notes with `prettier` via [conform.nvim](https://github.com/stevearc/conform.nvim), you'll need one extra option. Since memo notes are stored with a `.gpg` extension, `prettier` cannot infer the parser from the filename. Set `ft_parsers` for the `prettier` formatter so memo buffers are formatted with the right parser — **you must add an entry for every filetype you want to format inside the notes** (the key is the buffer filetype, the value is prettier's parser name):
 
 ```lua
-vim.g.memo_conform_integration = false
+-- in your conform.nvim config
+require("conform").setup({
+  formatters = {
+    prettier = {
+      options = {
+        ft_parsers = {
+          markdown = "markdown",
+          json = "json",
+          yaml = "yaml",
+        },
+      },
+    },
+  },
+})
 ```
+
+`prettierd` infers the parser from the filename and cannot be made to work on `.gpg` buffers without overriding the formatter entirely.
 
 ### Encrypted scratch buffers
 
