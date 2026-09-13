@@ -265,9 +265,6 @@ describe("scratch", function()
 
 		teardown(function()
 			helpers.cleanup_test_env()
-		end)
-
-		after_each(function()
 			helpers.kill_gpg_agent()
 		end)
 
