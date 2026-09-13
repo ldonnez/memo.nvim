@@ -67,6 +67,13 @@ function M.setup()
 		desc = "Open an encrypted scratch buffer",
 	})
 
+	vim.api.nvim_create_user_command("MemoScratchFiles", function()
+		require("memo.pickers.fzf_lua").scratch_files_picker()
+	end, {
+		nargs = 0,
+		desc = "Browse and open encrypted scratch files",
+	})
+
 	vim.api.nvim_create_user_command("MemoSaveToNote", function()
 		require("memo.core").save_to_note()
 	end, {
