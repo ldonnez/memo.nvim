@@ -218,7 +218,7 @@ describe("scratch", function()
 
 			-- stub the interactive prompt with the note name
 			child.lua("vim.fn.input = function() return 'ideas' end")
-			child.cmd("MemoSaveToNote")
+			child.cmd("MemoSaveAsNote")
 
 			local note = vim.env.NOTES_DIR .. "/ideas.gpg"
 			MiniTest.expect.equality(child.fn.filereadable(note), 1)
@@ -237,7 +237,7 @@ describe("scratch", function()
 			child.cmd("MemoScratch")
 			child.type_keys("i", "content", "<Esc>")
 			child.lua("vim.fn.input = function() return 'ideas.md' end")
-			child.cmd("MemoSaveToNote")
+			child.cmd("MemoSaveAsNote")
 
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/ideas.md.gpg"), 1)
 		end)
@@ -247,7 +247,7 @@ describe("scratch", function()
 			child.cmd("edit " .. vim.fn.fnameescape(note))
 
 			child.lua("vim.fn.input = function() return 'cloned' end")
-			child.cmd("MemoSaveToNote")
+			child.cmd("MemoSaveAsNote")
 
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/cloned.gpg"), 1)
 			local buf = child.api.nvim_get_current_buf()
@@ -293,7 +293,7 @@ describe("scratch", function()
 			helpers.cache_gpg_password(gpg_key_password)
 
 			child.lua("vim.fn.input = function() return 'password-note' end")
-			child.cmd("MemoSaveToNote")
+			child.cmd("MemoSaveAsNote")
 
 			local note = vim.env.NOTES_DIR .. "/password-note.gpg"
 			MiniTest.expect.equality(child.fn.filereadable(note), 1)
