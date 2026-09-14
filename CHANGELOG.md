@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.10.0](https://github.com/ldonnez/memo.nvim/compare/v0.9.0...v0.10.0) (2026-09-14)
+
+
+### Features
+
+* don't delete scratch buffer when saving as note ([8d4a9b1](https://github.com/ldonnez/memo.nvim/commit/8d4a9b19caa26447967d23e91ab3a836b6c40da1))
+* make scratch dir configurable with vim.g.memo_scratch_dir option ([b77666a](https://github.com/ldonnez/memo.nvim/commit/b77666afc07c891dc7eb415ecb85d2c69ada4150))
+* show note path when saving buffer as note ([298fb68](https://github.com/ldonnez/memo.nvim/commit/298fb68c6f098701d7a13a9ea9aeff6422179705))
+
 ## [0.9.0](https://github.com/ldonnez/memo.nvim/compare/v0.8.0...v0.9.0) (2026-09-13)
 
 
