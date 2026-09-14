@@ -205,7 +205,7 @@ describe("core", function()
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), source)
 		end)
 
-		it("save_as_note: defaults to the buffer name without .gpg", function()
+		it("save_as_note: defaults to the notes dir path with .gpg", function()
 			local note = vim.env.NOTES_DIR .. "/my-note.md.gpg"
 			child.cmd("edit " .. vim.fn.fnameescape(note))
 			child.type_keys("i", "content", "<Esc>")
@@ -220,7 +220,7 @@ describe("core", function()
 			child.cmd("MemoSaveAsNote")
 
 			local saved = vim.env.NOTES_DIR .. "/my-note.md.gpg"
-			MiniTest.expect.equality(child.g.input_default, "my-note.md")
+			MiniTest.expect.equality(child.g.input_default, vim.env.NOTES_DIR .. "/my-note.md.gpg")
 			MiniTest.expect.equality(child.fn.filereadable(saved), 1)
 
 			local result = helpers.decrypt_file(saved)
@@ -229,7 +229,7 @@ describe("core", function()
 			MiniTest.expect.equality(result.stdout:find("content") ~= nil, true)
 		end)
 
-		it("save_as_note: defaults to the buffer basename for non-gpg buffers", function()
+		it("save_as_note: defaults to the notes dir path for non-gpg buffers", function()
 			local path = vim.env.HOME .. "/todo.txt"
 			child.cmd("edit " .. vim.fn.fnameescape(path))
 
@@ -242,7 +242,7 @@ describe("core", function()
       ]])
 			child.cmd("MemoSaveAsNote")
 
-			MiniTest.expect.equality(child.g.input_default, "todo.txt")
+			MiniTest.expect.equality(child.g.input_default, vim.env.NOTES_DIR .. "/todo.txt.gpg")
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/todo.txt.gpg"), 1)
 		end)
 
@@ -285,6 +285,29 @@ describe("core", function()
 			MiniTest.expect.equality(decrypted.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(decrypted.stdout:find("old content") ~= nil, true)
+		end)
+
+		it("save_as_note: refuses an absolute path outside the notes dir", function()
+			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
+
+			child.lua("vim.fn.input = function() return vim.env.HOME .. '/outside.gpg' end")
+			local result = child.lua([[return { pcall(function() return M.save_as_note() end) }]])
+
+			MiniTest.expect.equality(result[1], true)
+			MiniTest.expect.equality(result[2], false)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.HOME .. "/outside.gpg"), 0)
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), vim.env.NOTES_DIR .. "/random.txt")
+		end)
+
+		it("save_as_note: refuses a relative path escaping the notes dir", function()
+			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
+
+			child.lua("vim.fn.input = function() return '../escape.gpg' end")
+			local result = child.lua([[return { pcall(function() return M.save_as_note() end) }]])
+
+			MiniTest.expect.equality(result[1], true)
+			MiniTest.expect.equality(result[2], false)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.HOME .. "/escape.gpg"), 0)
 		end)
 	end)
 

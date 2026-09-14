@@ -95,9 +95,11 @@ function M.sync_git()
 end
 
 ---Saves the current buffer as a note in the notes dir.
----Prompts for the note name, encrypts the buffer contents and writes it to
----`<notes_dir>/<name>.gpg`. Scratch buffers are closed afterward (their
----on-disk temp file is removed by the BufDelete autocmd registered in
+---Prompts for the note path (defaulting to `<notes_dir>/<name>.gpg`) so it is
+---clear where the note will be stored, encrypts the buffer contents and writes
+---it there. A relative path is resolved against `<notes_dir>`; the resolved
+---path must stay inside `<notes_dir>`. Scratch buffers are closed afterward
+---(their on-disk temp file is removed by the BufDelete autocmd registered in
 ---plugin/memo.lua); other buffers are left open.
 ---@return boolean success
 function M.save_as_note()
@@ -108,16 +110,24 @@ function M.save_as_note()
 	local scratch_dir = vim.fn.fnamemodify(utils.get_scratch_dir(), ":p")
 	local is_scratch = current:sub(1, #scratch_dir) == scratch_dir
 
+	local notes_dir = utils.get_notes_dir() --[[@as string]]
 	local default_name = vim.fn.fnamemodify(current, ":t"):gsub("%.gpg$", "")
-	local name = vim.fn.input("Note name: ", default_name)
-	if name == "" then
-		message.warn("MemoSaveAsNote: empty note name")
+	local default_expanded = vim.fn.expand(notes_dir .. "/" .. default_name) --[[@as string]]
+	local target = vim.fn.input("Note path: ", utils.get_gpg_path(default_expanded))
+	if target == "" then
+		message.warn("MemoSaveAsNote: empty note path")
 		return false
 	end
 
-	local notes_dir = utils.get_notes_dir() --[[@as string]]
-	local target = vim.fn.expand(notes_dir .. "/" .. name) --[[@as string]]
-	local gpg_path = utils.get_gpg_path(target)
+	if target:sub(1, 1) ~= "/" then
+		target = notes_dir .. "/" .. target
+	end
+	local gpg_path = utils.get_gpg_path(vim.fn.expand(target) --[[@as string]])
+
+	if not utils.is_in_dir(gpg_path, notes_dir) then
+		message.error("MemoSaveAsNote: note path must be inside the notes directory (%s)", notes_dir)
+		return false
+	end
 
 	if vim.fn.filereadable(gpg_path) == 1 then
 		message.error("MemoSaveAsNote: note already exists (%s)", gpg_path)

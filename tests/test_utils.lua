@@ -28,6 +28,32 @@ describe("utils", function()
 		end)
 	end)
 
+	describe("is_in_dir", function()
+		it("returns true when path is inside dir", function()
+			MiniTest.expect.equality(util.is_in_dir("/tmp/memo_test/sub/note.gpg", "/tmp/memo_test"), true)
+		end)
+
+		it("returns true when dir ends with a slash", function()
+			MiniTest.expect.equality(util.is_in_dir("/tmp/memo_test/note.gpg", "/tmp/memo_test/"), true)
+		end)
+
+		it("returns false when path is the dir itself", function()
+			MiniTest.expect.equality(util.is_in_dir("/tmp/memo_test", "/tmp/memo_test"), false)
+		end)
+
+		it("returns false when path is outside dir", function()
+			MiniTest.expect.equality(util.is_in_dir("/tmp/memo_test_other/note.gpg", "/tmp/memo_test"), false)
+		end)
+
+		it("returns false when path escapes dir via ..", function()
+			MiniTest.expect.equality(util.is_in_dir("/tmp/memo_test/../outside/note.gpg", "/tmp/memo_test"), false)
+		end)
+
+		it("returns false for a sibling sharing the dir prefix", function()
+			MiniTest.expect.equality(util.is_in_dir("/tmp/memo_test_evil/note.gpg", "/tmp/memo_test"), false)
+		end)
+	end)
+
 	describe("check_exec", function()
 		it("returns true when binary exists", function()
 			local result = util.check_exec("git")
