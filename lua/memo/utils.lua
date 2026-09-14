@@ -1,5 +1,3 @@
-local message = require("memo.message")
-
 local M = {}
 
 ---Ensures path ends with .gpg
@@ -26,6 +24,7 @@ end
 ---@return boolean
 function M.check_exec(cmd)
 	if vim.fn.executable(cmd) == 0 then
+		local message = require("memo.message")
 		message.error("'%s' binary not found", cmd)
 		return false
 	end
