@@ -18,12 +18,7 @@ describe("autocmd", function()
 			"scripts/minimal_init.lua",
 		})
 
-		child.lua(string.format(
-			[[
-          require('tests.helpers').register_autocmds(%q)
-        ]],
-			vim.env.NOTES_DIR
-		))
+		child.lua([[require('tests.helpers').register_autocmds(...)]], { vim.env.NOTES_DIR })
 	end)
 
 	it("disables swap and unsafe files for GPG notes", function()
@@ -255,14 +250,15 @@ describe("autocmd", function()
 		local test_file = vim.env.NOTES_DIR .. "/broken.md.gpg"
 		vim.fn.writefile({ "-----BEGIN PGP MESSAGE-----", "not really encrypted" }, test_file)
 
-		local target_bufnr = child.lua(string.format(
+		local target_bufnr = child.lua(
 			[[
-        pcall(vim.cmd, "edit %s")
+        local path = ...
+        pcall(vim.cmd, "edit " .. vim.fn.fnameescape(path))
 
         return vim.api.nvim_get_current_buf()
     ]],
-			test_file
-		))
+			{ test_file }
+		)
 
 		child.wait_until(function()
 			return not child.api.nvim_buf_is_valid(target_bufnr)
@@ -280,8 +276,8 @@ describe("autocmd", function()
 		child.api.nvim_buf_set_lines(0, 0, -1, false, { "Normal stuff" })
 		child.cmd("write")
 
-		local result = child.lua([[
-            return {
+		local result = child.lua_get([[
+            {
                 swap = vim.opt_local.swapfile:get(),
                 is_gpg = vim.api.nvim_buf_get_name(0):match("%.gpg$") ~= nil
             }

@@ -203,7 +203,7 @@ end
 --- @param event string The event to check
 --- @return boolean
 function M.autocmd_fired(child, event)
-	return child.lua(string.format([[return _G.autocmd_fired["%s"] or false]], event))
+	return child.lua_get("_G.autocmd_fired[...] or false", { event })
 end
 
 return M

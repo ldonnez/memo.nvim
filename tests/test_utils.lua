@@ -92,12 +92,7 @@ describe("utils", function()
 
 		it("returns false and show message when binary does not exist", function()
 			local cmd = "i-do-not-exst"
-			local result = child.lua(string.format(
-				[[
-        return M.check_exec(%q)
-    ]],
-				cmd
-			))
+			local result = child.lua_get("M.check_exec(...)", { cmd })
 			local messages = child.cmd_capture("messages")
 
 			MiniTest.expect.equality(result, false)

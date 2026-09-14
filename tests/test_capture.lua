@@ -9,16 +9,16 @@ describe("capture", function()
 		})
 
 		-- Load tested plugin
-		child.lua(string.format(
+		child.lua(
 			[[
     core = require("memo.core")
 
-    vim.g.memo_notes_dir = %q
+    vim.g.memo_notes_dir = ...
 
     M = require('memo.capture')
     ]],
-			vim.env.NOTES_DIR
-		))
+			{ vim.env.NOTES_DIR }
+		)
 	end)
 
 	after_each(function()
@@ -45,12 +45,7 @@ describe("capture", function()
 
 			helpers.track_autocmds(child, { "BufReadPre", "BufReadPost" })
 
-			child.lua(string.format(
-				[[
-	       M.register({ capture_file = %q })
-	   ]],
-				capture_file .. ".gpg"
-			))
+			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file .. ".gpg" })
 
 			local swap = child.bo.swapfile
 			local bufhidden = child.bo.bufhidden
@@ -70,12 +65,7 @@ describe("capture", function()
 
 			helpers.encrypt_file(encrypted, "CAPTURE\n")
 
-			child.lua(string.format(
-				[[
-	       M.register({ capture_file = %q })
-	   ]],
-				capture_file .. ".gpg"
-			))
+			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file .. ".gpg" })
 
 			helpers.track_autocmds(child, { "BufWritePre", "BufWritePost" })
 
@@ -110,12 +100,7 @@ describe("capture", function()
 
 			helpers.encrypt_file(encrypted, "CAPTURE")
 
-			child.lua(string.format(
-				[[
-	       M.register({ capture_file = %q })
-	   ]],
-				capture_file .. ".gpg"
-			))
+			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file .. ".gpg" })
 
 			child.cmd("write")
 			local messages = child.cmd_capture("messages")
@@ -125,12 +110,7 @@ describe("capture", function()
 		it("aborts capture when capture window has no content", function()
 			local capture_file = "capture.md"
 
-			child.lua(string.format(
-				[[
-	       M.register({ capture_file = %q })
-	   ]],
-				capture_file .. ".gpg"
-			))
+			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file .. ".gpg" })
 
 			-- empty the buffer
 			local buf = child.api.nvim_get_current_buf()
@@ -145,12 +125,12 @@ describe("capture", function()
 			local capture_file = "capture.md.gpg"
 			local capture_file_path = vim.env.NOTES_DIR .. "/capture.md.gpg"
 
-			child.lua(string.format(
+			child.lua(
 				[[
-	       M.register({ capture_file = %q, capture_template = { target_header = "inbox" }})
+	       M.register({ capture_file = ..., capture_template = { target_header = "inbox" }})
 	   ]],
-				capture_file
-			))
+				{ capture_file }
+			)
 
 			child.type_keys("i", "Integration Test Content", "<Esc>")
 
@@ -175,12 +155,12 @@ describe("capture", function()
 			local capture_file = "journals/capture.md.gpg"
 			local capture_file_path = vim.env.NOTES_DIR .. "/journals/capture.md.gpg"
 
-			child.lua(string.format(
+			child.lua(
 				[[
-	       M.register({ capture_file = %q, capture_template = { target_header = "inbox" }})
+	       M.register({ capture_file = ..., capture_template = { target_header = "inbox" }})
 	   ]],
-				capture_file
-			))
+				{ capture_file }
+			)
 
 			child.type_keys("i", "Integration Test Content", "<Esc>")
 
@@ -204,7 +184,7 @@ describe("capture", function()
 		it("pre-fills the capture window with the characterwise visual selection", function()
 			local capture_file = "visual-capture.md.gpg"
 
-			child.lua("vim.cmd.edit('" .. vim.env.NOTES_DIR .. "/source.txt')")
+			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/source.txt"))
 			child.api.nvim_buf_set_lines(0, 0, -1, false, {
 				"alpha beta gamma",
 				"delta epsilon",
@@ -214,12 +194,7 @@ describe("capture", function()
 			child.cmd("normal! v")
 			child.api.nvim_win_set_cursor(0, { 1, 9 })
 
-			child.lua(string.format(
-				[[
-        M.register({ capture_file = %q })
-        ]],
-				capture_file
-			))
+			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file })
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 			MiniTest.expect.equality(lines, { "beta" })
@@ -228,7 +203,7 @@ describe("capture", function()
 		it("pre-fills the capture window with the linewise visual selection", function()
 			local capture_file = "visual-line-capture.md.gpg"
 
-			child.lua("vim.cmd.edit('" .. vim.env.NOTES_DIR .. "/source.txt')")
+			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/source.txt"))
 			child.api.nvim_buf_set_lines(0, 0, -1, false, {
 				"alpha",
 				"beta",
@@ -242,12 +217,7 @@ describe("capture", function()
 			child.cmd("normal! v")
 			child.api.nvim_win_set_cursor(0, { 3, 4 })
 
-			child.lua(string.format(
-				[[
-			M.register({ capture_file = %q })
-		]],
-				capture_file
-			))
+			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file })
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 			MiniTest.expect.equality(lines, { "beta", "gamma" })
@@ -256,7 +226,7 @@ describe("capture", function()
 		it("pre-fills the capture window when visual selection is made backwards", function()
 			local capture_file = "reverse-visual-capture.md.gpg"
 
-			child.lua("vim.cmd.edit('" .. vim.env.NOTES_DIR .. "/source.txt')")
+			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/source.txt"))
 			child.api.nvim_buf_set_lines(0, 0, -1, false, {
 				"alpha beta gamma",
 			})
@@ -265,12 +235,7 @@ describe("capture", function()
 			child.cmd("normal! v")
 			child.api.nvim_win_set_cursor(0, { 1, 6 })
 
-			child.lua(string.format(
-				[[
-        M.register({ capture_file = %q })
-        ]],
-				capture_file
-			))
+			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file })
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 			MiniTest.expect.equality(lines, { "beta" })
@@ -285,7 +250,7 @@ describe("capture", function()
 		end, { desc = "Capture to braindump" })
 	]])
 
-			child.lua("vim.cmd.edit('" .. vim.env.NOTES_DIR .. "/source.txt')")
+			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/source.txt"))
 			child.api.nvim_buf_set_lines(0, 0, -1, false, {
 				"alpha beta gamma",
 				"delta epsilon",
@@ -312,14 +277,9 @@ describe("capture", function()
 		it("aborts when the source buffer is empty", function()
 			local capture_file = "empty-capture.md.gpg"
 
-			child.lua("vim.cmd.edit('" .. vim.env.NOTES_DIR .. "/source.txt')")
+			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/source.txt"))
 
-			child.lua(string.format(
-				[[
-        M.register({ capture_file = %q, range = { 1, -1 } })
-        ]],
-				capture_file
-			))
+			child.lua([[ M.register({ capture_file = ..., range = { 1, -1 } }) ]], { capture_file })
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 			MiniTest.expect.equality(lines, { "" })
@@ -348,12 +308,7 @@ describe("capture", function()
 			local capture_file = "capture-test-password.md.gpg"
 			local capture_file_path = vim.env.NOTES_DIR .. "/capture-test-password.md.gpg"
 
-			child.lua(string.format(
-				[[
-	      M.register({ capture_file = %q})
-	   ]],
-				capture_file
-			))
+			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file })
 
 			child.type_keys("i", "Integration Test Content 1", "<Esc>")
 
@@ -380,19 +335,19 @@ describe("capture", function()
 
 			helpers.encrypt_file(encrypted, "CAPTURE")
 
-			child.lua(string.format(
+			child.lua(
 				[[
+        local password, capture_file = ...
         local gpg = require("memo.gpg")
 
         gpg.prompt_passphrase = function()
-          return %q
+          return password
         end
 
-	      M.register({ capture_file = %q })
+	      M.register({ capture_file = capture_file })
 	    ]],
-				gpg_key_password,
-				capture_file .. ".gpg"
-			))
+				{ gpg_key_password, capture_file .. ".gpg" }
+			)
 
 			child.type_keys("i", "Integration Test Content 2", "<Esc>")
 

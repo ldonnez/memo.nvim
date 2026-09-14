@@ -50,18 +50,19 @@ describe("core", function()
 
 			helpers.encrypt_file(path, "Line 1\nLine 2\nLine 3\n\n")
 
-			child.lua(string.format(
+			child.lua(
 				[[
+        local path = ...
         local bufnr = vim.api.nvim_create_buf(true, false)
         vim.api.nvim_win_set_buf(0, bufnr)
 
-        M.decrypt_to_buffer(%q, bufnr, function(obj)
+        M.decrypt_to_buffer(path, bufnr, function(obj)
           vim.b.decrypting = false
           return true
         end)
     ]],
-				path
-			))
+				{ path }
+			)
 
 			child.wait_until(function()
 				return child.b.decrypting == false
@@ -79,18 +80,19 @@ describe("core", function()
 			local path = "/tmp/empty.md.gpg"
 			helpers.encrypt_file(path, "")
 
-			child.lua(string.format(
+			child.lua(
 				[[
+        local path = ...
         local bufnr = vim.api.nvim_create_buf(true, false)
         vim.api.nvim_win_set_buf(0, bufnr)
 
-        M.decrypt_to_buffer(%q, bufnr, function(obj)
+        M.decrypt_to_buffer(path, bufnr, function(obj)
           vim.b.decrypting = false
           return true
         end)
     ]],
-				path
-			))
+				{ path }
+			)
 
 			child.wait_until(function()
 				return child.b.decrypting == false
@@ -105,18 +107,19 @@ describe("core", function()
 			local path = "/tmp/no_newline.md.gpg"
 			helpers.encrypt_file(path, "Line 1\nLine 2\nLine 3")
 
-			child.lua(string.format(
+			child.lua(
 				[[
+        local path = ...
         local bufnr = vim.api.nvim_create_buf(true, false)
         vim.api.nvim_win_set_buf(0, bufnr)
 
-        M.decrypt_to_buffer(%q, bufnr, function(obj)
+        M.decrypt_to_buffer(path, bufnr, function(obj)
           vim.b.decrypting = false
           return true
         end)
     ]],
-				path
-			))
+				{ path }
+			)
 
 			child.wait_until(function()
 				return child.b.decrypting == false
@@ -130,8 +133,9 @@ describe("core", function()
 			local path = "/tmp/chunk_test.md.gpg"
 			helpers.encrypt_file(path, "Line 1\nLine 2\nLine 3\n\n")
 
-			child.lua(string.format(
+			child.lua(
 				[[
+        local path = ...
         local gpg = require("memo.gpg")
 
         local bufnr = vim.api.nvim_create_buf(true, false)
@@ -147,13 +151,13 @@ describe("core", function()
           return
         end
 
-        M.decrypt_to_buffer(%q, bufnr, function(obj)
+        M.decrypt_to_buffer(path, bufnr, function(obj)
           vim.b.decrypting = false
           return true
         end)
     ]],
-				path
-			))
+				{ path }
+			)
 
 			child.wait_until(function()
 				return child.b.decrypting == false
@@ -169,7 +173,7 @@ describe("core", function()
 
 			helpers.encrypt_file(path, "Line 1\nLine 2\nLine 3")
 
-			local result = child.lua(string.format([[ return M.decrypt_to_stdout(%q) ]], path))
+			local result = child.lua_get("M.decrypt_to_stdout(...)", { path })
 
 			MiniTest.expect.equality(vim.split(result.stdout, "\n"), { "Line 1", "Line 2", "Line 3" })
 		end)
@@ -261,7 +265,7 @@ describe("core", function()
 			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
 
 			child.lua("vim.fn.input = function() return '' end")
-			local result = child.lua([[return { pcall(function() return M.save_as_note() end) }]])
+			local result = child.lua_get("{ pcall(function() return M.save_as_note() end) }")
 
 			MiniTest.expect.equality(result[1], true)
 			MiniTest.expect.equality(result[2], false)
@@ -276,7 +280,7 @@ describe("core", function()
 			child.type_keys("i", "new content", "<Esc>")
 
 			child.lua("vim.fn.input = function() return 'occupied' end")
-			local result = child.lua([[return { pcall(function() return M.save_as_note() end) }]])
+			local result = child.lua_get("{ pcall(function() return M.save_as_note() end) }")
 
 			MiniTest.expect.equality(result[1], true)
 			MiniTest.expect.equality(result[2], false)
@@ -291,7 +295,7 @@ describe("core", function()
 			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
 
 			child.lua("vim.fn.input = function() return vim.env.HOME .. '/outside.gpg' end")
-			local result = child.lua([[return { pcall(function() return M.save_as_note() end) }]])
+			local result = child.lua_get("{ pcall(function() return M.save_as_note() end) }")
 
 			MiniTest.expect.equality(result[1], true)
 			MiniTest.expect.equality(result[2], false)
@@ -303,7 +307,7 @@ describe("core", function()
 			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
 
 			child.lua("vim.fn.input = function() return '../escape.gpg' end")
-			local result = child.lua([[return { pcall(function() return M.save_as_note() end) }]])
+			local result = child.lua_get("{ pcall(function() return M.save_as_note() end) }")
 
 			MiniTest.expect.equality(result[1], true)
 			MiniTest.expect.equality(result[2], false)
@@ -332,25 +336,25 @@ describe("core", function()
 
 			helpers.encrypt_file(path, "Line 1\nLine 2\nLine 3")
 
-			child.lua(string.format(
+			child.lua(
 				[[
+        local password, path = ...
         local gpg = require("memo.gpg")
 
         local bufnr = vim.api.nvim_create_buf(true, false)
         vim.api.nvim_win_set_buf(0, bufnr)
 
         gpg.prompt_passphrase = function()
-          return %q
+          return password
         end
 
-        M.decrypt_to_buffer(%q, bufnr, function(obj)
+        M.decrypt_to_buffer(path, bufnr, function(obj)
           vim.b.decrypting = false
           return true
         end)
     ]],
-				gpg_key_password,
-				path
-			))
+				{ gpg_key_password, path }
+			)
 
 			child.wait_until(function()
 				return child.b.decrypting == false
@@ -366,19 +370,19 @@ describe("core", function()
 
 			helpers.encrypt_file(path, "Line 1\nLine 2\nLine 3")
 
-			local result = child.lua(string.format(
+			local result = child.lua(
 				[[
+      local password, path = ...
       local gpg = require("memo.gpg")
 
       gpg.prompt_passphrase = function()
-        return %q
+        return password
       end
 
-      return M.decrypt_to_stdout(%q)
+      return M.decrypt_to_stdout(path)
       ]],
-				gpg_key_password,
-				path
-			))
+				{ gpg_key_password, path }
+			)
 
 			MiniTest.expect.equality(vim.split(result.stdout, "\n"), { "Line 1", "Line 2", "Line 3" })
 		end)

@@ -24,19 +24,20 @@ describe("gpg", function()
 		local password = "testpassword"
 		helpers.create_gpg_key("mock-password@example.com", password)
 
-		local result = child.lua(string.format(
+		local result = child.lua(
 			[[
+        local password = ...
         local gpg = require("memo.gpg")
 
         gpg.prompt_passphrase = function(label)
           captured_prompt = label
-          return %q
+          return password
         end
 
         return M.get_gpg_passphrase()
     ]],
-			password
-		))
+			{ password }
+		)
 
 		MiniTest.expect.equality(result, true)
 	end)
@@ -46,19 +47,20 @@ describe("gpg", function()
 		local keyid = "mock-wrong-password@example.com"
 		helpers.create_gpg_key(keyid, password)
 
-		local result = child.lua(string.format(
+		local result = child.lua(
 			[[
+        local password = ...
         local gpg = require("memo.gpg")
 
         gpg.prompt_passphrase = function(label)
           captured_prompt = label
-          return %q
+          return password
         end
 
         return M.get_gpg_passphrase()
     ]],
-			"wrong-password"
-		))
+			{ "wrong-password" }
+		)
 
 		MiniTest.expect.equality(result, false)
 	end)
@@ -69,7 +71,7 @@ describe("gpg", function()
 
 		helpers.encrypt_file(encrypted, "Hello world!")
 
-		local result = child.lua(string.format([[ return M.get_file_key_ids(%q) ]], encrypted))
+		local result = child.lua_get("M.get_file_key_ids(...)", { encrypted })
 
 		MiniTest.expect.equality(result, { key_id })
 	end)
@@ -78,7 +80,7 @@ describe("gpg", function()
 		local encrypted = "/tmp/plain.txt.gpg"
 		helpers.create_gpg_key("mock@example.com")
 		helpers.write_file(encrypted, "Hello World")
-		local result = child.lua(string.format([[ return M.get_file_key_ids(%q) ]], encrypted))
+		local result = child.lua_get("M.get_file_key_ids(...)", { encrypted })
 
 		MiniTest.expect.equality(result, {})
 	end)
@@ -94,7 +96,7 @@ describe("gpg", function()
 
 		helpers.encrypt_file(encrypted, "Hello world!", { env = { GPG_RECIPIENTS = key1 .. "," .. key2 } })
 
-		local result = child.lua(string.format([[ return M.get_file_key_ids(%q) ]], encrypted))
+		local result = child.lua_get("M.get_file_key_ids(...)", { encrypted })
 
 		-- Sort to ensure order
 		table.sort(result)
@@ -113,21 +115,21 @@ describe("gpg", function()
 		helpers.encrypt_file(encrypted, "Hello world!", { env = { GPG_RECIPIENTS = my_id .. "," .. foreign_id } })
 
 		-- It should ask for my_id, NOT foreign_id
-		local result_id = child.lua(string.format(
+		local result_id = child.lua(
 			[[
+        local password, encrypted = ...
         local captured_prompt = ""
 
         require("memo.gpg").prompt_passphrase = function(label)
             captured_prompt = label
-            return %q
+            return password
         end
 
-        M.get_gpg_passphrase(%q)
+        M.get_gpg_passphrase(encrypted)
         return captured_prompt
        ]],
-			password,
-			encrypted
-		))
+			{ password, encrypted }
+		)
 
 		MiniTest.expect.equality(result_id, "Mock Test Key <me@example.com> (" .. my_id .. ")")
 	end)
