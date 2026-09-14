@@ -54,6 +54,19 @@ describe("utils", function()
 		end)
 	end)
 
+	describe("get_notes_dir", function()
+		it("defaults to the home notes dir", function()
+			vim.g.memo_notes_dir = nil
+			MiniTest.expect.equality(util.get_notes_dir(), vim.fn.expand("~/notes"))
+		end)
+
+		it("returns vim.g.memo_notes_dir when set", function()
+			vim.g.memo_notes_dir = "/tmp/memo-custom-notes"
+			MiniTest.expect.equality(util.get_notes_dir(), "/tmp/memo-custom-notes")
+			vim.g.memo_notes_dir = nil
+		end)
+	end)
+
 	describe("get_scratch_dir", function()
 		it("defaults to the nvim data dir", function()
 			vim.g.memo_scratch_dir = nil
