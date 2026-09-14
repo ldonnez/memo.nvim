@@ -3,7 +3,7 @@ local M = {}
 function M.setup()
 	local notes_dir = vim.fn.expand(vim.g.memo_notes_dir or "~/notes") --[[@as string]]
 
-	local scratch_dir = vim.fn.expand(vim.fn.stdpath("data") .. "/memo-scratch") --[[@as string]]
+	local scratch_dir = require("memo.utils").get_scratch_dir()
 
 	if not notes_dir or notes_dir == "" then
 		return

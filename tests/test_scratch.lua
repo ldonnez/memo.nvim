@@ -40,6 +40,16 @@ describe("scratch", function()
 			MiniTest.expect.equality(vim.fn.fnamemodify(name, ":e"), "gpg")
 		end)
 
+		it("uses vim.g.memo_scratch_dir when set", function()
+			child.lua("vim.g.memo_scratch_dir = vim.env.HOME .. '/memo-custom-scratch'")
+			child.lua("M.create()")
+			local buffer = child.api.nvim_get_current_buf()
+			local name = child.api.nvim_buf_get_name(buffer)
+
+			MiniTest.expect.equality(vim.startswith(name, vim.env.HOME .. "/memo-custom-scratch/"), true)
+			MiniTest.expect.equality(vim.fn.fnamemodify(name, ":e"), "gpg")
+		end)
+
 		it("names the scratch file with the cwd path and a timestamp", function()
 			child.lua("M.create()")
 

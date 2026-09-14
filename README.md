@@ -39,6 +39,7 @@ Lazy loading is already handled inside the plugin!
 
 -- Should be set before running vim.pack.add!
 vim.g.memo_notes_dir = "~/my-notes-dir" -- Default is ~/notes when not set.
+vim.g.memo_scratch_dir = "~/.local/state/memo-scratch" -- Default is stdpath('data')/memo-scratch when not set.
 
 vim.pack.add({
 	{ src = "https://github.com/ldonnez/memo.nvim", version = vim.version.range("*") },
@@ -80,6 +81,7 @@ end, { desc = "Sync with git" })
   "ldonnez/memo.nvim",
   init = function()
     vim.g.memo_notes_dir = "~/my-notes-dir" -- Default is ~/notes when not set.
+    vim.g.memo_scratch_dir = "~/.local/state/memo-scratch" -- Default is stdpath('data')/memo-scratch when not set.
   end,
   keys = {
     {
@@ -155,7 +157,7 @@ require("conform").setup({
 
 ### Encrypted scratch buffers
 
-**memo.nvim** provides an encrypted scratch buffer for throwaway, sensitive content. Content is encrypted with your GPG key on each write into a `.gpg` file under Neovim's data directory (`data/memo-scratch/`, where `data` is `vim.fn.stdpath("data")`, e.g. `~/.local/share/nvim`), avoiding plaintext on disk and keeping it out of your notes git sync. Each file is named after the `cwd` it was created in plus a timestamp, so buffers opened from different projects never collide. Because the buffer is an ordinary file in your data directory, it reuses the regular memo read/write autocmds: the file is transparently decrypted when opened and re-encrypted on write. The encrypted files persist, so scratch buffers survive restarts and sessions (e.g. [auto-session](https://github.com/rmagatti/auto-session)) like any other memo note.
+**memo.nvim** provides an encrypted scratch buffer for throwaway, sensitive content. Content is encrypted with your GPG key on each write into a `.gpg` file under a configurable scratch directory (`vim.g.memo_scratch_dir`; defaults to `data/memo-scratch/`, where `data` is `vim.fn.stdpath("data")`, e.g. `~/.local/share/nvim`), avoiding plaintext on disk and keeping it out of your notes git sync. Each file is named after the `cwd` it was created in plus a timestamp, so buffers opened from different projects never collide. Because the buffer is an ordinary file in your scratch directory, it reuses the regular memo read/write autocmds: the file is transparently decrypted when opened and re-encrypted on write. The encrypted files persist, so scratch buffers survive restarts and sessions (e.g. [auto-session](https://github.com/rmagatti/auto-session)) like any other memo note.
 
 ```lua
 vim.keymap.set("n", "<leader>ms", function()
