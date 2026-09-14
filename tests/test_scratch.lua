@@ -225,6 +225,7 @@ describe("scratch", function()
 			local scratch = child.api.nvim_buf_get_name(scratch_buf)
 
 			child.type_keys("i", "Scratch to note", "<Esc>")
+			child.cmd("write")
 
 			-- stub the interactive prompt with the note name
 			child.lua("vim.fn.input = function() return 'ideas' end")
@@ -232,15 +233,13 @@ describe("scratch", function()
 
 			local note = vim.env.NOTES_DIR .. "/ideas.gpg"
 			MiniTest.expect.equality(child.fn.filereadable(note), 1)
-			child.wait_until(function()
-				return child.api.nvim_buf_is_valid(scratch_buf) == false
-			end)
+			MiniTest.expect.equality(child.api.nvim_buf_is_valid(scratch_buf), true)
+			MiniTest.expect.equality(child.fn.filereadable(scratch), 1)
 
 			local result = helpers.decrypt_file(note)
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(result.stdout:find("Scratch to note") ~= nil, true)
-			MiniTest.expect.equality(child.fn.filereadable(scratch), 0)
 		end)
 
 		it("respects the typed extension and appends .gpg", function()
@@ -307,10 +306,7 @@ describe("scratch", function()
 
 			local note = vim.env.NOTES_DIR .. "/password-note.gpg"
 			MiniTest.expect.equality(child.fn.filereadable(note), 1)
-
-			child.wait_until(function()
-				return child.api.nvim_buf_is_valid(scratch_buf) == false
-			end)
+			MiniTest.expect.equality(child.api.nvim_buf_is_valid(scratch_buf), true)
 
 			local result = helpers.decrypt_file(note)
 			MiniTest.expect.equality(result.code, 0)

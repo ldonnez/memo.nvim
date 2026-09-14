@@ -194,7 +194,7 @@ The scratch picker also supports deleting the selected scratch files (scratch co
 
 **memo.nvim** lets you turn any buffer into a note in your notes directory with `:MemoSaveAsNote` (or `require("memo").save_as_note()`). It prompts for a note path (defaulting to `<notes_dir>/<name>.gpg`, where `<name>` is the current buffer's name without the `.gpg` extension) so it is clear where the note will be stored. A relative path is resolved against `<notes_dir>`, and the resolved path must stay inside `<notes_dir>` — saving elsewhere is refused, as is overwriting an existing note or using an empty path.
 
-This pairs naturally with scratch buffers: write something ephemeral in a `:MemoScratch` window, then promote it to a permanent note. When the current buffer is a scratch buffer, saving closes it (its on-disk temp file is removed); regular buffers are left open so you can keep working.
+This pairs naturally with scratch buffers: write something ephemeral in a `:MemoScratch` window, then promote it to a permanent note. The current buffer is left open afterward, whether it is a scratch buffer or a regular one, so you can keep working.
 
 ```lua
 vim.keymap.set("n", "<leader>msn", function()

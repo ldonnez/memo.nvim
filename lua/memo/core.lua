@@ -98,17 +98,13 @@ end
 ---Prompts for the note path (defaulting to `<notes_dir>/<name>.gpg`) so it is
 ---clear where the note will be stored, encrypts the buffer contents and writes
 ---it there. A relative path is resolved against `<notes_dir>`; the resolved
----path must stay inside `<notes_dir>`. Scratch buffers are closed afterward
----(their on-disk temp file is removed by the BufDelete autocmd registered in
----plugin/memo.lua); other buffers are left open.
+---path must stay inside `<notes_dir>`. The buffer is left open afterward.
 ---@return boolean success
 function M.save_as_note()
 	local utils = require("memo.utils")
 
 	local bufnr = vim.api.nvim_get_current_buf()
 	local current = vim.api.nvim_buf_get_name(bufnr)
-	local scratch_dir = vim.fn.fnamemodify(utils.get_scratch_dir(), ":p")
-	local is_scratch = current:sub(1, #scratch_dir) == scratch_dir
 
 	local notes_dir = utils.get_notes_dir() --[[@as string]]
 	local default_name = vim.fn.fnamemodify(current, ":t"):gsub("%.gpg$", "")
@@ -148,10 +144,6 @@ function M.save_as_note()
 	end
 
 	message.info("Saved note: %s", gpg_path)
-
-	if is_scratch then
-		vim.api.nvim_buf_delete(bufnr, { force = true })
-	end
 
 	return true
 end
