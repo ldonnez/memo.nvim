@@ -40,7 +40,8 @@ end
 
 ---@return string
 function M.get_scratch_dir()
-	return vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
+	local default = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
+	return vim.fn.expand(vim.g.memo_scratch_dir or default) --[[@as string]]
 end
 
 ---Lazily load a plugin with fallback to packadd (only for Neovim 0.12+)
