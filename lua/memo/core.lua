@@ -102,23 +102,21 @@ end
 ---@return boolean success
 function M.save_as_note()
 	local utils = require("memo.utils")
-
 	local bufnr = vim.api.nvim_get_current_buf()
+	local notes_dir = utils.get_notes_dir() --[[@as string]]
 	local current = vim.api.nvim_buf_get_name(bufnr)
 
-	local notes_dir = utils.get_notes_dir() --[[@as string]]
 	local default_name = vim.fn.fnamemodify(current, ":t"):gsub("%.gpg$", "")
-	local default_expanded = vim.fn.expand(notes_dir .. "/" .. default_name) --[[@as string]]
-	local target = vim.fn.input("Note path: ", utils.get_gpg_path(default_expanded))
+	local default_path = utils.get_gpg_path(notes_dir .. "/" .. default_name)
+	local target = vim.fn.input("Note path: ", default_path)
+
 	if target == "" then
 		message.warn("MemoSaveAsNote: empty note path")
 		return false
 	end
 
-	if target:sub(1, 1) ~= "/" then
-		target = notes_dir .. "/" .. target
-	end
-	local gpg_path = utils.get_gpg_path(vim.fn.expand(target) --[[@as string]])
+	local path = target:sub(1, 1) == "/" and target or notes_dir .. "/" .. target
+	local gpg_path = utils.get_gpg_path(vim.fn.expand(path) --[[@as string]])
 
 	if not utils.is_in_dir(gpg_path, notes_dir) then
 		message.error("MemoSaveAsNote: note path must be inside the notes directory (%s)", notes_dir)
@@ -130,13 +128,9 @@ function M.save_as_note()
 		return false
 	end
 
-	local dir = vim.fn.fnamemodify(gpg_path, ":h")
-	if vim.fn.isdirectory(dir) == 0 then
-		vim.fn.mkdir(dir, "p")
-	end
+	vim.fn.mkdir(vim.fn.fnamemodify(gpg_path, ":h"), "p")
 
-	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-	local result = M.encrypt_from_stdin(gpg_path, lines)
+	local result = M.encrypt_from_stdin(gpg_path, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
 
 	if result.code ~= 0 then
 		message.error("MemoSaveAsNote: encryption failed")
@@ -144,7 +138,6 @@ function M.save_as_note()
 	end
 
 	message.info("Saved note: %s", gpg_path)
-
 	return true
 end
 
