@@ -124,8 +124,11 @@ function M.save_as_note()
 	end
 
 	if vim.fn.filereadable(gpg_path) == 1 then
-		message.error("MemoSaveAsNote: note already exists (%s)", gpg_path)
-		return false
+		local choice = vim.fn.confirm("Note already exists. Overwrite?", "&Yes\n&No", 2)
+		if choice ~= 1 then
+			message.warn("MemoSaveAsNote: aborted")
+			return false
+		end
 	end
 
 	vim.fn.mkdir(vim.fn.fnamemodify(gpg_path, ":h"), "p")

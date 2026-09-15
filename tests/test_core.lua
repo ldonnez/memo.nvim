@@ -272,7 +272,7 @@ describe("core", function()
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), vim.env.NOTES_DIR .. "/random.txt")
 		end)
 
-		it("save_as_note: refuses to overwrite an existing note", function()
+		it("save_as_note: refuses to overwrite when user declines", function()
 			local existing = vim.env.NOTES_DIR .. "/occupied.gpg"
 			helpers.encrypt_file(existing, "old content\n")
 
@@ -280,6 +280,7 @@ describe("core", function()
 			child.type_keys("i", "new content", "<Esc>")
 
 			child.lua("vim.fn.input = function() return 'occupied' end")
+			child.lua("vim.fn.confirm = function() return 2 end")
 			local result = child.lua_get("{ pcall(function() return M.save_as_note() end) }")
 
 			MiniTest.expect.equality(result[1], true)
@@ -289,6 +290,26 @@ describe("core", function()
 			MiniTest.expect.equality(decrypted.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(decrypted.stdout:find("old content") ~= nil, true)
+		end)
+
+		it("save_as_note: overwrites when user confirms", function()
+			local existing = vim.env.NOTES_DIR .. "/occupied.gpg"
+			helpers.encrypt_file(existing, "old content\n")
+
+			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
+			child.type_keys("i", "new content", "<Esc>")
+
+			child.lua("vim.fn.input = function() return 'occupied' end")
+			child.lua("vim.fn.confirm = function() return 1 end")
+			local result = child.lua_get("{ pcall(function() return M.save_as_note() end) }")
+
+			MiniTest.expect.equality(result[1], true)
+			MiniTest.expect.equality(result[2], true)
+
+			local decrypted = helpers.decrypt_file(existing)
+			MiniTest.expect.equality(decrypted.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(decrypted.stdout:find("new content") ~= nil, true)
 		end)
 
 		it("save_as_note: refuses an absolute path outside the notes dir", function()
