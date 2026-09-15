@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/ldonnez/memo.nvim/compare/v0.10.0...v0.11.0) (2026-09-15)
+
+
+### Features
+
+* ask to overwrite when note already exists ([d754a9d](https://github.com/ldonnez/memo.nvim/commit/d754a9dc7805c6ebf19ce1ee920f6abce6b7d3c7))
+
 ## [0.10.0](https://github.com/ldonnez/memo.nvim/compare/v0.9.0...v0.10.0) (2026-09-14)
 
 
