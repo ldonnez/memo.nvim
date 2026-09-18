@@ -108,7 +108,7 @@ function M.save_as_note()
 
 	local default_name = vim.fn.fnamemodify(current, ":t"):gsub("%.gpg$", "")
 	local default_path = utils.get_gpg_path(notes_dir .. "/" .. default_name)
-	local target = vim.fn.input("Note path: ", default_path)
+	local target = vim.fn.input("Note path: ", default_path, "file")
 
 	if target == "" then
 		message.warn("MemoSaveAsNote: empty note path")
