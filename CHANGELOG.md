@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/ldonnez/memo.nvim/compare/v0.11.0...v0.11.1) (2026-09-18)
+
+
+### Bug Fixes
+
+* ensure file path completion ([84d12d3](https://github.com/ldonnez/memo.nvim/commit/84d12d31f4f5fa115a4c97ded2b550f65220bcb1))
+
 ## [0.11.0](https://github.com/ldonnez/memo.nvim/compare/v0.10.0...v0.11.0) (2026-09-15)
 
 
