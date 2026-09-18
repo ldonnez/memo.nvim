@@ -12,7 +12,7 @@ else
 endif
 
 
-EMMYLUA_REF := 0.23.2
+EMMYLUA_REF := 0.25.1
 EMMYLUA_RELEASE_URL := https://github.com/EmmyLuaLs/emmylua-analyzer-rust/releases/download/$(EMMYLUA_REF)/emmylua_check-$(OS)-$(ARCH).tar.gz
 EMMYLUA_RELEASE_TAR := deps/emmylua_check-$(EMMYLUA_REF)-$(OS)-$(ARCH).tar.gz
 EMMYLUA_DIR := deps/emmylua
