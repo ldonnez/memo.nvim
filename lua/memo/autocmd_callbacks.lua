@@ -42,12 +42,9 @@ local function prepare_buffer_for_edit(bufnr)
 	vim.bo[bufnr].fileencoding = "utf-8"
 	vim.bo[bufnr].modified = false
 
-	if vim.api.nvim_buf_is_valid(bufnr) then
-		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-		vim.b[bufnr].hash = vim.fn.sha256(table.concat(lines, "\n"))
-
-		vim.b[bufnr].decrypting = false
-	end
+	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+	vim.b[bufnr].hash = vim.fn.sha256(table.concat(lines, "\n"))
+	vim.b[bufnr].decrypting = false
 end
 
 ---@param path string
