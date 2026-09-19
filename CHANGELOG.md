@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/ldonnez/memo.nvim/compare/v0.11.1...v0.12.0) (2026-09-19)
+
+
+### Features
+
+* add ignore patterns ([99ef65a](https://github.com/ldonnez/memo.nvim/commit/99ef65af2f8e4174039c1112ce1eea6ac9b1c2ad))
+
 ## [0.11.1](https://github.com/ldonnez/memo.nvim/compare/v0.11.0...v0.11.1) (2026-09-18)
 
 
