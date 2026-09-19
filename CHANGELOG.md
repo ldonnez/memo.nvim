@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.1](https://github.com/ldonnez/memo.nvim/compare/v0.12.0...v0.12.1) (2026-09-19)
+
+
+### Bug Fixes
+
+* avoid overlapping notes and scratch patterns in autocmd ([e733a32](https://github.com/ldonnez/memo.nvim/commit/e733a32aa4b37b85b74665510694a74607a5036c))
+* only delete scratch files matching a pattern ([89cdbef](https://github.com/ldonnez/memo.nvim/commit/89cdbef639ed58f5771d89c3f6e9e9abf870af72))
+
 ## [0.12.0](https://github.com/ldonnez/memo.nvim/compare/v0.11.1...v0.12.0) (2026-09-19)
 
 
