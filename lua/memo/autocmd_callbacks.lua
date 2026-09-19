@@ -55,6 +55,36 @@ local function is_armored_gpg(path)
 	return lines[1] == "-----BEGIN PGP MESSAGE-----"
 end
 
+--- @param bufnr integer
+local function write_regular_file(bufnr)
+	vim.api.nvim_exec_autocmds("BufWritePre", {
+		buffer = bufnr,
+		modeline = false,
+	})
+
+	vim.cmd("silent noautocmd write")
+
+	vim.api.nvim_exec_autocmds("BufWritePost", {
+		buffer = bufnr,
+		modeline = false,
+	})
+end
+
+--- @param bufnr integer
+local function read_regular_file(bufnr, path)
+	vim.api.nvim_exec_autocmds("BufReadPre", {
+		buffer = bufnr,
+		modeline = false,
+	})
+
+	vim.cmd("silent noautocmd edit " .. vim.fn.fnameescape(path))
+
+	vim.api.nvim_exec_autocmds("BufReadPost", {
+		buffer = bufnr,
+		modeline = false,
+	})
+end
+
 --- @param args vim.api.keyset.create_autocmd.callback_args
 function M.on_read(args)
 	local bufnr = args.buf
@@ -67,7 +97,7 @@ function M.on_read(args)
 	vim.bo[bufnr].filetype = vim.filetype.match({ filename = base })
 
 	if is_ignored(args.file) then
-		vim.cmd("silent edit " .. vim.fn.fnameescape(args.file))
+		read_regular_file(bufnr, vim.fn.fnameescape(args.file))
 		return
 	end
 
@@ -85,7 +115,7 @@ function M.on_read(args)
 	end
 
 	if not is_armored_gpg(gpg_path) then
-		vim.cmd("silent edit " .. vim.fn.fnameescape(args.file))
+		read_regular_file(bufnr, vim.fn.fnameescape(args.file))
 		return
 	end
 
@@ -117,7 +147,7 @@ function M.on_write(args)
 	local message = require("memo.message")
 
 	if is_ignored(args.file) then
-		vim.cmd("silent write")
+		write_regular_file(bufnr)
 		return
 	end
 
