@@ -1,5 +1,9 @@
 local M = {}
 
+local function is_same_or_child(path, parent)
+	return path == parent or vim.startswith(path, parent .. "/")
+end
+
 function M.setup()
 	local config = require("memo.config")
 
@@ -10,17 +14,20 @@ function M.setup()
 		return
 	end
 
-	local abs_notes = vim.fn.fnamemodify(notes_dir, ":p")
-	local abs_scratch = vim.fn.fnamemodify(scratch_dir, ":p")
+	local abs_notes = vim.fn.fnamemodify(notes_dir, ":p"):gsub("/$", "")
+	local abs_scratch = vim.fn.fnamemodify(scratch_dir, ":p"):gsub("/$", "")
+
+	local patterns = { abs_notes .. "/*" }
+
+	if not is_same_or_child(abs_scratch, abs_notes) then
+		table.insert(patterns, abs_scratch .. "/*")
+	end
 
 	local GROUP = vim.api.nvim_create_augroup("MemoGpg", { clear = true })
 
 	vim.api.nvim_create_autocmd("BufReadCmd", {
 		group = GROUP,
-		pattern = {
-			abs_notes .. "*",
-			abs_scratch .. "*",
-		},
+		pattern = patterns,
 		callback = function(args)
 			local memo = require("memo.autocmd_callbacks")
 			memo.on_read(args)
@@ -29,10 +36,7 @@ function M.setup()
 
 	vim.api.nvim_create_autocmd("BufWriteCmd", {
 		group = GROUP,
-		pattern = {
-			abs_notes .. "*",
-			abs_scratch .. "*",
-		},
+		pattern = patterns,
 		callback = function(args)
 			local memo = require("memo.autocmd_callbacks")
 			memo.on_write(args)

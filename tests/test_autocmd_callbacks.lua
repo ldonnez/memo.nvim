@@ -494,4 +494,87 @@ describe("autocmd", function()
 			end)
 		end
 	end)
+
+	describe("overlapping notes and scratch directories", function()
+		before_each(function()
+			child.restart({
+				"-u",
+				"scripts/minimal_init.lua",
+			})
+		end)
+
+		it("registers only one pattern when scratch dir equals notes dir", function()
+			child.lua([[
+				vim.g.memo_scratch_dir = vim.env.NOTES_DIR
+
+				-- Rerun setup so the custom scratch directory is picked up.
+				require("memo.config").setup()
+	      require("plugin.memo")
+			]])
+
+			local read_autocmds = child.api.nvim_get_autocmds({
+				group = "MemoGpg",
+				event = "BufReadCmd",
+			})
+			local write_autocmds = child.api.nvim_get_autocmds({
+				group = "MemoGpg",
+				event = "BufWriteCmd",
+			})
+
+			MiniTest.expect.equality(#read_autocmds, 1)
+			MiniTest.expect.equality(#write_autocmds, 1)
+			MiniTest.expect.equality(read_autocmds[1].pattern, vim.env.NOTES_DIR .. "/*")
+			MiniTest.expect.equality(write_autocmds[1].pattern, vim.env.NOTES_DIR .. "/*")
+		end)
+
+		it("registers only one pattern when scratch dir is inside notes dir", function()
+			child.lua([[
+				vim.g.memo_scratch_dir = vim.env.NOTES_DIR .. "/scratch"
+
+				-- Rerun setup so the custom scratch directory is picked up.
+				require("memo.config").setup()
+	      require("plugin.memo")
+			]])
+
+			local read_autocmds = child.api.nvim_get_autocmds({
+				group = "MemoGpg",
+				event = "BufReadCmd",
+			})
+			local write_autocmds = child.api.nvim_get_autocmds({
+				group = "MemoGpg",
+				event = "BufWriteCmd",
+			})
+
+			MiniTest.expect.equality(#read_autocmds, 1)
+			MiniTest.expect.equality(#write_autocmds, 1)
+			MiniTest.expect.equality(read_autocmds[1].pattern, vim.env.NOTES_DIR .. "/*")
+			MiniTest.expect.equality(write_autocmds[1].pattern, vim.env.NOTES_DIR .. "/*")
+		end)
+
+		it("registers separate patterns when scratch dir is outside notes dir", function()
+			child.lua([[
+				vim.g.memo_scratch_dir = vim.env.HOME .. "/memo-scratch"
+
+				-- Rerun setup so the custom scratch directory is picked up.
+				require("memo.config").setup()
+	      require("plugin.memo")
+			]])
+
+			local read_autocmds = child.api.nvim_get_autocmds({
+				group = "MemoGpg",
+				event = "BufReadCmd",
+			})
+			local write_autocmds = child.api.nvim_get_autocmds({
+				group = "MemoGpg",
+				event = "BufWriteCmd",
+			})
+
+			MiniTest.expect.equality(#read_autocmds, 2)
+			MiniTest.expect.equality(#write_autocmds, 2)
+			MiniTest.expect.equality(read_autocmds[1].pattern, vim.env.NOTES_DIR .. "/*")
+			MiniTest.expect.equality(write_autocmds[1].pattern, vim.env.NOTES_DIR .. "/*")
+			MiniTest.expect.equality(read_autocmds[2].pattern, vim.env.HOME .. "/memo-scratch" .. "/*")
+			MiniTest.expect.equality(write_autocmds[2].pattern, vim.env.HOME .. "/memo-scratch" .. "/*")
+		end)
+	end)
 end)
