@@ -38,4 +38,10 @@ function M.create(direction)
 	vim.cmd("silent edit " .. vim.fn.fnameescape(file))
 end
 
+function M.is_scratch_file(path)
+	local filename = vim.fn.fnamemodify(path, ":t")
+
+	return filename:match("^[^/]+%-%d%d%d%d%d%d%d%dT%d%d%d%d%d%d%-%x%x%x%x%x%x%.gpg$") ~= nil
+end
+
 return M

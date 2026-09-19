@@ -19,6 +19,52 @@ describe("scratch", function()
 		return (vim.fn.getcwd():gsub("[^%w%-]", "%%"))
 	end
 
+	describe("is_scratch_file", function()
+		local scratch_dir = "/tmp/memo-scratch"
+
+		it("matches a valid scratch file", function()
+			local path = scratch_dir .. "/_home_user_project-20260920T012345-a1b2c3.gpg"
+
+			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), true)
+		end)
+
+		it("matches scratch files with percent characters in cwd key", function()
+			local path = scratch_dir .. "/%home%user%project-20260920T012345-a1b2c3.gpg"
+
+			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), true)
+		end)
+
+		it("rejects a regular gpg file", function()
+			local path = scratch_dir .. "/important.gpg"
+
+			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), false)
+		end)
+
+		it("rejects a file with an invalid timestamp", function()
+			local path = scratch_dir .. "/_home_user_project-20260920-invalid-a1b2c3.gpg"
+
+			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), false)
+		end)
+
+		it("rejects a file with an invalid hash", function()
+			local path = scratch_dir .. "/_home_user_project-20260920T012345-xyz123.gpg"
+
+			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), false)
+		end)
+
+		it("rejects a non-gpg file", function()
+			local path = scratch_dir .. "/_home_user_project-20260920T012345-a1b2c3.md"
+
+			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), false)
+		end)
+
+		it("rejects a scratch-looking filename without the hash", function()
+			local path = scratch_dir .. "/_home_user_project-20260920T012345.gpg"
+
+			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), false)
+		end)
+	end)
+
 	describe("with gpg key without password", function()
 		setup(function()
 			helpers.setup_test_env()
@@ -209,6 +255,19 @@ describe("scratch", function()
 
 			MiniTest.expect.equality(child.fn.buflisted(name), 0)
 			MiniTest.expect.equality(child.fn.filereadable(name), 0)
+		end)
+
+		it("does not delete unrelated gpg files in scratch dir", function()
+			local scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
+			local encrypted = vim.fs.joinpath(scratch_dir, "important.gpg")
+
+			vim.fn.mkdir(scratch_dir, "p")
+			helpers.encrypt_file(encrypted, "Do not delete")
+
+			child.cmd("edit " .. encrypted)
+			child.cmd("bdelete!")
+
+			MiniTest.expect.equality(child.fn.filereadable(encrypted), 1)
 		end)
 
 		it("deletes the encrypted file when the buffer is wiped", function()

@@ -331,7 +331,7 @@ describe("autocmd", function()
 
 	it("deletes a scratch .gpg file when its buffer is deleted", function()
 		local scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
-		local encrypted = vim.fs.joinpath(scratch_dir, "test.gpg")
+		local encrypted = vim.fs.joinpath(scratch_dir, "_home_user_project-20260920T012345-a1b2c3.gpg")
 
 		vim.fn.mkdir(scratch_dir, "p")
 		helpers.encrypt_file(encrypted, "Temporary scratch")

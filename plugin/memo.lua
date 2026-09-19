@@ -48,6 +48,11 @@ function M.setup()
 		pattern = abs_scratch .. "*.gpg",
 		callback = function(args)
 			local path = vim.api.nvim_buf_get_name(args.buf)
+			local scratch = require("memo.scratch")
+
+			if not scratch.is_scratch_file(path) then
+				return
+			end
 
 			if vim.fn.filereadable(path) == 1 then
 				vim.fn.delete(path)
