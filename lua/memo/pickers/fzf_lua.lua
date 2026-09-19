@@ -1,4 +1,5 @@
 local utils = require("memo.utils")
+local config = require("memo.config")
 local M = {}
 
 ---Delete the selected scratch files, also wiping any buffer that has them
@@ -47,7 +48,7 @@ function M.files_picker()
 		return
 	end
 
-	pick(fzf, utils.get_notes_dir())
+	pick(fzf, config.notes_dir())
 end
 
 function M.scratch_files_picker()
@@ -57,7 +58,7 @@ function M.scratch_files_picker()
 		return
 	end
 
-	pick(fzf, utils.get_scratch_dir(), true)
+	pick(fzf, config.scratch_dir(), true)
 end
 
 return M

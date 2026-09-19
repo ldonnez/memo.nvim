@@ -54,35 +54,6 @@ describe("utils", function()
 		end)
 	end)
 
-	describe("get_notes_dir", function()
-		it("defaults to the home notes dir", function()
-			vim.g.memo_notes_dir = nil
-			MiniTest.expect.equality(util.get_notes_dir(), vim.fn.expand("~/notes"))
-		end)
-
-		it("returns vim.g.memo_notes_dir when set", function()
-			vim.g.memo_notes_dir = "/tmp/memo-custom-notes"
-			MiniTest.expect.equality(util.get_notes_dir(), "/tmp/memo-custom-notes")
-			vim.g.memo_notes_dir = nil
-		end)
-	end)
-
-	describe("get_scratch_dir", function()
-		it("defaults to the nvim data dir", function()
-			vim.g.memo_scratch_dir = nil
-			MiniTest.expect.equality(
-				util.get_scratch_dir(),
-				vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
-			)
-		end)
-
-		it("returns vim.g.memo_scratch_dir when set", function()
-			vim.g.memo_scratch_dir = "/tmp/memo-custom-scratch"
-			MiniTest.expect.equality(util.get_scratch_dir(), "/tmp/memo-custom-scratch")
-			vim.g.memo_scratch_dir = nil
-		end)
-	end)
-
 	describe("check_exec", function()
 		it("returns true when binary exists", function()
 			local result = util.check_exec("git")

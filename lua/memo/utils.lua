@@ -31,18 +31,6 @@ function M.check_exec(cmd)
 	return true
 end
 
----@return string
-function M.get_notes_dir()
-	local dir = vim.fn.expand(vim.g.memo_notes_dir or "~/notes") --[[@as string]]
-	return dir
-end
-
----@return string
-function M.get_scratch_dir()
-	local default = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
-	return vim.fn.expand(vim.g.memo_scratch_dir or default) --[[@as string]]
-end
-
 ---Lazily load a plugin with fallback to packadd (only for Neovim 0.12+)
 ---@param import_name string e.g. "conform"
 ---@param plugin_name string? e.g. "conform.nvim", defaults to import_name

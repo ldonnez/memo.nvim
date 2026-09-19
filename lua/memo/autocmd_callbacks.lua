@@ -1,16 +1,5 @@
 local M = {}
 
-local default_ignore_patterns = {
-	"**/.git/**",
-	"**/.gitignore",
-	"**/.gitattributes",
-	"**/.gitmodules",
-}
-
--- Merge user-defined ignore patterns into the defaults without mutating the default table.
--- `vim.g.memo_ignore_patterns` is optional; when unset only the defaults are used.
-local ignore_patterns = vim.list_extend(vim.deepcopy(default_ignore_patterns), vim.g.memo_ignore_patterns or {})
-
 ---@param path string
 ---@return boolean
 local function is_ignored(path)
@@ -18,6 +7,8 @@ local function is_ignored(path)
 	-- separator (`/\.gitignore`), so the subject must be absolute for the
 	-- pattern to match a bare basename (e.g. `args.file == ".gitignore"`).
 	local absolute = vim.fn.fnamemodify(path, ":p")
+	local config = require("memo.config")
+	local ignore_patterns = config.ignore_patterns()
 
 	for _, pattern in ipairs(ignore_patterns) do
 		if vim.fn.match(absolute, vim.fn.glob2regpat(pattern)) >= 0 then
