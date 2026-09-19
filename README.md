@@ -14,6 +14,7 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo) a CLI-base
 - [Installation with example configuration](#installation-with-default-configuration)
   - [Install with vim.pack](#install-with-vimpack)
   - [Install with lazy.nvim](#install-with-lazynvim)
+- [Configuration](#configuration)
 - [Features](#features)
 - [Transparant editing](#transparant-editing)
 - [Encrypted scratch buffers](#encrypted-scratch-buffers)
@@ -117,6 +118,102 @@ end, { desc = "Sync with git" })
 
 > [!IMPORTANT]
 > Check with `:checkhealth memo` to verify if dependencies are met and to ensure the plugin is correctly loaded.
+
+## Configuration
+
+`memo.nvim` can be configured using global variables. All configuration values are optional and fall back to their defaults when not set.
+
+```lua
+vim.g.memo_notes_dir = "~/my-notes"
+vim.g.memo_scratch_dir = "~/.local/state/memo-scratch"
+
+vim.g.memo_ignore_patterns = {
+  "**/.env",
+  "**/tmp/**",
+}
+```
+
+### Notes directory
+
+`vim.g.memo_notes_dir` configures the directory containing your encrypted notes.
+
+Default:
+
+```text
+~/notes
+```
+
+```lua
+vim.g.memo_notes_dir = "~/my-notes"
+```
+
+### Scratch directory
+
+`vim.g.memo_scratch_dir` configures where encrypted scratch files are stored.
+
+Default:
+
+```text
+vim.fn.stdpath("data")/memo-scratch
+```
+
+For example, on a typical Linux installation this is:
+
+```text
+~/.local/share/nvim/memo-scratch
+```
+
+```lua
+vim.g.memo_scratch_dir = "~/.local/state/memo-scratch"
+```
+
+### Ignore patterns
+
+`vim.g.memo_ignore_patterns` allows you to specify additional files and directories that `memo.nvim` should ignore.
+
+Patterns use `.gitignore`-style glob patterns. Ignored files are treated as regular files: they are not decrypted when opened and are not encrypted when written.
+
+The following patterns are ignored by default:
+
+```lua
+{
+  "**/.git/**",
+  "**/.gitignore",
+  "**/.gitattributes",
+  "**/.gitmodules",
+}
+```
+
+Custom patterns are **merged with the default patterns**, rather than replacing them:
+
+```lua
+vim.g.memo_ignore_patterns = {
+  "**/.env",
+  "**/tmp/**",
+  "**/node_modules/**",
+}
+```
+
+This is useful when your notes directory contains files or directories that should remain plaintext or should not be handled by `memo.nvim`.
+
+For example, with:
+
+```lua
+vim.g.memo_ignore_patterns = {
+  "**/.env",
+}
+```
+
+a file such as:
+
+```text
+~/notes/project/.env
+```
+
+is left untouched by `memo.nvim`, while files elsewhere in the notes directory continue to use transparent encryption normally.
+
+> [!NOTE]
+> Set global configuration variables before `memo.nvim` initializes. With plugin managers such as `lazy.nvim`, use the `init` function. With `vim.pack`, set them before calling `vim.pack.add()`.
 
 ## Features
 
@@ -330,13 +427,13 @@ or as keys with **lazy.nvim** package manager
 
 ## User commands
 
-| Command            | Lua function                | Description                                                            |
-| ------------------ | --------------------------- | ---------------------------------------------------------------------- |
-| `:MemoScratch`     | `require("memo").scratch()` | Opens a new encrypted scratch buffer, durable across sessions.         |
-| `:MemoScratchFiles` | `require("memo.pickers.fzf_lua").scratch_files_picker()` | Browse and open encrypted scratch files.          |
-| `:MemoSaveAsNote`  | `require("memo").save_as_note()` | Prompts for a note path (defaults to `<notes_dir>/<name>.gpg`) and encrypts the current buffer there. |
-| `:MemoSetup`       | `require("memo").setup()`   | Initializes configuration and registers required autocmds.             |
-| `:MemoSync`        | require("memo").sync_git()  | Calls `memo sync git` to trigger a synchronisation of the git backend. |
+| Command             | Lua function                                             | Description                                                                                           |
+| ------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `:MemoScratch`      | `require("memo").scratch()`                              | Opens a new encrypted scratch buffer, durable across sessions.                                        |
+| `:MemoScratchFiles` | `require("memo.pickers.fzf_lua").scratch_files_picker()` | Browse and open encrypted scratch files.                                                              |
+| `:MemoSaveAsNote`   | `require("memo").save_as_note()`                         | Prompts for a note path (defaults to `<notes_dir>/<name>.gpg`) and encrypts the current buffer there. |
+| `:MemoSetup`        | `require("memo").setup()`                                | Initializes configuration and registers required autocmds.                                            |
+| `:MemoSync`         | require("memo").sync_git()                               | Calls `memo sync git` to trigger a synchronisation of the git backend.                                |
 
 ## Development
 
