@@ -1,5 +1,33 @@
 local M = {}
 
+local default_ignore_patterns = {
+	"**/.git/**",
+	"**/.gitignore",
+	"**/.gitattributes",
+	"**/.gitmodules",
+}
+
+-- Merge user-defined ignore patterns into the defaults without mutating the default table.
+-- `vim.g.memo_ignore_patterns` is optional; when unset only the defaults are used.
+local ignore_patterns = vim.list_extend(vim.deepcopy(default_ignore_patterns), vim.g.memo_ignore_patterns or {})
+
+---@param path string
+---@return boolean
+local function is_ignored(path)
+	-- `glob2regpat` turns a leading `**` into a regex anchored on a path
+	-- separator (`/\.gitignore`), so the subject must be absolute for the
+	-- pattern to match a bare basename (e.g. `args.file == ".gitignore"`).
+	local absolute = vim.fn.fnamemodify(path, ":p")
+
+	for _, pattern in ipairs(ignore_patterns) do
+		if vim.fn.match(absolute, vim.fn.glob2regpat(pattern)) >= 0 then
+			return true
+		end
+	end
+
+	return false
+end
+
 --- @param bufnr integer
 local function prepare_buffer_for_edit(bufnr)
 	if not vim.api.nvim_buf_is_valid(bufnr) then
@@ -37,11 +65,16 @@ function M.on_read(args)
 	local core = require("memo.core")
 	local message = require("memo.message")
 
-	local gpg_path = utils.get_gpg_path(args.file)
-
 	-- Force filetype detection based on the name without .gpg
 	local base = args.file:gsub("%.gpg$", "")
 	vim.bo[bufnr].filetype = vim.filetype.match({ filename = base })
+
+	if is_ignored(args.file) then
+		vim.cmd("silent edit " .. vim.fn.fnameescape(args.file))
+		return
+	end
+
+	local gpg_path = utils.get_gpg_path(args.file)
 
 	-- If the .gpg file doesn't exist, it's new, just open it
 	if vim.fn.filereadable(gpg_path) == 0 or vim.fn.getfsize(gpg_path) <= 0 then
@@ -85,6 +118,11 @@ function M.on_write(args)
 	local utils = require("memo.utils")
 	local core = require("memo.core")
 	local message = require("memo.message")
+
+	if is_ignored(args.file) then
+		vim.cmd("silent write")
+		return
+	end
 
 	if vim.b[bufnr].decrypting then
 		return

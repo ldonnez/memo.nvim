@@ -364,4 +364,105 @@ describe("autocmd", function()
 
 		MiniTest.expect.equality(vim.fn.filereadable(encrypted), 1)
 	end)
+
+	it("does not decrypt .gitignore files in the notes dir", function()
+		local plain = vim.env.NOTES_DIR .. "/.gitignore"
+		helpers.write_file(plain, "*.gpg\n")
+
+		child.cmd("edit " .. plain)
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), plain)
+		MiniTest.expect.equality(child.b.decrypting, vim.NIL)
+		MiniTest.expect.equality(vim.fn.filereadable(plain .. ".gpg"), 0)
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(0, 0, -1, false), { "*.gpg" })
+	end)
+
+	it("does not decrypt files under a .git directory", function()
+		local config = vim.env.NOTES_DIR .. "/.git/config"
+		vim.fn.mkdir(vim.fn.fnamemodify(config, ":h"), "p")
+		helpers.write_file(config, "[core]\n")
+
+		child.cmd("edit " .. config)
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), config)
+		MiniTest.expect.equality(child.b.decrypting, vim.NIL)
+		MiniTest.expect.equality(vim.fn.filereadable(config .. ".gpg"), 0)
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(0, 0, -1, false), { "[core]" })
+	end)
+
+	it("honors custom ignore patterns set via vim.g.memo_ignore_patterns", function()
+		child.lua([[vim.g.memo_ignore_patterns = { "**/pending/**" }]])
+
+		local plain = vim.env.NOTES_DIR .. "/pending/draft.md"
+		vim.fn.mkdir(vim.fn.fnamemodify(plain, ":h"), "p")
+		helpers.write_file(plain, "draft")
+
+		child.cmd("edit " .. plain)
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), plain)
+		MiniTest.expect.equality(child.b.decrypting, vim.NIL)
+		MiniTest.expect.equality(vim.fn.filereadable(plain .. ".gpg"), 0)
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(0, 0, -1, false), { "draft" })
+	end)
+
+	it("does not write encrypted .gpg for ignored files", function()
+		local plain = vim.env.NOTES_DIR .. "/.gitignore"
+		helpers.write_file(plain, "*.gpg\n")
+
+		child.cmd("edit " .. plain)
+		child.api.nvim_buf_set_lines(0, 0, -1, false, { "*.md" })
+		child.cmd("write")
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), plain)
+		MiniTest.expect.equality(vim.fn.filereadable(plain .. ".gpg"), 0)
+		MiniTest.expect.equality(vim.fn.readfile(plain), { "*.md" })
+	end)
+
+	it("keeps _scratch-priority_ files ignored even when args.file is a bare relative basename", function()
+		local plain = vim.env.NOTES_DIR .. "/.gitignore"
+		helpers.write_file(plain, "*.gpg\n")
+
+		-- Reproduce `args.file == ".gitignore"` (no directory prefix), which is
+		-- how the name arrives when editing the file from inside the notes dir.
+		child.cmd("cd " .. vim.env.NOTES_DIR)
+		child.cmd("edit .gitignore")
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), plain)
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(0, 0, -1, false), { "*.gpg" })
+
+		child.api.nvim_buf_set_lines(0, 0, -1, false, { "*.md" })
+		child.cmd("write")
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), plain)
+		MiniTest.expect.equality(vim.fn.filereadable(plain .. ".gpg"), 0)
+		MiniTest.expect.equality(vim.fn.readfile(plain), { "*.md" })
+	end)
+
+	describe("default ignored files", function()
+		local ignored_files = {
+			{ ".gitignore", "*.gpg\n" },
+			{ ".gitattributes", "*.md text\n" },
+			{ ".gitmodules", "[submodule]\n" },
+			{ ".git/config", "[core]\n" },
+		}
+
+		for _, file in ipairs(ignored_files) do
+			it("does not decrypt " .. file[1], function()
+				local path = vim.env.NOTES_DIR .. "/" .. file[1]
+
+				vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p")
+				helpers.write_file(path, file[2])
+
+				child.cmd("edit " .. path)
+
+				MiniTest.expect.equality(child.api.nvim_buf_get_name(0), path)
+				MiniTest.expect.equality(child.b.decrypting, vim.NIL)
+				MiniTest.expect.equality(vim.fn.filereadable(path .. ".gpg"), 0)
+				MiniTest.expect.equality(
+					child.api.nvim_buf_get_lines(0, 0, -1, false),
+					vim.split(file[2], "\n", { trimempty = true })
+				)
+			end)
+		end
+	end)
 end)
