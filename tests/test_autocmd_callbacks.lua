@@ -444,6 +444,8 @@ describe("autocmd", function()
 			{ ".gitattributes", "*.md text\n" },
 			{ ".gitmodules", "[submodule]\n" },
 			{ ".git/config", "[core]\n" },
+			{ ".githooks/test.sh", "echo 'test'" },
+			{ ".ignore", "*.test\n" },
 		}
 
 		for _, file in ipairs(ignored_files) do
