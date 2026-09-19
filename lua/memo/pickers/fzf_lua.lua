@@ -48,7 +48,7 @@ function M.files_picker()
 		return
 	end
 
-	pick(fzf, config.notes_dir())
+	pick(fzf, config.notes_dir)
 end
 
 function M.scratch_files_picker()
@@ -58,7 +58,7 @@ function M.scratch_files_picker()
 		return
 	end
 
-	pick(fzf, config.scratch_dir(), true)
+	pick(fzf, config.scratch_dir, true)
 end
 
 return M

@@ -41,7 +41,12 @@ describe("scratch", function()
 		end)
 
 		it("uses vim.g.memo_scratch_dir when set", function()
-			child.lua("vim.g.memo_scratch_dir = vim.env.HOME .. '/memo-custom-scratch'")
+			child.lua([[
+        vim.g.memo_scratch_dir = vim.env.HOME .. '/memo-custom-scratch'
+
+        -- Rerun setup to ensurethe custom global is picked up.
+        require("memo.config").setup()
+      ]])
 			child.lua("M.create()")
 			local buffer = child.api.nvim_get_current_buf()
 			local name = child.api.nvim_buf_get_name(buffer)

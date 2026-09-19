@@ -74,7 +74,7 @@ end
 ---@param config CaptureConfig
 ---@param capture_template MemoCaptureTemplate
 local function append_capture(lines, config, capture_template)
-	local notes_dir = memo_config.notes_dir()
+	local notes_dir = memo_config.notes_dir
 
 	local expanded = vim.fn.expand(notes_dir .. "/" .. config.capture_file) --[[@as string]]
 	local file = utils.get_gpg_path(expanded)

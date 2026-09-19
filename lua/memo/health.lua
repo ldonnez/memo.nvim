@@ -18,7 +18,7 @@ M.check = function()
 	end
 
 	-- Check Directories
-	local notes_dir = config.notes_dir()
+	local notes_dir = config.notes_dir
 
 	if vim.fn.isdirectory(notes_dir) == 1 then
 		vim.health.ok("Notes directory exists: " .. notes_dir)

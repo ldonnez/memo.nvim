@@ -17,7 +17,7 @@ end
 
 ---@return string
 local function get_scratch_file()
-	local dir = require("memo.config").scratch_dir()
+	local dir = require("memo.config").scratch_dir
 	vim.fn.mkdir(dir, "p")
 
 	return vim.fs.joinpath(dir, get_cwd_key() .. "-" .. get_timestamp() .. "-" .. get_hash() .. ".gpg")

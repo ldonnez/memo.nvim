@@ -3,8 +3,8 @@ local M = {}
 function M.setup()
 	local config = require("memo.config")
 
-	local notes_dir = config.notes_dir()
-	local scratch_dir = config.scratch_dir()
+	local notes_dir = config.notes_dir
+	local scratch_dir = config.scratch_dir
 
 	if not notes_dir or notes_dir == "" then
 		return

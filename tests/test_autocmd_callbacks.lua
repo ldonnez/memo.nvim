@@ -391,7 +391,12 @@ describe("autocmd", function()
 	end)
 
 	it("honors custom ignore patterns set via vim.g.memo_ignore_patterns", function()
-		child.lua([[vim.g.memo_ignore_patterns = { "**/pending/**" }]])
+		child.lua([[
+      vim.g.memo_ignore_patterns = { "**/pending/**" }
+
+      -- Rerun setup to ensure the custom global is picked up.
+      require("memo.config").setup()
+    ]])
 
 		local plain = vim.env.NOTES_DIR .. "/pending/draft.md"
 		vim.fn.mkdir(vim.fn.fnamemodify(plain, ":h"), "p")

@@ -104,7 +104,7 @@ function M.save_as_note()
 	local utils = require("memo.utils")
 	local config = require("memo.config")
 	local bufnr = vim.api.nvim_get_current_buf()
-	local notes_dir = config.notes_dir()
+	local notes_dir = config.notes_dir
 	local current = vim.api.nvim_buf_get_name(bufnr)
 
 	local default_name = vim.fn.fnamemodify(current, ":t"):gsub("%.gpg$", "")

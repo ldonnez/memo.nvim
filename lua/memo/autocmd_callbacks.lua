@@ -8,7 +8,7 @@ local function is_ignored(path)
 	-- pattern to match a bare basename (e.g. `args.file == ".gitignore"`).
 	local absolute = vim.fn.fnamemodify(path, ":p")
 	local config = require("memo.config")
-	local ignore_patterns = config.ignore_patterns()
+	local ignore_patterns = config.ignore_patterns
 
 	for _, pattern in ipairs(ignore_patterns) do
 		if vim.fn.match(absolute, vim.fn.glob2regpat(pattern)) >= 0 then
