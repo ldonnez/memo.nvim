@@ -466,6 +466,25 @@ describe("autocmd", function()
 				MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPre"), true)
 				MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPost"), true)
 			end)
+
+			it("does not encrypt " .. file[1], function()
+				local path = vim.env.NOTES_DIR .. "/" .. file[1]
+
+				vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p")
+				helpers.write_file(path, file[2])
+
+				helpers.track_autocmds(child, { "BufWritePre", "BufWritePost" }, path)
+
+				child.cmd("edit " .. path)
+				child.api.nvim_buf_set_lines(0, 0, -1, false, { "updated content" })
+				child.cmd("write")
+
+				MiniTest.expect.equality(child.api.nvim_buf_get_name(0), path)
+				MiniTest.expect.equality(vim.fn.filereadable(path .. ".gpg"), 0)
+				MiniTest.expect.equality(vim.fn.readfile(path), { "updated content" })
+				MiniTest.expect.equality(helpers.autocmd_fired(child, "BufWritePre"), true)
+				MiniTest.expect.equality(helpers.autocmd_fired(child, "BufWritePost"), true)
+			end)
 		end
 	end)
 end)
