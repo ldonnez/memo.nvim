@@ -453,6 +453,7 @@ describe("autocmd", function()
 				vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p")
 				helpers.write_file(path, file[2])
 
+				helpers.track_autocmds(child, { "BufReadPre", "BufReadPost" }, path)
 				child.cmd("edit " .. path)
 
 				MiniTest.expect.equality(child.api.nvim_buf_get_name(0), path)
@@ -462,6 +463,8 @@ describe("autocmd", function()
 					child.api.nvim_buf_get_lines(0, 0, -1, false),
 					vim.split(file[2], "\n", { trimempty = true })
 				)
+				MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPre"), true)
+				MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPost"), true)
 			end)
 		end
 	end)
