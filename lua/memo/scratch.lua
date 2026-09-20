@@ -26,7 +26,7 @@ local function get_scratch_file()
 	return vim.fs.joinpath(dir, get_cwd_key() .. "-" .. get_timestamp() .. "-" .. get_hash() .. ".gpg")
 end
 
----@param direction? "horizontal"|"vertical"|"tab"
+---@param direction? string any direction other than "vertical"/"tab" opens a horizontal split
 function M.create(direction)
 	local file = get_scratch_file()
 	if not file then

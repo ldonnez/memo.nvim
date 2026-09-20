@@ -63,14 +63,7 @@ vim.api.nvim_create_autocmd("BufDelete", {
 })
 
 vim.api.nvim_create_user_command("MemoScratch", function(opts)
-	local direction = opts.args
-
-	if direction ~= "horizontal" and direction ~= "vertical" and direction ~= "tab" then
-		require("memo.scratch").create()
-		return
-	end
-
-	require("memo.scratch").create(direction)
+	require("memo.scratch").create(opts.args)
 end, {
 	nargs = "?",
 	complete = function()
