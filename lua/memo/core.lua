@@ -141,7 +141,9 @@ function M.save_as_note()
 		end
 	end
 
-	vim.fn.mkdir(vim.fn.fnamemodify(gpg_path, ":h"), "p")
+	if not utils.ensure_directories(vim.fs.dirname(gpg_path)) then
+		return false
+	end
 
 	local result = M.encrypt_from_stdin(gpg_path, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
 

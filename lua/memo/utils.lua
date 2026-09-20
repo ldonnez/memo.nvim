@@ -20,6 +20,24 @@ function M.is_in_dir(path, dir)
 	return abs_path:sub(1, #abs_dir) == abs_dir and abs_path:sub(#abs_dir + 1, #abs_dir + 1) == "/"
 end
 
+---Ensures a directory exists, creating it (including any missing parents)
+---when needed.
+---@param dir string
+---@return boolean -- true when the directory exists (or was created)
+function M.ensure_directories(dir)
+	if vim.fn.isdirectory(dir) == 1 then
+		return true
+	end
+
+	local ok, err = pcall(vim.fn.mkdir, dir, "p")
+	if not ok then
+		require("memo.message").error("Error creating directory: %s", tostring(err))
+		return false
+	end
+
+	return true
+end
+
 ---@param cmd string
 ---@return boolean
 function M.check_exec(cmd)

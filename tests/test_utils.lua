@@ -54,6 +54,36 @@ describe("utils", function()
 		end)
 	end)
 
+	describe("ensure_directories", function()
+		it("returns true when the directory already exists", function()
+			local dir = vim.fn.tempname() .. "_exists"
+			vim.fn.mkdir(dir, "p")
+
+			MiniTest.expect.equality(util.ensure_directories(dir), true)
+
+			vim.fn.delete(dir, "rf")
+		end)
+
+		it("creates nested directories and returns true", function()
+			local dir = vim.fn.tempname() .. "/a/b/c"
+
+			MiniTest.expect.equality(util.ensure_directories(dir), true)
+			MiniTest.expect.equality(vim.fn.isdirectory(dir), 1)
+
+			vim.fn.delete(dir, "rf")
+		end)
+
+		it("returns false when the directory cannot be created", function()
+			local blocked = vim.fn.tempname()
+			local dir = blocked .. "/sub"
+			helpers.write_file(blocked, "not a directory")
+
+			MiniTest.expect.equality(util.ensure_directories(dir), false)
+
+			vim.fn.delete(blocked)
+		end)
+	end)
+
 	describe("check_exec", function()
 		it("returns true when binary exists", function()
 			local result = util.check_exec("git")

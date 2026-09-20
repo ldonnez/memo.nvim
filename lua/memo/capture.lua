@@ -24,24 +24,6 @@ local defaults = {
 	},
 }
 
----Ensures relative directories are created from given capture file path.
----@param file string -- capture file path
----@return boolean -- true when the parent directory exists (or was created)
-local function ensure_directories(file)
-	local dir = vim.fn.fnamemodify(file, ":h")
-	if vim.fn.isdirectory(dir) == 1 then
-		return true
-	end
-
-	local success, err = pcall(vim.fn.mkdir, dir, "p")
-	if not success then
-		message.error("Error: %s", tostring(err))
-		return false
-	end
-
-	return true
-end
-
 ---@param config CaptureConfig
 ---@return integer win
 ---@return integer buf
@@ -87,7 +69,7 @@ local function append_capture(lines, config, capture_template)
 
 	if vim.fn.filereadable(file) == 0 then
 		-- Ensure relative directories are created
-		if not ensure_directories(file) then
+		if not utils.ensure_directories(vim.fs.dirname(file)) then
 			return false
 		end
 

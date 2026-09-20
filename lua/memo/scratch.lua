@@ -1,4 +1,5 @@
 local M = {}
+local utils = require("memo.utils")
 
 ---@return string
 local function get_cwd_key()
@@ -15,10 +16,12 @@ local function get_hash()
 	return vim.fn.sha256(tostring(vim.uv.hrtime())):sub(1, 6)
 end
 
----@return string
+---@return string|nil -- nil when the scratch directory could not be created
 local function get_scratch_file()
 	local dir = require("memo.config").scratch_dir
-	vim.fn.mkdir(dir, "p")
+	if not utils.ensure_directories(dir) then
+		return nil
+	end
 
 	return vim.fs.joinpath(dir, get_cwd_key() .. "-" .. get_timestamp() .. "-" .. get_hash() .. ".gpg")
 end
@@ -26,6 +29,9 @@ end
 ---@param direction? "horizontal"|"vertical"|"tab"
 function M.create(direction)
 	local file = get_scratch_file()
+	if not file then
+		return
+	end
 
 	if direction == "vertical" then
 		vim.cmd("belowright vsplit")
