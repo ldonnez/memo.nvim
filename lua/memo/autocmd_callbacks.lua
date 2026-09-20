@@ -115,7 +115,7 @@ function M.on_read(args)
 	vim.b[bufnr].decrypting = true
 	vim.api.nvim_exec_autocmds("BufReadPre", { buffer = bufnr, modeline = false })
 
-	core.decrypt_to_buffer(args.file, bufnr, function(result)
+	core.decrypt_to_buffer(gpg_path, bufnr, function(result)
 		if result.code ~= 0 then
 			vim.api.nvim_buf_delete(bufnr, { force = true })
 			message.error("Decryption failed")
