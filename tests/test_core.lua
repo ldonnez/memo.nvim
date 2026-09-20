@@ -208,6 +208,41 @@ describe("core", function()
 			end)
 		end)
 
+		it("decrypt_to_buffer: safely ignores the result when the buffer was closed mid-decrypt", function()
+			child.cmd("messages clear")
+
+			child.lua([[
+			local gpg = require("memo.gpg")
+
+			local bufnr = vim.api.nvim_create_buf(true, false)
+
+			-- Simulate the buffer being closed while the async decrypt is in
+			-- flight. The `settled` sentinel is scheduled after on_exit's inner
+			-- callback, so once it is set the guard has had its chance to run.
+			gpg.exec_with_gpg_auth = function(_, _, on_exit)
+				vim.g.exit_cb_called = false
+				vim.g.settled = false
+				vim.api.nvim_buf_delete(bufnr, { force = true })
+				on_exit({ code = 0 })
+				vim.schedule(function()
+					vim.g.settled = true
+				end)
+				return true
+			end
+
+			M.decrypt_to_buffer("/tmp/dummy.gpg", bufnr, function()
+				vim.g.exit_cb_called = true
+			end)
+		]])
+
+			child.wait_until(function()
+				return child.g.settled == true
+			end)
+
+			MiniTest.expect.equality(child.g.exit_cb_called, false)
+			MiniTest.expect.equality(child.cmd_capture("messages"), "")
+		end)
+
 		it("decrypt_to_stdout: decrypts content", function()
 			local path = "/tmp/test.md.gpg"
 

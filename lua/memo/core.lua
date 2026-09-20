@@ -68,6 +68,10 @@ function M.decrypt_to_buffer(path, bufnr, on_exit)
 		end,
 	}, function(result)
 		vim.schedule(function()
+			if not vim.api.nvim_buf_is_valid(bufnr) then
+				return
+			end
+
 			if result.code == 0 and accumulator ~= "" then
 				append_to_buffer(bufnr, { accumulator }, state)
 			end
