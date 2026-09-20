@@ -16,6 +16,8 @@ jobs:
     if: startsWith(github.head_ref, 'release-please--branches--')
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
 
       - name: panvimdoc
         uses: kdheepak/panvimdoc@v6.0.0
