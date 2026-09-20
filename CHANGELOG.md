@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.2](https://github.com/ldonnez/memo.nvim/compare/v0.12.1...v0.12.2) (2026-09-20)
+
+
+### Documentation
+
+* improve README to be consistent with vim docs ([1c7ebaa](https://github.com/ldonnez/memo.nvim/commit/1c7ebaab120fbe9827f5b794ebd2d7e91bec8110))
+
 ## [0.12.1](https://github.com/ldonnez/memo.nvim/compare/v0.12.0...v0.12.1) (2026-09-19)
 
 
