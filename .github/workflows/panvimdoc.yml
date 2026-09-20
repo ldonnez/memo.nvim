@@ -1,0 +1,38 @@
+name: panvimdoc
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - README.md
+      - .github/workflows/panvimdoc.yml
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    name: pandoc to vimdoc
+    if: github.event_name != 'pull_request' && startsWith(github.head_ref, 'release-please--branches--')
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: panvimdoc
+        uses: kdheepak/panvimdoc@v6.0.0
+        with:
+          vimdoc: memo
+          description: "Seamless Neovim interface for memo, a CLI-based encrypted notes system"
+          version: "NVIM v0.11.5"
+          toc: true
+          demojify: true
+          treesitter: true
+
+      - uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "docs: auto generation"
+          branch: ${{ github.head_ref }}
