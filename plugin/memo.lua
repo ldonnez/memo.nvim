@@ -42,7 +42,7 @@ vim.api.nvim_create_autocmd("BufWriteCmd", {
 
 vim.api.nvim_create_autocmd("BufDelete", {
 	group = GROUP,
-	pattern = abs_scratch .. "*.gpg",
+	pattern = abs_scratch .. "/*.gpg",
 	callback = function(args)
 		local path = vim.api.nvim_buf_get_name(args.buf)
 		local scratch = require("memo.scratch")

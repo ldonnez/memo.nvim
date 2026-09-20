@@ -349,6 +349,20 @@ describe("autocmd", function()
 		MiniTest.expect.equality(vim.fn.filereadable(encrypted), 0)
 	end)
 
+	it("does not delete gpg files in a similarly named directory", function()
+		local scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
+		local outside_dir = scratch_dir .. "-backup"
+		local encrypted = vim.fs.joinpath(outside_dir, "_home_user_project-20260920T012345-a1b2c3.gpg")
+
+		vim.fn.mkdir(outside_dir, "p")
+		helpers.encrypt_file(encrypted, "Do not delete")
+
+		child.cmd("edit " .. encrypted)
+		child.cmd("bdelete!")
+
+		MiniTest.expect.equality(vim.fn.filereadable(encrypted), 1)
+	end)
+
 	it("does not delete a regular gpg file outside notes and scratch directories", function()
 		local outside_dir = vim.fs.joinpath(vim.env.HOME, "outside")
 		local encrypted = vim.fs.joinpath(outside_dir, "important.gpg")
@@ -495,7 +509,7 @@ describe("autocmd", function()
 		end
 	end)
 
-	describe("overlapping notes and scratch directories", function()
+	describe("AutoCmd patterns", function()
 		before_each(function()
 			child.restart({
 				"-u",
@@ -575,6 +589,24 @@ describe("autocmd", function()
 			MiniTest.expect.equality(write_autocmds[1].pattern, vim.env.NOTES_DIR .. "/*")
 			MiniTest.expect.equality(read_autocmds[2].pattern, vim.env.HOME .. "/memo-scratch" .. "/*")
 			MiniTest.expect.equality(write_autocmds[2].pattern, vim.env.HOME .. "/memo-scratch" .. "/*")
+		end)
+
+		it("registers only the scratch dir pattern on BufDelete ", function()
+			child.lua([[
+				vim.g.memo_scratch_dir = vim.env.HOME .. "/memo-scratch"
+
+				-- Rerun setup so the custom scratch directory is picked up.
+				require("memo.config").setup()
+	      require("plugin.memo")
+			]])
+
+			local delete_autocmds = child.api.nvim_get_autocmds({
+				group = "MemoGpg",
+				event = "BufDelete",
+			})
+
+			MiniTest.expect.equality(#delete_autocmds, 1)
+			MiniTest.expect.equality(delete_autocmds[1].pattern, vim.env.HOME .. "/memo-scratch/*.gpg")
 		end)
 	end)
 end)
