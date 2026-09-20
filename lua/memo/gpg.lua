@@ -73,11 +73,10 @@ local function get_key_info(id)
 	return nil
 end
 
---- Cache the passphrase for a specific key (or default)
---- Check if a specific key (or default) is unlocked in gpg-agent
---- @param pass string
---- @param id string?
---- @return boolean
+---Cache the passphrase for a specific key (or default)
+---@param pass string
+---@param id string?
+---@return boolean
 local function cache_passphrase(pass, id)
 	local cmd = {
 		"gpg",
