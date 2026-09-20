@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.12.3](https://github.com/ldonnez/memo.nvim/compare/v0.12.2...v0.12.3) (2026-09-20)
+
+
+### Bug Fixes
+
+* always decrypt gpg path ([5f5b94b](https://github.com/ldonnez/memo.nvim/commit/5f5b94b0fa10e50e612e6409749dd983c5e13968))
+* always normalize buffer file to absolute path ([1dfb613](https://github.com/ldonnez/memo.nvim/commit/1dfb613e4a625d83ac85c916b41954c9e594b01c))
+* **ci:** ensure checkout of same ref ([ae36338](https://github.com/ldonnez/memo.nvim/commit/ae3633882d7a21337c1bcc62d60ccbdbea398bce))
+* defer error message ([e30fa4d](https://github.com/ldonnez/memo.nvim/commit/e30fa4db30dd30aff243671c21bafba15d194fca))
+* don't delete gpg files in a similarly named directory ([d80e8aa](https://github.com/ldonnez/memo.nvim/commit/d80e8aae78503ea3d1e33d475cad2d487599ad7d))
+* ensure capture window does not freeze when gpg errors occur ([3253b44](https://github.com/ldonnez/memo.nvim/commit/3253b44edd22476076194ba7af45e34132f9ad62))
+* safely ignores the result when the buffer was closed ([90ddac4](https://github.com/ldonnez/memo.nvim/commit/90ddac42145d80f3414afe61043032c9cc2a749f))
+* wipe buffer when gpg authentication fails ([e6d9234](https://github.com/ldonnez/memo.nvim/commit/e6d9234ef2d19691d845adb9e87a300fdb000eb2))
+
 ## [0.12.2](https://github.com/ldonnez/memo.nvim/compare/v0.12.1...v0.12.2) (2026-09-20)
 
 
