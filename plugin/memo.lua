@@ -100,9 +100,9 @@ vim.api.nvim_create_user_command("MemoSync", function(opts)
 
 	if backend == "git" or backend == "" then
 		return core.sync_git()
-	else
-		message.error("Unknown sync backend: %s", backend)
 	end
+
+	message.error("Unknown sync backend: %s", backend)
 end, {
 	nargs = "?",
 	complete = function()
