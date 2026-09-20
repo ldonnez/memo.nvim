@@ -202,25 +202,10 @@ function M.exec_with_gpg_auth(cmd, opts, on_exit)
 	end
 
 	if on_exit then
-		return vim.system(cmd, opts, function(obj)
-			if obj.code ~= 0 then
-				local err = (obj.stderr and obj.stderr ~= "") and obj.stderr or "Process exited with code " .. obj.code
-				vim.schedule(function()
-					message.error(err)
-				end)
-			end
-			on_exit(obj)
-		end)
+		return vim.system(cmd, opts, on_exit)
 	end
 
-	local obj = vim.system(cmd, opts):wait()
-
-	if obj.code ~= 0 then
-		local err = (obj.stderr and obj.stderr ~= "") and obj.stderr or "Process exited with code " .. obj.code
-		message.error(err)
-	end
-
-	return obj
+	return vim.system(cmd, opts):wait()
 end
 
 return M

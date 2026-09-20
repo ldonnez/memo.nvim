@@ -80,7 +80,6 @@ local function append_capture(lines, config, capture_template)
 	local read_result = core.decrypt_to_stdout(file)
 
 	if not read_result or read_result.code ~= 0 then
-		message.error("Capture failed: decryption error")
 		return false
 	end
 

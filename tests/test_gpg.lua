@@ -154,7 +154,7 @@ describe("gpg", function()
 		MiniTest.expect.equality(result.code, 0)
 	end)
 
-	it("correctly notifies when cmd returns errors", function()
+	it("returns the failing result without notifying; callers own error reporting", function()
 		local result = child.lua([[
         M.get_gpg_passphrase = function() return true end
 
@@ -163,8 +163,8 @@ describe("gpg", function()
     ]])
 
 		MiniTest.expect.equality(result.code, 1)
+		MiniTest.expect.equality(result.stderr, "forced error\n")
 
-		local messages = child.cmd_capture("messages")
-		MiniTest.expect.equality(messages, "forced error\n")
+		MiniTest.expect.equality(child.cmd_capture("messages"), "")
 	end)
 end)
