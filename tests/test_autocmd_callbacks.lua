@@ -201,6 +201,32 @@ describe("autocmd", function()
 		MiniTest.expect.equality(gpg_file_exists, true)
 	end)
 
+	it("keeps the plaintext and reports a deferred error when encryption fails on write", function()
+		local plain = vim.env.NOTES_DIR .. "/encfail.md"
+		helpers.write_file(plain, "content")
+
+		-- Force a failing `memo encrypt` invocation.
+		child.lua([[
+			local core = require("memo.core")
+			core.encrypt_from_stdin = function()
+				return { code = 1, stderr = "boom" }
+			end
+		]])
+
+		child.cmd("edit " .. plain)
+		child.cmd("write")
+
+		child.wait_until(function()
+			return child.cmd_capture("messages") == "boom"
+		end)
+
+		-- Nothing was saved: the buffer keeps its plaintext name and the
+		-- unencrypted file is left untouched.
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), plain)
+		MiniTest.expect.equality(vim.fn.filereadable(plain), 1)
+		MiniTest.expect.equality(vim.fn.filereadable(plain .. ".gpg"), 0)
+	end)
+
 	it("does not re-encrypt (no-op) if content hasn't changed", function()
 		local encrypted = vim.env.NOTES_DIR .. "/unchanged.md.gpg"
 

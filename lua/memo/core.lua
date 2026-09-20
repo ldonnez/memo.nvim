@@ -7,16 +7,9 @@ local M = {}
 ---@param input string[]
 ---@return vim.SystemCompleted
 function M.encrypt_from_stdin(path, input)
-	local result = vim.system({ "memo", "encrypt", path }, {
+	return vim.system({ "memo", "encrypt", path }, {
 		stdin = input,
 	}):wait()
-
-	if result.code ~= 0 then
-		local err = (result.stderr and result.stderr ~= "") and result.stderr or "Unknown encryption error"
-		message.error("%s", err)
-	end
-
-	return result
 end
 
 --- Decrypts a file and returns the content
