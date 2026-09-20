@@ -15,8 +15,8 @@ end
 ---@param dir string
 ---@return boolean
 function M.is_in_dir(path, dir)
-	local abs_path = vim.fs.normalize(vim.fn.fnamemodify(path, ":p") --[[@as string]]) --[[@as string]]
-	local abs_dir = vim.fs.normalize(vim.fn.fnamemodify(dir, ":p") --[[@as string]]) --[[@as string]]
+	local abs_path = vim.fs.normalize(vim.fn.fnamemodify(path, ":p") --[[@as string]])
+	local abs_dir = vim.fs.normalize(vim.fn.fnamemodify(dir, ":p") --[[@as string]])
 	return abs_path:sub(1, #abs_dir) == abs_dir and abs_path:sub(#abs_dir + 1, #abs_dir + 1) == "/"
 end
 
