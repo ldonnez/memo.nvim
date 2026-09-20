@@ -142,7 +142,6 @@ function M.register(opts)
 
 	vim.api.nvim_create_autocmd({ "BufWriteCmd" }, {
 		buffer = buf,
-		once = true,
 		callback = function()
 			vim.api.nvim_exec_autocmds("BufWritePre", { buffer = buf, modeline = false })
 			local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)

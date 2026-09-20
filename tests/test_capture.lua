@@ -313,6 +313,20 @@ describe("capture", function()
 			child.wait_until(function()
 				return child.cmd_capture("messages") == "Capture failed: content was not saved"
 			end)
+
+			-- The BufWriteCmd handler must survive the failed attempt: retrying
+			-- the write must save the content (and not fail with E676).
+			child.lua([[
+				core.encrypt_from_stdin = function(path, lines)
+					vim.fn.writefile(lines, path)
+					return { code = 0 }
+				end
+			]])
+
+			child.cmd("write")
+
+			MiniTest.expect.equality(child.api.nvim_buf_is_valid(buf), false)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/fail.md.gpg"), 1)
 		end)
 	end)
 
