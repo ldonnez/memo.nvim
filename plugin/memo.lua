@@ -1,3 +1,8 @@
+if vim.fn.has("nvim-0.11") ~= 1 then
+	vim.notify("Memo requires neovim >= v0.11", vim.log.levels.ERROR, { title = "memo.nvim" })
+	return
+end
+
 local config = require("memo.config")
 
 local notes_dir = config.notes_dir
