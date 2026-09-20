@@ -1,190 +1,173 @@
 # memo.nvim
 
-Seamless Neovim interface for [memo](https://github.com/ldonnez/memo) a CLI-based system featuring transparent GPG encryption.
-`memo.nvim` bridges the gap between secure file management and your editing workflow, allowing you to create, read, and update encrypted files without ever leaving your editor.
+Seamless Neovim interface for [memo](https://github.com/ldonnez/memo), a CLI-based notes system with transparent GPG encryption. Create, read, and update encrypted files without leaving your editor, and keep your notes in sync with git.
 
----
+- Transparent encryption: `.gpg` files in your notes directory are decrypted into the buffer and re-encrypted on write; plaintext never touches disk.
+- Encrypted scratch buffers for throwaway, sensitive content.
+- Quick capture workflow that appends to a capture file (e.g. a journal).
+- fzf-lua pickers for browsing notes and scratch files.
+- Git sync via `memo sync git`.
+- Zero required configuration; set a few globals to customize.
 
 <a href="https://github.com/ldonnez/memo.nvim/actions"><img src="https://github.com/ldonnez/memo.nvim/actions/workflows/ci.yml/badge.svg?branch=main" alt="Build Status"></a>
 <a href="http://github.com/ldonnez/memo.nvim/releases"><img src="https://img.shields.io/github/v/tag/ldonnez/memo.nvim" alt="Version"></a>
 <a href="https://github.com/ldonnez/memo.nvim?tab=MIT-1-ov-file#readme"><img src="https://img.shields.io/github/license/ldonnez/memo.nvim" alt="License"></a>
 
-## Table of Contents
+## Requirements
 
-- [Installation with example configuration](#installation-with-default-configuration)
-  - [Install with vim.pack](#install-with-vimpack)
-  - [Install with lazy.nvim](#install-with-lazynvim)
-- [Configuration](#configuration)
-- [Features](#features)
-- [Transparant editing](#transparant-editing)
-- [Encrypted scratch buffers](#encrypted-scratch-buffers)
-- [Save a buffer as a note](#save-a-buffer-as-a-note)
-- [Capture workflow](#capture-workflow)
-- [Fzf lua pickers](#fzf-lua-pickers)
-- [Requirements](#requirements)
-- [User commands](#user-commands)
-- [Development](#development-guide)
-  - [Prerequisites](#prerequisites)
-  - [Dev setup](#dev-setup)
-  - [Docker workflow](#docker-workflow-recommended)
-  - [Run tests](#run-tests)
-- [License](#License)
+- Neovim >= 0.11
+- [memo](https://github.com/ldonnez/memo) CLI on your `PATH`, configured with a GPG key
+- Optional: [fzf-lua](https://github.com/ibhagwan/fzf-lua) for the pickers
 
-## Installation with default configuration
+Check with `:checkhealth memo` to verify everything is set up correctly.
 
-Lazy loading is already handled inside the plugin!
+## Installation
 
-### Install with vim.pack
-
-```lua
-
--- Should be set before running vim.pack.add!
-vim.g.memo_notes_dir = "~/my-notes-dir" -- Default is ~/notes when not set.
-vim.g.memo_scratch_dir = "~/.local/state/memo-scratch" -- Default is stdpath('data')/memo-scratch when not set.
-
-vim.pack.add({
-	{ src = "https://github.com/ldonnez/memo.nvim", version = vim.version.range("*") },
-})
-
-local keymap = vim.keymap
-
-keymap.set("n", "<leader>mc", function()
-  require("memo").register_capture({
-    -- default capture file relative path from notes_dir. Will be created if it does not exist.
-    capture_file = "inbox.md.gpg",
-    -- optional default values
-    capture_template = {
-      template = "",
-      header_padding = 0,
-    },
-    window = {
-      split = "split", -- "split" | "vsplit"
-      size = 10,
-      position = "botright", -- "botright" | "topleft" | "leftabove" | "rightbelow"
-    },
-  })
-end, { desc = "Capture to braindump" })
-
-keymap.set("n", "<leader>mf", function()
-  require("memo.pickers.fzf_lua").files_picker()
-end, { desc = "Memo files picker" })
-
-keymap.set("n", "<leader>ms", function()
-  require("memo").sync_git()
-end, { desc = "Sync with git" })
-
-```
-
-### Install with [lazy.nvim](https://lazy.folke.io/)
+### lazy.nvim
 
 ```lua
 {
   "ldonnez/memo.nvim",
   init = function()
-    vim.g.memo_notes_dir = "~/my-notes-dir" -- Default is ~/notes when not set.
-    vim.g.memo_scratch_dir = "~/.local/state/memo-scratch" -- Default is stdpath('data')/memo-scratch when not set.
+    vim.g.memo_notes_dir = "~/my-notes-dir" -- default: ~/notes
+    vim.g.memo_scratch_dir = "~/.local/state/memo-scratch" -- default: stdpath("data")/memo-scratch
   end,
   keys = {
     {
+      mode = { "n", "v" },
       "<leader>mc",
       function()
-        require("memo").register_capture({
-          -- default capture file relative path from notes_dir. Will be created if it does not exist.
-          capture_file = "inbox.md.gpg",
-          -- optional default values
-          capture_template = {
-            template = "",
-            header_padding = 0,
-          },
-          window = {
-            split = "split", -- "split" | "vsplit"
-            size = 10,
-            position = "botright", -- "botright" | "topleft" | "leftabove" | "rightbelow"
-          },
-        })
+        require("memo").register_capture({ capture_file = "inbox.md.gpg" })
       end,
-      desc = "Capture to inbox",
+      desc = "Memo: Capture to braindump",
+    },
+    {
+      "<leader>ms",
+      function()
+        require("memo").scratch("horizontal")
+      end,
+      desc = "Memo: Scratch horizontal",
+    },
+    {
+      "<leader>mS",
+      function()
+        require("memo").save_as_note()
+      end,
+      desc = "Memo: Save as note",
+    },
+    {
+      "<leader>mv",
+      function()
+        require("memo").scratch("vertical")
+      end,
+      desc = "Memo: Scratch vertical",
+    },
+    {
+      "<leader>mt",
+      function()
+        require("memo").scratch("tab")
+      end,
+      desc = "Memo: Scratch tab",
     },
     {
       "<leader>mf",
       function()
         require("memo.pickers.fzf_lua").files_picker()
       end,
-      desc = "Fzf lua files picker",
+      desc = "Memo: Files",
+    },
+    {
+      "<leader>mp",
+      function()
+        require("memo.pickers.fzf_lua").scratch_files_picker()
+      end,
+      desc = "Memo: Scratch files",
     },
   },
 }
 ```
 
-> [!IMPORTANT]
-> Check with `:checkhealth memo` to verify if dependencies are met and to ensure the plugin is correctly loaded.
+### vim.pack
+
+Set configuration before loading the plugin.
+
+```lua
+vim.g.memo_notes_dir = "~/my-notes-dir" -- default: ~/notes
+vim.g.memo_scratch_dir = "~/.local/state/memo-scratch" -- default: stdpath("data")/memo-scratch
+
+vim.pack.add({
+  { src = "https://github.com/ldonnez/memo.nvim", version = vim.version.range("*") },
+})
+
+vim.keymap.set({ "n", "v" }, "<leader>mc", function()
+   require("memo").register_capture({ capture_file = "inbox.md.gpg" })
+end, { desc = "Memo: Capture to braindump" })
+
+vim.keymap.set("n", "<leader>ms", function()
+  require("memo").scratch("horizontal")
+end, { desc = "Memo: Scratch horizontal" })
+
+vim.keymap.set("n", "<leader>mS", function()
+  require("memo").save_as_note()
+end, { desc = "Memo: Save as note" })
+
+vim.keymap.set("n", "<leader>mv", function()
+  require("memo").scratch("vertical")
+end, { desc = "Memo: Scratch vertical" })
+
+vim.keymap.set("n", "<leader>mt", function()
+  require("memo").scratch("tab")
+end, { desc = "Memo: Scratch tab" })
+
+vim.keymap.set("n", "<leader>mf", function()
+  require("memo.pickers.fzf_lua").files_picker()
+end, { desc = "Memo: Files" })
+
+vim.keymap.set("n", "<leader>mp", function()
+  require("memo.pickers.fzf_lua").scratch_files_picker()
+end, { desc = "Memo: Scratch files" })
+```
 
 ## Configuration
 
-`memo.nvim` can be configured using global variables. All configuration values are optional and fall back to their defaults when not set.
+All settings are optional and set via global variables before `memo.nvim` loads.
 
-```lua
-vim.g.memo_notes_dir = "~/my-notes"
-vim.g.memo_scratch_dir = "~/.local/state/memo-scratch"
+### `g:memo_notes_dir`
 
-vim.g.memo_ignore_patterns = {
-  "**/.env",
-  "**/tmp/**",
-}
-```
+Directory containing your encrypted notes.
 
-### Notes directory
-
-`vim.g.memo_notes_dir` configures the directory containing your encrypted notes.
-
-Default:
-
-```text
-~/notes
-```
+- Default: `~/notes`
 
 ```lua
 vim.g.memo_notes_dir = "~/my-notes"
 ```
 
-### Scratch directory
+### `g:memo_scratch_dir`
 
-`vim.g.memo_scratch_dir` configures where encrypted scratch files are stored.
+Directory where encrypted scratch files are stored.
 
-Default:
-
-```text
-vim.fn.stdpath("data")/memo-scratch
-```
-
-For example, on a typical Linux installation this is:
-
-```text
-~/.local/share/nvim/memo-scratch
-```
+- Default: `vim.fn.stdpath("data")/memo-scratch` (e.g. `~/.local/share/nvim/memo-scratch`)
 
 ```lua
 vim.g.memo_scratch_dir = "~/.local/state/memo-scratch"
 ```
 
-### Ignore patterns
+### `g:memo_ignore_patterns`
 
-`vim.g.memo_ignore_patterns` allows you to specify additional files and directories that `memo.nvim` should ignore.
-
-Patterns use `.gitignore`-style glob patterns. Ignored files are treated as regular files: they are not decrypted when opened and are not encrypted when written.
-
-The following patterns are ignored by default:
+Additional `.gitignore`-style glob patterns to leave as plaintext. Files matching these patterns are not decrypted on open and not encrypted on write. Custom patterns are merged with the defaults below.
 
 ```lua
 {
   "**/.git/**",
+  "**/.githooks/**",
   "**/.gitignore",
   "**/.gitattributes",
   "**/.gitmodules",
+  "**/.ignore",
 }
 ```
 
-Custom patterns are **merged with the default patterns**, rather than replacing them:
+Example:
 
 ```lua
 vim.g.memo_ignore_patterns = {
@@ -194,47 +177,35 @@ vim.g.memo_ignore_patterns = {
 }
 ```
 
-This is useful when your notes directory contains files or directories that should remain plaintext or should not be handled by `memo.nvim`.
+## Commands
 
-For example, with:
-
-```lua
-vim.g.memo_ignore_patterns = {
-  "**/.env",
-}
-```
-
-a file such as:
-
-```text
-~/notes/project/.env
-```
-
-is left untouched by `memo.nvim`, while files elsewhere in the notes directory continue to use transparent encryption normally.
-
-> [!NOTE]
-> Set global configuration variables before `memo.nvim` initializes. With plugin managers such as `lazy.nvim`, use the `init` function. With `vim.pack`, set them before calling `vim.pack.add()`.
+| Command             | Description                                   |
+| ------------------- | --------------------------------------------- |
+| `:MemoScratch`      | Open a new encrypted scratch buffer.          |
+| `:MemoScratchFiles` | Browse and open encrypted scratch files.      |
+| `:MemoSaveAsNote`   | Save the current buffer as an encrypted note. |
+| `:MemoFiles`        | Browse and open files in the notes directory. |
+| `:MemoSync`         | Sync the git backend (`memo sync git`).       |
 
 ## Features
 
-### Transparant editing
+### Transparent editing
 
-**memo.nvim** operates as a transparent wrapper around your notes directory. Instead of manually decrypting files, the plugin automates the lifecycle, using Neovim autocommands (autocmd):
+`memo.nvim` acts as a transparent wrapper around your notes directory via autocommands:
 
-- Detection: When you open a file within your configured notes directory, the plugin detects the path.
-- Auto-Encryption: Any new file created within the notes directory is automatically encrypted upon writing.
-- Security: The decrypted content exists only in your Neovim buffer.
-- Asynchronous decryption: All decryption operations run in the background. This ensures that the editor remains responsive and non-blocking, even when processing large files.
+- Opening a file inside the notes directory triggers asynchronous decryption; the editor stays responsive even for large files.
+- Writing a buffer re-encrypts the file automatically.
+- New files in the notes directory are encrypted on first write.
+- Decrypted content lives only in the Neovim buffer.
+- Files matching `g:memo_ignore_patterns` are treated as regular files.
 
-> [!NOTE]
-> This "transparent" approach means you can use your favorite Neovim workflows (searching, LSP, macros) on your files, while keeping the underlying data fully encrypted.
+This means your usual workflows (search, LSP, macros) operate on plaintext while the data on disk stays encrypted.
 
 ### Formatting with conform.nvim
 
-If you want to format your notes with `prettier` via [conform.nvim](https://github.com/stevearc/conform.nvim), you'll need one extra option. Since memo notes are stored with a `.gpg` extension, `prettier` cannot infer the parser from the filename. Set `ft_parsers` for the `prettier` formatter so memo buffers are formatted with the right parser — **you must add an entry for every filetype you want to format inside the notes** (the key is the buffer filetype, the value is prettier's parser name):
+`prettier` cannot infer a parser from `.gpg` filenames. If you use [conform.nvim](https://github.com/stevearc/conform.nvim) to format notes, map each filetype to its parser:
 
 ```lua
--- in your conform.nvim config
 require("conform").setup({
   formatters = {
     prettier = {
@@ -254,7 +225,7 @@ require("conform").setup({
 
 ### Encrypted scratch buffers
 
-**memo.nvim** provides an encrypted scratch buffer for throwaway, sensitive content. Content is encrypted with your GPG key on each write into a `.gpg` file under a configurable scratch directory (`vim.g.memo_scratch_dir`; defaults to `data/memo-scratch/`, where `data` is `vim.fn.stdpath("data")`, e.g. `~/.local/share/nvim`), avoiding plaintext on disk and keeping it out of your notes git sync. Each file is named after the `cwd` it was created in plus a timestamp, so buffers opened from different projects never collide. Because the buffer is an ordinary file in your scratch directory, it reuses the regular memo read/write autocmds: the file is transparently decrypted when opened and re-encrypted on write. The encrypted files persist, so scratch buffers survive restarts and sessions (e.g. [auto-session](https://github.com/rmagatti/auto-session)) like any other memo note.
+Create encrypted scratch buffers for throwaway, sensitive content:
 
 ```lua
 vim.keymap.set("n", "<leader>ms", function()
@@ -270,28 +241,21 @@ vim.keymap.set("n", "<leader>mt", function()
 end, { desc = "Memo: New scratch buffer (new tab)" })
 ```
 
-Or use the built-in command: `:MemoScratch <horizontal|vertical|tab>`.
+Or use the command `:MemoScratch <horizontal|vertical|tab>`.
 
-To browse and reopen existing scratch files (e.g. after a restart), use the fzf-lua scratch picker:
+Notes:
 
-```lua
-vim.keymap.set("n", "<leader>mfs", function()
-  require("memo.pickers.fzf_lua").scratch_files_picker()
-end, { desc = "Memo: Scratch files picker" })
-```
-
-Or use the built-in command: `:MemoScratchFiles`.
-
-The scratch picker also supports deleting the selected scratch files (scratch content is throwaway by design): multi-select with `tab`/`alt-a`, then confirm with `ctrl-x`. Any buffer holding a deleted file is wiped too, so no orphaned state remains.
-
-> [!NOTE]
-> Scratch content is throwaway by design: deleting or wiping the buffer (`:bd`/`:bwipeout`) also deletes its encrypted file. Leaving the buffer open keeps it around, and the encrypted file is only created once you write content.
+- Files are stored encrypted in `g:memo_scratch_dir`, named after the `cwd` plus a timestamp, so buffers from different projects never collide.
+- The buffer reuses the regular memo read/write autocommands, so files persist across restarts and sessions (e.g. [auto-session](https://github.com/rmagatti/auto-session)).
+- Scratch content is throwaway by design: deleting or wiping the buffer (`:bd`/`:bwipeout`) also deletes its encrypted file. The encrypted file is only created once you write content.
 
 ### Save a buffer as a note
 
-**memo.nvim** lets you turn any buffer into a note in your notes directory with `:MemoSaveAsNote` (or `require("memo").save_as_note()`). It prompts for a note path (defaulting to `<notes_dir>/<name>.gpg`, where `<name>` is the current buffer's name without the `.gpg` extension) so it is clear where the note will be stored. A relative path is resolved against `<notes_dir>`, and the resolved path must stay inside `<notes_dir>` — saving elsewhere is refused, as is overwriting an existing note or using an empty path.
+Turn any buffer into a note in your notes directory with `:MemoSaveAsNote` (or `require("memo").save_as_note()`):
 
-This pairs naturally with scratch buffers: write something ephemeral in a `:MemoScratch` window, then promote it to a permanent note. The current buffer is left open afterward, whether it is a scratch buffer or a regular one, so you can keep working.
+- Prompts for a note path, defaulting to `<notes_dir>/<buffer_name>.gpg`.
+- Relative paths are resolved against `<notes_dir>` and must stay inside it; saving elsewhere, overwriting an existing note, or using an empty path will not work.
+- Pairs naturally with scratch buffers: write something ephemeral, then promote it to a permanent note.
 
 ```lua
 vim.keymap.set("n", "<leader>msn", function()
@@ -299,37 +263,37 @@ vim.keymap.set("n", "<leader>msn", function()
 end, { desc = "Memo: Save buffer as note" })
 ```
 
-Or use the built-in command: `:MemoSaveAsNote`.
+### Quick capture
 
-### Capture workflow
-
-**memo.nvim** includes a feature that allows you to quickly write down text into a temporary buffer. Once you save and close the window, the content is automatically appended to your configured `capture_file`.
-
-#### Usage
-
-You can register a capture command with custom behavior, such as dynamic headers (e.g., timestamps), cursor position with `|`, `header_padding` to configure the padding between capture and target header, and configure how capture window will split (`split`/`vsplit`).
-When target header does not exist it will be prepended to the capture file.
-
-This will prepend the following under the `# inbox` header in `inbox.md.gpg`.
-
-```markdown
-## <date> <time>
-```
+Wire a keybinding to write down text in a temporary buffer. On saving and closing the window, the content is appended to your configured `capture_file`, under the `target_header` (prepended if it does not exist).
 
 ```lua
-require("memo").register_capture({
-  capture_file = "inbox.md.gpg",
-  capture_template = {
-    template = "## %Y-%m-%d %H:%M\n\n|\n", -- you can configure where cursor position in the capture window with '|'.
-    target_header = "# inbox", -- will be prepended if it does not exist.
-    header_padding = 1, -- padding between capture content and target header.
-  },
-})
+vim.keymap.set("n", "<leader>mc", function()
+  require("memo").register_capture({
+    capture_file = "inbox.md.gpg",
+    capture_template = {
+      template = "## %Y-%m-%d %H:%M\n\n|\n", -- '|' marks the cursor position in the capture window
+      target_header = "# inbox",
+      header_padding = 1, -- blank lines between capture content and target header
+    },
+    window = {
+      split = "split", -- "split" | "vsplit"
+      size = 10,
+      position = "botright", -- "botright" | "topleft" | "leftabove" | "rightbelow"
+    },
+  })
+end, { desc = "Memo: Quick capture" })
 ```
 
-#### Journal example
+A visual selection is detected automatically: select text in visual mode and call `register_capture` to pre-fill the capture window:
 
-You can turn a capture file into a journal by using dynamic headers. This setup automatically groups your notes under a heading for the current day.
+```lua
+vim.keymap.set("v", "<leader>mc", function()
+  require("memo").register_capture({ capture_file = "inbox.md.gpg" })
+end, { desc = "Memo: Quick capture selection" })
+```
+
+Turn a capture file into a journal with dynamic headers:
 
 ```lua
 require("memo").register_capture({
@@ -341,7 +305,7 @@ require("memo").register_capture({
 })
 ```
 
-Or create a journal file for each day automatically.
+Or create a journal file for each day automatically:
 
 ```lua
 require("memo").register_capture({
@@ -353,137 +317,30 @@ require("memo").register_capture({
 })
 ```
 
-#### Keybindings
+### fzf-lua pickers
+
+memo.nvim includes pickers built on `require("fzf-lua").files` that scope the search to your notes directory or your encrypted scratch files.
 
 ```lua
-vim.keymap.set("n", "<leader>mc", function()
-  require("memo").register_capture({ capture_file = "inbox.md.gpg" })
-end, { desc = "Memo: Quick Capture" })
+require("memo.pickers.fzf_lua").files_picker()          -- notes directory
+require("memo.pickers.fzf_lua").scratch_files_picker()  -- scratch files
 ```
 
-A visual selection is detected automatically: select text in visual mode (or select then leave visual mode) and call `register_capture` — the selected lines are pre-filled into the capture window.
-
-```lua
-vim.keymap.set("v", "<leader>mc", function()
-  require("memo").register_capture({ capture_file = "inbox.md.gpg" })
-end, { desc = "Memo: Quick Capture selection" })
-```
-
-or as keys with **lazy.nvim** package manager
-
-```lua
-{
-  "<leader>mc",
-  function()
-    require("memo").register_capture({
-      capture_file = "inbox.md.gpg",
-    })
-  end,
-  desc = "Capture to inbox",
-},
-```
-
-### Fzf lua pickers
-
-memo.nvim provides a built-in picker to quickly browse and open your encrypted files. It leverages `require("fzf-lua").files` while scoping the search to your configured notes directory (or your encrypted scratch files). The scratch picker additionally binds `ctrl-x` to delete the selected scratch files (multi-select with `tab`) without closing the picker.
-
-#### Usage
-
-```lua
-  require("memo.pickers.fzf_lua").files_picker()          -- notes dir
-  require("memo.pickers.fzf_lua").scratch_files_picker()  -- scratch dir
-```
-
-#### Keybinding example
-
-```lua
-vim.keymap.set("n", "<leader>mf", function()
-  require("memo.pickers.fzf_lua").files_picker()
-end, { desc = "Memo: file picker" })
-
-vim.keymap.set("n", "<leader>mFs", function()
-  require("memo.pickers.fzf_lua").scratch_files_picker()
-end, { desc = "Memo: scratch files picker" })
-```
-
-or as keys with **lazy.nvim** package manager
-
-```lua
-{
-  "<leader>mf",
-  function()
-    require("memo.pickers.fzf_lua").files_picker()
-  end,
-  desc = "Memo: file picker",
-},
-{
-  "<leader>mFs",
-  function()
-    require("memo.pickers.fzf_lua").scratch_files_picker()
-  end,
-  desc = "Memo: scratch files picker",
-},
-```
-
-## User commands
-
-| Command             | Lua function                                             | Description                                                                                           |
-| ------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `:MemoScratch`      | `require("memo").scratch()`                              | Opens a new encrypted scratch buffer, durable across sessions.                                        |
-| `:MemoScratchFiles` | `require("memo.pickers.fzf_lua").scratch_files_picker()` | Browse and open encrypted scratch files.                                                              |
-| `:MemoSaveAsNote`   | `require("memo").save_as_note()`                         | Prompts for a note path (defaults to `<notes_dir>/<name>.gpg`) and encrypts the current buffer there. |
-| `:MemoSetup`        | `require("memo").setup()`                                | Initializes configuration and registers required autocmds.                                            |
-| `:MemoSync`         | require("memo").sync_git()                               | Calls `memo sync git` to trigger a synchronisation of the git backend.                                |
+The scratch picker additionally binds `ctrl-x` to delete the selected scratch files (multi-select with `tab`/`alt-a`) without closing the picker; any buffer holding a deleted file is wiped too.
 
 ## Development
 
-This project uses a Makefile to automate setup and testing. Development is primarily supported via Docker to ensure a consistent, isolated environment.
-
-### Prerequisites
-
-Make sure the following dependencies are installed before building or testing:
-
-- [memo](https://github.com/ldonnez/memo)
-- [Docker](https://www.docker.com/)
-
-### Dev setup
-
-- Installs **mini.nvim** test for supporting the test suite
-- Installs **memo**
-- Installs **emmylua_check** from [emmylua-analayzer-rust](https://github.com/EmmyLuaLs/emmylua-analyzer-rust)
-
-```bash
-make dev
-```
+- `make dev` — install dev dependencies (mini.nvim, memo, emmylua_check) and symlink the plugin into `~/.local/share/nvim/site/pack/local/opt`.
+- `make test` — run the test suite (mini.test). Requires `make deps/memo` and `~/.local/bin` on `PATH`.
+- `make test_file FILE=tests/test_gpg.lua` — run a single test file.
+- `make emmylua_check` — Lua type check.
 
 ### Docker workflow (recommended)
 
-The project supports Docker for isolated builds and tests.
+- `make docker/build-image` — build the CI-like image.
+- `make docker/shell` — drop into a shell with the project mounted at `/opt` and your local `memo` binary available.
 
-- Build the image
-
-  ```bash
-  make docker/build-image
-  ```
-
-- Launch a Bash shell inside the container with the project directory mounted at /opt.
-
-> [!NOTE]
-> Your locally installed version of memo is mounted inside the shell.
-
-```bash
-make docker/shell
-```
-
-### Run tests
-
-Tests can be executed either locally (if your environment is set up) or inside the Docker container. We use mini.test for our test suite.
-
-```bash
-make test
-```
-
-## [License](LICENSE)
+## License
 
 MIT License
 
