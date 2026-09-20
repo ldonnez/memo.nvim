@@ -457,6 +457,34 @@ describe("autocmd", function()
 		MiniTest.expect.equality(vim.fn.readfile(plain), { "*.md" })
 	end)
 
+	it("wipes the buffer when the passphrase cannot be obtained (auth aborted)", function()
+		local encrypted = vim.env.NOTES_DIR .. "/locked.md.gpg"
+		helpers.encrypt_file(encrypted, "secret")
+
+		child.lua([[
+			local gpg = require("memo.gpg")
+			gpg.get_gpg_passphrase = function()
+				return false
+			end
+		]])
+
+		local target_bufnr = child.lua(
+			[[
+				local path = ...
+				pcall(vim.cmd, "edit " .. vim.fn.fnameescape(path))
+
+				return vim.api.nvim_get_current_buf()
+			]],
+			{ encrypted }
+		)
+
+		child.wait_until(function()
+			return not child.api.nvim_buf_is_valid(target_bufnr)
+		end)
+
+		MiniTest.expect.equality(child.api.nvim_buf_is_valid(target_bufnr), false)
+	end)
+
 	describe("default ignored files", function()
 		local ignored_files = {
 			{ ".gitignore", "*.gpg\n" },

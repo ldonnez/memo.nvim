@@ -47,6 +47,8 @@ local function append_to_buffer(bufnr, lines, state)
 end
 
 --- Decrypts a file and handles all buffer insertions.
+--- aborted the passphrase prompt); in that case an error message is shown and
+--- the buffer is wiped. The `on_exit` callback is NOT invoked then.
 --- @param path string The path to the encrypted file.
 --- @param bufnr integer The buffer handle to write into.
 --- @param on_exit fun(result: vim.SystemCompleted)
@@ -55,7 +57,7 @@ function M.decrypt_to_buffer(path, bufnr, on_exit)
 	local accumulator = ""
 	local state = { first_write = true }
 
-	return gpg.exec_with_gpg_auth({ "memo", "decrypt", path }, {
+	local obj = gpg.exec_with_gpg_auth({ "memo", "decrypt", path }, {
 		stdout = function(_, data)
 			if not data or data == "" then
 				return
@@ -81,6 +83,20 @@ function M.decrypt_to_buffer(path, bufnr, on_exit)
 			on_exit(result)
 		end)
 	end)
+
+	-- exec_with_gpg_auth returns nil when the passphrase could not be obtained.
+	-- Leaving the buffer in place would freeze it: modifiable stays false and
+	-- nothing would reset it, so wipe it and tell the user.
+	if not obj then
+		vim.schedule(function()
+			message.error("Decryption failed: could not authenticate")
+			if vim.api.nvim_buf_is_valid(bufnr) then
+				vim.api.nvim_buf_delete(bufnr, { force = true })
+			end
+		end)
+	end
+
+	return obj
 end
 
 ---@return vim.SystemCompleted?

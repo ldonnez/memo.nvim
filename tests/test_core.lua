@@ -148,7 +148,7 @@ describe("core", function()
           opts.stdout(nil, "\n\n")
 
           on_exit({ code = 0 })
-          return
+          return true -- truthy so decrypt_to_buffer treats it as started
         end
 
         M.decrypt_to_buffer(path, bufnr, function(obj)
@@ -166,6 +166,46 @@ describe("core", function()
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 
 			MiniTest.expect.equality(lines, { "Line 1", "Line 2", "Line 3", "" })
+		end)
+
+		it("decrypt_to_buffer: wipes the buffer and reports when the passphrase cannot be obtained", function()
+			local path = "/tmp/auth_aborted.md.gpg"
+			helpers.encrypt_file(path, "Line 1\nLine 2")
+
+			local bufnr = child.lua(
+				[[
+			local path = ...
+			local gpg = require("memo.gpg")
+
+			-- Simulate an auth failure (e.g. the user aborted the prompt):
+			-- exec_with_gpg_auth returns nil without ever calling on_exit.
+			gpg.exec_with_gpg_auth = function()
+				return nil
+			end
+
+			local bufnr = vim.api.nvim_create_buf(true, false)
+			vim.api.nvim_win_set_buf(0, bufnr)
+
+			vim.g.auth_cb_called = false
+			M.decrypt_to_buffer(path, bufnr, function()
+				vim.g.auth_cb_called = true
+			end)
+
+			return bufnr
+			]],
+				{ path }
+			)
+
+			child.wait_until(function()
+				return not child.api.nvim_buf_is_valid(bufnr)
+			end)
+
+			MiniTest.expect.equality(child.api.nvim_buf_is_valid(bufnr), false)
+			MiniTest.expect.equality(child.g.auth_cb_called, false)
+
+			child.wait_until(function()
+				return child.cmd_capture("messages") == "Decryption failed: could not authenticate"
+			end)
 		end)
 
 		it("decrypt_to_stdout: decrypts content", function()
