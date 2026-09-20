@@ -289,6 +289,31 @@ describe("capture", function()
 			MiniTest.expect.equality(messages, "Capture aborted: empty content")
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/empty-capture.md.gpg"), 0)
 		end)
+
+		it("keeps the buffer and reports an error when encryption fails", function()
+			local capture_file = "fail.md.gpg"
+
+			-- Simulate a failed encryption (e.g. memo CLI error).
+			child.lua([[
+				core.encrypt_from_stdin = function()
+					return { code = 1, stderr = "boom" }
+				end
+			]])
+
+			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file })
+
+			child.type_keys("i", "precious content", "<Esc>")
+
+			local buf = child.api.nvim_get_current_buf()
+			child.cmd("write")
+
+			MiniTest.expect.equality(child.api.nvim_buf_is_valid(buf), true)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/fail.md.gpg"), 0)
+
+			child.wait_until(function()
+				return child.cmd_capture("messages") == "Capture failed: content was not saved"
+			end)
+		end)
 	end)
 
 	describe("with gpg key with password", function()

@@ -26,15 +26,20 @@ local defaults = {
 
 ---Ensures relative directories are created from given capture file path.
 ---@param file string -- capture file path
+---@return boolean -- true when the parent directory exists (or was created)
 local function ensure_directories(file)
 	local dir = vim.fn.fnamemodify(file, ":h")
-	if vim.fn.isdirectory(dir) == 0 then
-		local success, err = pcall(vim.fn.mkdir, dir, "p")
-		if not success then
-			message.error("Error: %s", tostring(err))
-			return
-		end
+	if vim.fn.isdirectory(dir) == 1 then
+		return true
 	end
+
+	local success, err = pcall(vim.fn.mkdir, dir, "p")
+	if not success then
+		message.error("Error: %s", tostring(err))
+		return false
+	end
+
+	return true
 end
 
 ---@param config CaptureConfig
@@ -73,6 +78,7 @@ end
 ---@param lines string[] The new lines from the capture window
 ---@param config CaptureConfig
 ---@param capture_template MemoCaptureTemplate
+---@return boolean -- true when the content was saved successfully
 local function append_capture(lines, config, capture_template)
 	local notes_dir = memo_config.notes_dir
 
@@ -81,18 +87,19 @@ local function append_capture(lines, config, capture_template)
 
 	if vim.fn.filereadable(file) == 0 then
 		-- Ensure relative directories are created
-		ensure_directories(file)
+		if not ensure_directories(file) then
+			return false
+		end
 
 		local merged = capture_template:merge_with_content({}, lines)
-		core.encrypt_from_stdin(file, merged)
-		return
+		return core.encrypt_from_stdin(file, merged).code == 0
 	end
 
 	local read_result = core.decrypt_to_stdout(file)
 
-	if not read_result or (read_result and read_result.code ~= 0) then
+	if not read_result or read_result.code ~= 0 then
 		message.error("Capture failed: decryption error")
-		return
+		return false
 	end
 
 	local existing = vim.split(read_result.stdout or "", "\n", { plain = true })
@@ -105,7 +112,7 @@ local function append_capture(lines, config, capture_template)
 
 	local merged = capture_template:merge_with_content(existing, lines)
 
-	core.encrypt_from_stdin(file, merged)
+	return core.encrypt_from_stdin(file, merged).code == 0
 end
 
 ---Resolves the current buffer's visual selection into its lines.
@@ -159,16 +166,25 @@ function M.register(opts)
 			vim.api.nvim_exec_autocmds("BufWritePre", { buffer = buf, modeline = false })
 			local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
 
-			local current_content = table.concat(lines, "\n")
-
 			local has_changed = not vim.deep_equal(lines, template_lines)
-			local is_not_empty = current_content:gsub("%s+", "") ~= ""
+			local is_not_empty = table.concat(lines, "\n"):gsub("%s+", "") ~= ""
 
 			if has_changed and is_not_empty then
-				append_capture(lines, config, capture_template)
+				local saved = append_capture(lines, config, capture_template)
+
+				if not saved then
+					-- Keep the buffer so the content is not silently lost. Defer
+					-- the error message: an ERROR-level vim.notify raises inside
+					-- an autocmd, which would abort the write command outright.
+					vim.schedule(function()
+						message.error("Capture failed: content was not saved")
+					end)
+					return
+				end
 			else
 				message.warn("Capture aborted: empty content")
 			end
+
 			vim.api.nvim_exec_autocmds("BufWritePost", { buffer = buf, modeline = false })
 			vim.api.nvim_buf_delete(buf, { force = true })
 		end,
