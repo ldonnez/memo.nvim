@@ -96,7 +96,7 @@ local function cache_passphrase(pass, id)
 	local obj = vim.system(cmd):wait()
 
 	if obj.code ~= 0 then
-		message.error("GPG: incorrect passphrase")
+		message.defer_error("GPG: incorrect passphrase")
 		return false
 	end
 	return true

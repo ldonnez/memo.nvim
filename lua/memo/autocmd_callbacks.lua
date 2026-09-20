@@ -170,12 +170,10 @@ function M.on_write(args)
 	local result = core.encrypt_from_stdin(gpg_path, lines)
 
 	if result.code ~= 0 then
-		-- Defer the error message: an ERROR-level vim.notify raises inside an
-		-- autocmd, which would abort the write command outright.
+		-- Defer: an ERROR-level vim.notify raises inside an autocmd, which
+		-- would abort the write command outright.
 		local err = (result.stderr and result.stderr ~= "") and result.stderr or "Unknown encryption error"
-		vim.schedule(function()
-			message.error("%s", err)
-		end)
+		message.defer_error("%s", err)
 		return
 	end
 

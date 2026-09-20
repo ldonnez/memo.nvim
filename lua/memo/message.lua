@@ -14,6 +14,17 @@ function M.error(fmt, ...)
 	vim.notify(fmt:format(...), levels.ERROR, { title = "memo.nvim" })
 end
 
+---Deferred `error`: an ERROR-level vim.notify raises when invoked directly
+---inside an autocmd (BufReadCmd/BufWriteCmd), so defer it via `vim.schedule`.
+---@param fmt string
+---@param ... any
+function M.defer_error(fmt, ...)
+	local msg = fmt:format(...)
+	vim.schedule(function()
+		M.error("%s", msg)
+	end)
+end
+
 --- @param fmt string
 --- @param ... any
 function M.info(fmt, ...)

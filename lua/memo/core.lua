@@ -85,8 +85,8 @@ function M.decrypt_to_buffer(path, bufnr, on_exit)
 	-- Leaving the buffer in place would freeze it: modifiable stays false and
 	-- nothing would reset it, so wipe it and tell the user.
 	if not obj then
+		message.defer_error("Decryption failed: could not authenticate")
 		vim.schedule(function()
-			message.error("Decryption failed: could not authenticate")
 			if vim.api.nvim_buf_is_valid(bufnr) then
 				vim.api.nvim_buf_delete(bufnr, { force = true })
 			end

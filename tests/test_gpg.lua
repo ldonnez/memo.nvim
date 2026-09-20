@@ -52,8 +52,7 @@ describe("gpg", function()
         local password = ...
         local gpg = require("memo.gpg")
 
-        gpg.prompt_passphrase = function(label)
-          captured_prompt = label
+        gpg.prompt_passphrase = function()
           return password
         end
 
@@ -63,6 +62,10 @@ describe("gpg", function()
 		)
 
 		MiniTest.expect.equality(result, false)
+
+		child.wait_until(function()
+			return child.cmd_capture("messages") == "GPG: incorrect passphrase"
+		end)
 	end)
 
 	it("gets correct gpg key from encrypted file", function()

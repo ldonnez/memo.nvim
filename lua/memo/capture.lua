@@ -154,12 +154,8 @@ function M.register(opts)
 				local saved = append_capture(lines, config, capture_template)
 
 				if not saved then
-					-- Keep the buffer so the content is not silently lost. Defer
-					-- the error message: an ERROR-level vim.notify raises inside
-					-- an autocmd, which would abort the write command outright.
-					vim.schedule(function()
-						message.error("Capture failed: content was not saved")
-					end)
+					-- Keep the buffer so the content is not silently lost.
+					message.defer_error("Capture failed: content was not saved")
 					return
 				end
 			else
