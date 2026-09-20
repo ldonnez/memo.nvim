@@ -485,6 +485,78 @@ describe("autocmd", function()
 		MiniTest.expect.equality(child.api.nvim_buf_is_valid(target_bufnr), false)
 	end)
 
+	it("decrypts the armored .gpg twin when opening a .md file that has one", function()
+		local plain = vim.env.NOTES_DIR .. "/twin.md"
+		local encrypted = plain .. ".gpg"
+
+		helpers.write_file(plain, "plain old content")
+		helpers.encrypt_file(encrypted, "secret content")
+
+		child.cmd("edit " .. plain)
+
+		child.wait_until(function()
+			return child.b.decrypting == false
+		end)
+
+		-- The armored twin must be decrypted, not the (unencrypted) plaintext file.
+		local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+		MiniTest.expect.equality(lines, { "secret content" })
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), plain)
+
+		-- The plaintext twin stays on disk until the note is actually saved.
+		MiniTest.expect.equality(vim.fn.filereadable(plain), 1)
+
+		child.api.nvim_buf_set_lines(0, 0, -1, false, { "edited secret content" })
+		child.cmd("write")
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), encrypted)
+		MiniTest.expect.equality(vim.fn.filereadable(plain), 0)
+
+		local decrypted = helpers.decrypt_file(encrypted)
+		MiniTest.expect.equality(decrypted.stdout, "edited secret content\n")
+	end)
+
+	it("reads ignored files in notes dirs whose path contains spaces", function()
+		local dir = vim.env.NOTES_DIR .. "/space dir"
+		vim.fn.mkdir(dir, "p")
+		local plain = dir .. "/.gitignore"
+		helpers.write_file(plain, "*.gpg\n")
+
+		child.cmd("edit " .. vim.fn.fnameescape(plain))
+		child.api.nvim_buf_set_lines(0, 0, -1, false, { "*.md" })
+		child.cmd("write")
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), plain)
+		MiniTest.expect.equality(vim.fn.filereadable(plain .. ".gpg"), 0)
+		MiniTest.expect.equality(vim.fn.readfile(plain), { "*.md" })
+	end)
+
+	it("reads non-armored .gpg files in notes dirs whose path contains spaces", function()
+		local dir = vim.env.NOTES_DIR .. "/space dir"
+		vim.fn.mkdir(dir, "p")
+		local plain = dir .. "/notes.gpg"
+		helpers.write_file(plain, "plaintext not armored\n")
+
+		child.cmd("edit " .. vim.fn.fnameescape(plain))
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), plain)
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(0, 0, -1, false), { "plaintext not armored" })
+	end)
+
+	it("renames the buffer to an absolute .gpg path when saving a relative edit", function()
+		local plain = vim.env.NOTES_DIR .. "/relative.md"
+		vim.system({ "touch", plain }):wait()
+
+		child.cmd("cd " .. vim.env.NOTES_DIR)
+		child.cmd("edit relative.md")
+		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My note" })
+		child.cmd("write")
+
+		MiniTest.expect.equality(vim.fn.filereadable(plain .. ".gpg"), 1)
+		MiniTest.expect.equality(vim.fn.filereadable(plain), 0)
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), plain .. ".gpg")
+	end)
+
 	describe("default ignored files", function()
 		local ignored_files = {
 			{ ".gitignore", "*.gpg\n" },

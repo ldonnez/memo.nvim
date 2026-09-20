@@ -62,6 +62,7 @@ local function write_regular_file(bufnr)
 end
 
 --- @param bufnr integer
+--- @param path string
 local function read_regular_file(bufnr, path)
 	vim.api.nvim_exec_autocmds("BufReadPre", {
 		buffer = bufnr,
@@ -83,21 +84,24 @@ function M.on_read(args)
 	local core = require("memo.core")
 	local message = require("memo.message")
 
+	-- Normalize to an absolute path: `args.file` can be relative and padding it
+	-- with `:p` keeps every downstream path comparison consistent.
+	local file = vim.fn.fnamemodify(args.file, ":p")
+	local gpg_path = utils.get_gpg_path(file)
+
 	-- Force filetype detection based on the name without .gpg
-	local base = args.file:gsub("%.gpg$", "")
+	local base = file:gsub("%.gpg$", "")
 	vim.bo[bufnr].filetype = vim.filetype.match({ filename = base })
 
-	if is_ignored(args.file) then
-		read_regular_file(bufnr, vim.fn.fnameescape(args.file))
+	if is_ignored(file) then
+		read_regular_file(bufnr, file)
 		return
 	end
-
-	local gpg_path = utils.get_gpg_path(args.file)
 
 	-- If the .gpg file doesn't exist, it's new, just open it
 	if vim.fn.filereadable(gpg_path) == 0 or vim.fn.getfsize(gpg_path) <= 0 then
 		-- Read file - the regular way - into buffer
-		vim.cmd("silent edit " .. vim.fn.fnameescape(args.file))
+		vim.cmd("silent edit " .. vim.fn.fnameescape(file))
 		vim.bo[bufnr].modifiable = true
 		vim.b[bufnr].decrypting = false
 
@@ -106,7 +110,7 @@ function M.on_read(args)
 	end
 
 	if not is_armored_gpg(gpg_path) then
-		read_regular_file(bufnr, vim.fn.fnameescape(args.file))
+		read_regular_file(bufnr, file)
 		return
 	end
 
@@ -137,7 +141,11 @@ function M.on_write(args)
 	local core = require("memo.core")
 	local message = require("memo.message")
 
-	if is_ignored(args.file) then
+	-- Normalize to an absolute path so `file ~= gpg_path` and the buffer rename
+	-- behave the same whether the buffer was opened relative or absolute.
+	local file = vim.fn.fnamemodify(args.file, ":p")
+
+	if is_ignored(file) then
 		write_regular_file(bufnr)
 		return
 	end
@@ -146,7 +154,7 @@ function M.on_write(args)
 		return
 	end
 
-	local gpg_path = utils.get_gpg_path(args.file)
+	local gpg_path = utils.get_gpg_path(file)
 	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
 	local current_hash = vim.fn.sha256(table.concat(lines, "\n"))
@@ -161,10 +169,10 @@ function M.on_write(args)
 	local result = core.encrypt_from_stdin(gpg_path, lines)
 
 	if result.code == 0 then
-		if args.file ~= gpg_path then
+		if file ~= gpg_path then
 			-- If saving a plain text file for the first time, delete the unencrypted original and change the buffer to the new .gpg path.
-			if vim.fn.filereadable(args.file) == 1 then
-				vim.fn.delete(args.file)
+			if vim.fn.filereadable(file) == 1 then
+				vim.fn.delete(file)
 			end
 			vim.api.nvim_buf_set_name(bufnr, gpg_path)
 		end
