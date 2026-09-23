@@ -114,4 +114,48 @@ describe("utils", function()
 			MiniTest.expect.equality(type(result), "table")
 		end)
 	end)
+
+	describe("resolve_selection", function()
+		before_each(function()
+			child.lua("vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'alpha beta gamma', 'delta epsilon' })")
+		end)
+
+		it("returns nil when not in visual mode", function()
+			child.cmd("normal! gg")
+			local result = child.lua_get("M.resolve_selection() == nil")
+
+			MiniTest.expect.equality(result, true)
+		end)
+
+		it("returns the characterwise visual selection", function()
+			child.cmd("normal! gg")
+			child.api.nvim_win_set_cursor(0, { 1, 6 })
+			child.cmd("normal! v")
+			child.api.nvim_win_set_cursor(0, { 1, 9 })
+
+			local lines = child.lua_get("M.resolve_selection()")
+			MiniTest.expect.equality(lines, { "beta" })
+		end)
+
+		it("returns the selection spanning multiple lines", function()
+			child.lua("vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'alpha', 'beta', 'gamma', 'delta' })")
+			child.cmd("normal! gg")
+			child.api.nvim_win_set_cursor(0, { 2, 0 })
+			child.cmd("normal! V")
+			child.api.nvim_win_set_cursor(0, { 3, 4 })
+
+			local lines = child.lua_get("M.resolve_selection()")
+			MiniTest.expect.equality(lines, { "beta", "gamma" })
+		end)
+
+		it("returns the selection when made backwards", function()
+			child.cmd("normal! gg")
+			child.api.nvim_win_set_cursor(0, { 1, 9 })
+			child.cmd("normal! v")
+			child.api.nvim_win_set_cursor(0, { 1, 6 })
+
+			local lines = child.lua_get("M.resolve_selection()")
+			MiniTest.expect.equality(lines, { "beta" })
+		end)
+	end)
 end)

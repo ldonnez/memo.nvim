@@ -96,23 +96,6 @@ local function append_capture(lines, config, capture_template)
 	return core.encrypt_from_stdin(file, merged).code == 0
 end
 
----Resolves the current buffer's visual selection into its lines.
----@return string[]|nil
-local function resolve_selection()
-	if not vim.fn.mode():match("[vV\22]") then
-		return nil
-	end
-
-	local start = vim.fn.getpos("v")
-	local finish = vim.fn.getpos(".")
-
-	if start[2] == 0 or finish[2] == 0 then
-		return nil
-	end
-
-	return vim.fn.getregion(start, finish)
-end
-
 ---@param opts CaptureConfig
 function M.register(opts)
 	local cfg = opts --[[@as CaptureConfig]]
@@ -122,7 +105,7 @@ function M.register(opts)
 
 	local template_lines, template_cursor = capture_template:resolve_template()
 
-	local range_lines = resolve_selection()
+	local range_lines = utils.resolve_selection()
 
 	local win, buf = create_capture_window(config)
 

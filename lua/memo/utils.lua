@@ -49,6 +49,23 @@ function M.check_exec(cmd)
 	return true
 end
 
+---Resolves the current buffer's visual selection into its lines.
+---@return string[]|nil
+function M.resolve_selection()
+	if not vim.fn.mode():match("[vV\22]") then
+		return nil
+	end
+
+	local start = vim.fn.getpos("v")
+	local finish = vim.fn.getpos(".")
+
+	if start[2] == 0 or finish[2] == 0 then
+		return nil
+	end
+
+	return vim.fn.getregion(start, finish)
+end
+
 ---Lazily load a plugin with fallback to packadd (only for Neovim 0.12+)
 ---@param import_name string e.g. "conform"
 ---@param plugin_name string? e.g. "conform.nvim", defaults to import_name
