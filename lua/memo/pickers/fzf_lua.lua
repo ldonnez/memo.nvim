@@ -1,6 +1,13 @@
 local utils = require("memo.utils")
 local config = require("memo.config")
+local scratch = require("memo.scratch")
 local M = {}
+
+---@class MemoPickerOpts
+---@field dir string
+---@field delete? boolean
+---@field filter? fun(name: string): boolean
+---@field display_scratch? boolean
 
 ---Delete the selected scratch files, also wiping any buffer that has them
 ---open. Entries are relative to the picker `cwd` and may carry icon/ANSI
@@ -27,32 +34,34 @@ local function delete_scratch_files(selected, opts)
 end
 
 ---@param fzf any
----@param dir string
----@param delete? boolean Enable a keybind to delete the selected files
----@param name_filter? fun(name: string): boolean Return false to hide a file
-local function pick(fzf, dir, delete, name_filter)
-	local actions = delete and {
+---@param opts MemoPickerOpts
+local function pick(fzf, opts)
+	local actions = opts.delete and {
 		["ctrl-x"] = { fn = delete_scratch_files, reload = true },
 	} or nil
 
 	local fn_transform
-	if name_filter then
+	if opts.filter or opts.display_scratch then
 		fn_transform = function(file)
-			if name_filter(vim.fn.fnamemodify(file, ":t")) then
-				return file
+			local name = vim.fn.fnamemodify(file, ":t")
+			if opts.filter and not opts.filter(name) then
+				return nil
 			end
-			return nil
+			return opts.display_scratch and scratch.display_scratch(name) or name
 		end
 	end
 
 	fzf.files({
-		cwd = dir,
+		cwd = opts.dir,
 		previewer = false,
 		actions = actions,
 		fn_transform = fn_transform,
 		-- A function transform cannot be serialized to the worker process, so
 		-- keep this picker in the main process (see fzf-lua shell.lua).
-		multiprocess = not name_filter,
+		multiprocess = not fn_transform,
+		-- The default actions recover the on-disk filename from the display
+		-- line before resolving the path.
+		_fmt = opts.display_scratch and { from = scratch.filename_from_display } or nil,
 	})
 end
 
@@ -63,7 +72,7 @@ function M.files_picker()
 		return
 	end
 
-	pick(fzf, config.notes_dir)
+	pick(fzf, { dir = config.notes_dir })
 end
 
 function M.scratch_files_picker()
@@ -73,7 +82,7 @@ function M.scratch_files_picker()
 		return
 	end
 
-	pick(fzf, config.scratch_dir, true)
+	pick(fzf, { dir = config.scratch_dir, delete = true, display_scratch = true })
 end
 
 function M.cwd_scratch_files_picker()
@@ -83,10 +92,15 @@ function M.cwd_scratch_files_picker()
 		return
 	end
 
-	local prefix = require("memo.scratch").cwd_key() .. "-"
-	pick(fzf, config.scratch_dir, true, function(name)
-		return name:sub(1, #prefix) == prefix
-	end)
+	local prefix = scratch.cwd_key() .. "-"
+	pick(fzf, {
+		dir = config.scratch_dir,
+		delete = true,
+		display_scratch = true,
+		filter = function(name)
+			return name:sub(1, #prefix) == prefix
+		end,
+	})
 end
 
 return M

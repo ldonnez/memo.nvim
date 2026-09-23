@@ -77,6 +77,40 @@ describe("scratch", function()
 		end)
 	end)
 
+	describe("display_scratch / filename_from_display", function()
+		local function roundtrip(name)
+			return require("memo.scratch").filename_from_display(require("memo.scratch").display_scratch(name))
+		end
+
+		it("decodes the cwd key into a readable path", function()
+			local name = "%Users%dev%project-20260920T012345-a1b2c3.gpg"
+
+			MiniTest.expect.equality(
+				require("memo.scratch").display_scratch(name),
+				"/Users/dev/project-20260920T012345-a1b2c3.gpg"
+			)
+		end)
+
+		it("round-trips to the real filename", function()
+			local names = {
+				"%Users%dev%project-20260920T012345-a1b2c3.gpg",
+				"my-project-20260920T012345-a1b2c3.gpg",
+				"%tmp%memo-scratch-20260920T023456-deadbe.gpg",
+			}
+
+			for _, name in ipairs(names) do
+				MiniTest.expect.equality(roundtrip(name), name)
+			end
+		end)
+
+		it("passes through names that are not scratch files", function()
+			local name = "important.gpg"
+
+			MiniTest.expect.equality(require("memo.scratch").display_scratch(name), name)
+			MiniTest.expect.equality(require("memo.scratch").filename_from_display(name), name)
+		end)
+	end)
+
 	describe("files_for_cwd", function()
 		before_each(function()
 			child.lua([[
