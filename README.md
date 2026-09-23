@@ -331,7 +331,7 @@ require("memo.pickers.fzf_lua").cwd_scratch_files_picker() -- current cwd
 
 The scratch pickers additionally bind `ctrl-x` to delete the selected scratch files (multi-select with `tab`/`alt-a`) without closing the picker; any buffer holding a deleted file is wiped too.
 
-Scratch files are named after the directory they were created in, so the cwd picker shows only scratch files created in the current working directory.
+Scratch files are stored under the obfuscated name `<encoded-cwd>-<timestamp>-<hash>.gpg`, so the scratch pickers decode the cwd path for display and show `<cwd-path>-<timestamp>-<hash>.gpg`. The cwd picker shows the scratch files created in the current working directory.
 
 ## Development
 
