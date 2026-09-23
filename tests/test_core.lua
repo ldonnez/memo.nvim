@@ -409,6 +409,91 @@ describe("core", function()
 			MiniTest.expect.equality(result[2], false)
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.HOME .. "/escape.gpg"), 0)
 		end)
+
+		it("save_as_note: saves only the characterwise visual selection via the user command", function()
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.api.nvim_buf_set_lines(0, 0, -1, false, {
+				"alpha beta gamma",
+				"delta epsilon",
+			})
+
+			child.api.nvim_win_set_cursor(0, { 1, 6 })
+			child.cmd("normal! v")
+			child.api.nvim_win_set_cursor(0, { 1, 9 })
+
+			child.lua("vim.fn.input = function() return 'visual' end")
+			child.type_keys(":", "MemoSaveAsNote", "<CR>")
+
+			local note = vim.env.NOTES_DIR .. "/visual.gpg"
+			MiniTest.expect.equality(child.fn.filereadable(note), 1)
+
+			local result = helpers.decrypt_file(note)
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout:find("beta") ~= nil, true)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout:find("alpha") ~= nil, false)
+		end)
+
+		it("save_as_note: saves only the visual selection when called during visual mode", function()
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.api.nvim_buf_set_lines(0, 0, -1, false, {
+				"alpha beta gamma",
+				"delta epsilon",
+			})
+
+			child.api.nvim_win_set_cursor(0, { 1, 6 })
+			child.cmd("normal! v")
+			child.api.nvim_win_set_cursor(0, { 1, 9 })
+
+			child.lua("vim.fn.input = function() return 'direct' end")
+			local result = child.lua_get("{ pcall(function() return M.save_as_note() end) }")
+
+			MiniTest.expect.equality(result[1], true)
+			MiniTest.expect.equality(result[2], true)
+
+			local note = vim.env.NOTES_DIR .. "/direct.gpg"
+			MiniTest.expect.equality(child.fn.filereadable(note), 1)
+
+			local decrypted = helpers.decrypt_file(note)
+			MiniTest.expect.equality(decrypted.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(decrypted.stdout:find("beta") ~= nil, true)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(decrypted.stdout:find("alpha") ~= nil, false)
+		end)
+
+		it("save_as_note: saves the linewise visual selection via the user command", function()
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.api.nvim_buf_set_lines(0, 0, -1, false, {
+				"alpha",
+				"beta",
+				"gamma",
+				"delta",
+			})
+
+			child.api.nvim_win_set_cursor(0, { 2, 0 })
+			child.cmd("normal! V")
+			child.api.nvim_win_set_cursor(0, { 3, 4 })
+
+			child.lua("vim.fn.input = function() return 'visual-lines' end")
+			child.type_keys(":", "MemoSaveAsNote", "<CR>")
+
+			local note = vim.env.NOTES_DIR .. "/visual-lines.gpg"
+			MiniTest.expect.equality(child.fn.filereadable(note), 1)
+
+			local result = helpers.decrypt_file(note)
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout:find("beta") ~= nil, true)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout:find("gamma") ~= nil, true)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout:find("alpha") ~= nil, false)
+		end)
 	end)
 
 	describe("with gpg key with password", function()

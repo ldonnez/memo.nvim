@@ -179,13 +179,13 @@ vim.g.memo_ignore_patterns = {
 
 ## Commands
 
-| Command             | Description                                   |
-| ------------------- | --------------------------------------------- |
-| `:MemoScratch`      | Open a new encrypted scratch buffer.          |
-| `:MemoScratchFiles` | Browse and open encrypted scratch files.      |
-| `:MemoSaveAsNote`   | Save the current buffer as an encrypted note. |
-| `:MemoFiles`        | Browse and open files in the notes directory. |
-| `:MemoSync`         | Sync the git backend (`memo sync git`).       |
+| Command             | Description                                        |
+| ------------------- | -------------------------------------------------- |
+| `:MemoScratch`      | Open a new encrypted scratch buffer.               |
+| `:MemoScratchFiles` | Browse and open encrypted scratch files.           |
+| `:MemoSaveAsNote`   | Save the buffer or selection as an encrypted note. |
+| `:MemoFiles`        | Browse and open files in the notes directory.      |
+| `:MemoSync`         | Sync the git backend (`memo sync git`).            |
 
 ## Features
 
@@ -256,9 +256,10 @@ Turn any buffer into a note in your notes directory with `:MemoSaveAsNote` (or `
 - Prompts for a note path, defaulting to `<notes_dir>/<buffer_name>.gpg`.
 - Relative paths are resolved against `<notes_dir>` and must stay inside it; saving elsewhere, overwriting an existing note, or using an empty path will not work.
 - Pairs naturally with scratch buffers: write something ephemeral, then promote it to a permanent note.
+- A visual selection is detected automatically and saves only the selected lines.
 
 ```lua
-vim.keymap.set("n", "<leader>msn", function()
+vim.keymap.set({"n", "v"}, "<leader>msn", function()
   require("memo").save_as_note()
 end, { desc = "Memo: Save buffer as note" })
 ```

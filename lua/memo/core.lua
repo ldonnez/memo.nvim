@@ -107,13 +107,45 @@ function M.sync_git()
 	return message.error("Something went wrong syncing git")
 end
 
+---Returns the lines to save: the active visual selection, or the lines given
+---by an explicit command range (e.g. `:'<,'>MemoSaveAsNote`), or nil to fall
+---back to the whole buffer.
+---@param bufnr integer
+---@param opts? { range?: integer, line1?: integer, line2?: integer }
+---@return string[]|nil
+local function selection_lines(bufnr, opts)
+	local selection = require("memo.utils").resolve_selection()
+	if selection then
+		return selection
+	end
+
+	if opts and opts.range and opts.range ~= 0 then
+		local start = vim.fn.getpos("'<")
+		local finish = vim.fn.getpos("'>")
+		local in_buffer = function(pos)
+			return pos[1] == 0 or pos[1] == bufnr
+		end
+		if in_buffer(start) and in_buffer(finish) and start[2] ~= 0 and finish[2] ~= 0 then
+			return vim.fn.getregion(start, finish)
+		end
+		local line1 = opts.line1 --[[@as integer]]
+		local line2 = opts.line2 --[[@as integer]]
+		return vim.api.nvim_buf_get_lines(bufnr, line1 - 1, line2, false)
+	end
+
+	return nil
+end
+
 ---Saves the current buffer as a note in the notes dir.
 ---Prompts for the note path (defaulting to `<notes_dir>/<name>.gpg`) so it is
 ---clear where the note will be stored, encrypts the buffer contents and writes
 ---it there. A relative path is resolved against `<notes_dir>`; the resolved
 ---path must stay inside `<notes_dir>`. The buffer is left open afterward.
+---When a visual selection is active (or the command is invoked with a range,
+---e.g. `:'<,'>MemoSaveAsNote`), only the selected lines are saved.
+---@param opts? { range?: integer, line1?: integer, line2?: integer }
 ---@return boolean success
-function M.save_as_note()
+function M.save_as_note(opts)
 	local utils = require("memo.utils")
 	local config = require("memo.config")
 	local bufnr = vim.api.nvim_get_current_buf()
@@ -149,7 +181,9 @@ function M.save_as_note()
 		return false
 	end
 
-	local result = M.encrypt_from_stdin(gpg_path, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
+	local lines = selection_lines(bufnr, opts) or vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+	local result = M.encrypt_from_stdin(gpg_path, lines)
 
 	if result.code ~= 0 then
 		message.error("MemoSaveAsNote: encryption failed")
