@@ -183,6 +183,7 @@ vim.g.memo_ignore_patterns = {
 | ------------------- | -------------------------------------------------- |
 | `:MemoScratch`      | Open a new encrypted scratch buffer.               |
 | `:MemoScratchFiles` | Browse and open encrypted scratch files.           |
+| `:MemoScratchFilesCwd` | Browse and open scratch files for the current dir. |
 | `:MemoSaveAsNote`   | Save the buffer or selection as an encrypted note. |
 | `:MemoFiles`        | Browse and open files in the notes directory.      |
 | `:MemoSync`         | Sync the git backend (`memo sync git`).            |
@@ -323,11 +324,14 @@ require("memo").register_capture({
 memo.nvim includes pickers built on `require("fzf-lua").files` that scope the search to your notes directory or your encrypted scratch files.
 
 ```lua
-require("memo.pickers.fzf_lua").files_picker()          -- notes directory
-require("memo.pickers.fzf_lua").scratch_files_picker()  -- scratch files
+require("memo.pickers.fzf_lua").files_picker()             -- notes directory
+require("memo.pickers.fzf_lua").scratch_files_picker()     -- all scratches
+require("memo.pickers.fzf_lua").cwd_scratch_files_picker() -- current cwd
 ```
 
-The scratch picker additionally binds `ctrl-x` to delete the selected scratch files (multi-select with `tab`/`alt-a`) without closing the picker; any buffer holding a deleted file is wiped too.
+The scratch pickers additionally bind `ctrl-x` to delete the selected scratch files (multi-select with `tab`/`alt-a`) without closing the picker; any buffer holding a deleted file is wiped too.
+
+Scratch files are named after the directory they were created in, so the cwd picker shows only scratch files created in the current working directory.
 
 ## Development
 

@@ -65,6 +65,66 @@ describe("scratch", function()
 		end)
 	end)
 
+	describe("cwd_key", function()
+		it("escapes non-word characters with percent", function()
+			child.lua("vim.fn.delete('/tmp/memo-cwd key', 'rf')")
+			child.lua("vim.fn.mkdir('/tmp/memo-cwd key', 'p')")
+			child.lua("vim.fn.chdir('/tmp/memo-cwd key')")
+
+			local expected = (child.fn.getcwd():gsub("[^%w%-]", "%%"))
+
+			MiniTest.expect.equality(child.lua_get("M.cwd_key()"), expected)
+		end)
+	end)
+
+	describe("files_for_cwd", function()
+		before_each(function()
+			child.lua([[
+        vim.fn.delete('/tmp/memo-cwd-scratch', 'rf')
+        vim.fn.delete('/tmp/memo-cwd-workdir', 'rf')
+        vim.g.memo_scratch_dir = '/tmp/memo-cwd-scratch'
+        require('memo.config').setup()
+
+        vim.fn.mkdir('/tmp/memo-cwd-scratch', 'p')
+        vim.fn.mkdir('/tmp/memo-cwd-workdir', 'p')
+        vim.fn.chdir('/tmp/memo-cwd-workdir')
+
+        local dir = '/tmp/memo-cwd-scratch'
+        local prefix = require('memo.scratch').cwd_key() .. '-'
+        vim.fn.writefile({}, dir .. '/' .. prefix .. '20260920T012345-a1b2c3.gpg')
+        vim.fn.writefile({}, dir .. '/' .. prefix .. '20260920T023456-deadbe.gpg')
+      ]])
+		end)
+
+		it("lists only scratch files for the current cwd", function()
+			local prefix = child.lua_get("require('memo.scratch').cwd_key() .. '-'")
+			local files = child.lua_get("M.files_for_cwd()")
+
+			MiniTest.expect.equality(files, {
+				"/tmp/memo-cwd-scratch/" .. prefix .. "20260920T012345-a1b2c3.gpg",
+				"/tmp/memo-cwd-scratch/" .. prefix .. "20260920T023456-deadbe.gpg",
+			})
+		end)
+
+		it("excludes files of other cwds, invalid names, and non-files", function()
+			child.lua([[
+        local dir = '/tmp/memo-cwd-scratch'
+        local prefix = require('memo.scratch').cwd_key() .. '-'
+        vim.fn.writefile({}, dir .. '/zzz-20260920T012345-a1b2c4.gpg')
+        vim.fn.writefile({}, dir .. '/' .. prefix .. '20260920T012345-xyz123.gpg')
+        vim.fn.mkdir(dir .. '/' .. prefix .. '20260920T012345-feedcd.gpg')
+      ]])
+
+			local prefix = child.lua_get("require('memo.scratch').cwd_key() .. '-'")
+			local files = child.lua_get("M.files_for_cwd()")
+
+			MiniTest.expect.equality(files, {
+				"/tmp/memo-cwd-scratch/" .. prefix .. "20260920T012345-a1b2c3.gpg",
+				"/tmp/memo-cwd-scratch/" .. prefix .. "20260920T023456-deadbe.gpg",
+			})
+		end)
+	end)
+
 	describe("with gpg key without password", function()
 		setup(function()
 			helpers.setup_test_env()

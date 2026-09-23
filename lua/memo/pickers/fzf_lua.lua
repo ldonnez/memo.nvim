@@ -29,15 +29,30 @@ end
 ---@param fzf any
 ---@param dir string
 ---@param delete? boolean Enable a keybind to delete the selected files
-local function pick(fzf, dir, delete)
+---@param name_filter? fun(name: string): boolean Return false to hide a file
+local function pick(fzf, dir, delete, name_filter)
 	local actions = delete and {
 		["ctrl-x"] = { fn = delete_scratch_files, reload = true },
 	} or nil
+
+	local fn_transform
+	if name_filter then
+		fn_transform = function(file)
+			if name_filter(vim.fn.fnamemodify(file, ":t")) then
+				return file
+			end
+			return nil
+		end
+	end
 
 	fzf.files({
 		cwd = dir,
 		previewer = false,
 		actions = actions,
+		fn_transform = fn_transform,
+		-- A function transform cannot be serialized to the worker process, so
+		-- keep this picker in the main process (see fzf-lua shell.lua).
+		multiprocess = not name_filter,
 	})
 end
 
@@ -59,6 +74,19 @@ function M.scratch_files_picker()
 	end
 
 	pick(fzf, config.scratch_dir, true)
+end
+
+function M.cwd_scratch_files_picker()
+	local fzf = utils.load_plugin("fzf-lua")
+
+	if not fzf then
+		return
+	end
+
+	local prefix = require("memo.scratch").cwd_key() .. "-"
+	pick(fzf, config.scratch_dir, true, function(name)
+		return name:sub(1, #prefix) == prefix
+	end)
 end
 
 return M

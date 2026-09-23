@@ -1,8 +1,9 @@
 local M = {}
 local utils = require("memo.utils")
 
----@return string
-local function get_cwd_key()
+---@return string cwd key used to prefix scratch filenames of the current
+---directory, e.g. "%Users%dev%project"
+function M.cwd_key()
 	return (vim.fn.getcwd():gsub("[^%w%-]", "%%"))
 end
 
@@ -23,7 +24,7 @@ local function get_scratch_file()
 		return nil
 	end
 
-	return vim.fs.joinpath(dir, get_cwd_key() .. "-" .. get_timestamp() .. "-" .. get_hash() .. ".gpg")
+	return vim.fs.joinpath(dir, M.cwd_key() .. "-" .. get_timestamp() .. "-" .. get_hash() .. ".gpg")
 end
 
 ---@param direction? string any direction other than "vertical"/"tab" opens a horizontal split
@@ -48,6 +49,31 @@ function M.is_scratch_file(path)
 	local filename = vim.fn.fnamemodify(path, ":t")
 
 	return filename:match("^[^/]+%-%d%d%d%d%d%d%d%dT%d%d%d%d%d%d%-%x%x%x%x%x%x%.gpg$") ~= nil
+end
+
+---Lists the scratch files stored for the current cwd, oldest first.
+---@return string[] absolute paths
+function M.files_for_cwd()
+	local dir = require("memo.config").scratch_dir
+	local prefix = M.cwd_key() .. "-"
+	local files = {}
+	local handle = vim.uv.fs_scandir(dir)
+	if not handle then
+		return files
+	end
+
+	while true do
+		local name, ftype = vim.uv.fs_scandir_next(handle)
+		if not name then
+			break
+		end
+		if ftype == "file" and name:sub(1, #prefix) == prefix and M.is_scratch_file(name) then
+			files[#files + 1] = vim.fs.joinpath(dir, name)
+		end
+	end
+
+	table.sort(files)
+	return files
 end
 
 return M

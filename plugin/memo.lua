@@ -86,6 +86,13 @@ end, {
 	desc = "Browse and open encrypted scratch files",
 })
 
+vim.api.nvim_create_user_command("MemoScratchFilesCwd", function()
+	require("memo.pickers.fzf_lua").cwd_scratch_files_picker()
+end, {
+	nargs = 0,
+	desc = "Browse and open encrypted scratch files for the current directory",
+})
+
 vim.api.nvim_create_user_command("MemoSaveAsNote", function(opts)
 	require("memo.core").save_as_note({ range = opts.range, line1 = opts.line1, line2 = opts.line2 })
 end, {
