@@ -49,21 +49,37 @@ function M.check_exec(cmd)
 	return true
 end
 
----Resolves the current buffer's visual selection into its lines.
+---Resolves the lines to save: the active visual selection, or the lines given
+---by an explicit command range (e.g. `:'<,'>MemoSaveAsNote`), or nil to fall
+---back to the whole buffer.
+---@param bufnr integer
+---@param opts? { range?: integer, line1?: integer, line2?: integer }
 ---@return string[]|nil
-function M.resolve_selection()
-	if not vim.fn.mode():match("[vV\22]") then
-		return nil
+function M.resolve_selection(bufnr, opts)
+	if vim.fn.mode():match("[vV\22]") then
+		local start = vim.fn.getpos("v")
+		local finish = vim.fn.getpos(".")
+
+		if start[2] ~= 0 and finish[2] ~= 0 then
+			return vim.fn.getregion(start, finish)
+		end
 	end
 
-	local start = vim.fn.getpos("v")
-	local finish = vim.fn.getpos(".")
-
-	if start[2] == 0 or finish[2] == 0 then
-		return nil
+	if opts and opts.range and opts.range ~= 0 then
+		local start = vim.fn.getpos("'<")
+		local finish = vim.fn.getpos("'>")
+		local in_buffer = function(pos)
+			return pos[1] == 0 or pos[1] == bufnr
+		end
+		if in_buffer(start) and in_buffer(finish) and start[2] ~= 0 and finish[2] ~= 0 then
+			return vim.fn.getregion(start, finish)
+		end
+		local line1 = opts.line1 --[[@as integer]]
+		local line2 = opts.line2 --[[@as integer]]
+		return vim.api.nvim_buf_get_lines(bufnr, line1 - 1, line2, false)
 	end
 
-	return vim.fn.getregion(start, finish)
+	return nil
 end
 
 ---Lazily load a plugin with fallback to packadd (only for Neovim 0.12+)

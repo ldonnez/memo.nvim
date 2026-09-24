@@ -105,7 +105,8 @@ function M.register(opts)
 
 	local template_lines, template_cursor = capture_template:resolve_template()
 
-	local range_lines = utils.resolve_selection()
+	local bufnr = vim.api.nvim_get_current_buf()
+	local range_lines = utils.resolve_selection(bufnr)
 
 	local win, buf = create_capture_window(config)
 
