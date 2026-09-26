@@ -182,6 +182,7 @@ vim.g.memo_ignore_patterns = {
 | Command             | Description                                        |
 | ------------------- | -------------------------------------------------- |
 | `:MemoScratch`      | Open a new encrypted scratch buffer.               |
+| `:MemoNewNote`      | Create a new encrypted note in the notes dir.      |
 | `:MemoScratchFiles` | Browse and open encrypted scratch files.           |
 | `:MemoScratchFilesCwd` | Browse and open scratch files for the current dir. |
 | `:MemoSaveAsNote`   | Save the buffer or selection as an encrypted note. |
@@ -264,6 +265,40 @@ vim.keymap.set({"n", "v"}, "<leader>msn", function()
   require("memo").save_as_note()
 end, { desc = "Memo: Save buffer as note" })
 ```
+
+### Create a new note
+
+Start an empty encrypted note with `:MemoNewNote` (or
+`require("memo").new_note()`):
+
+- Prompts for a note path, defaulting to `YYYY-MM-DD.md`.
+- Relative paths resolve against `<notes_dir>` and may contain subdirectories,
+  e.g. `:MemoNewNote journals/2026-01-01.md`. Paths must stay inside
+  `<notes_dir>`.
+- Missing parent directories are created, and an existing note is never
+  overwritten.
+- The note is written (and therefore encrypted) immediately, so it shows up in
+  `:MemoFiles` right away.
+
+Set `g:memo_new_note_template` to prefill every new note. Templates accept
+`os.date` formats and a `|` marker that is removed and used as the cursor
+position:
+
+```lua
+vim.g.memo_new_note_template = "# %Y-%m-%d\n\n## Agenda\n- |"
+```
+
+A template can also be passed per call:
+
+```lua
+require("memo").new_note({
+  path = "meetings/2026-01-01.md",
+  template = "# %Y-%m-%d\n\nAttendees:\n- |\n\nNotes:\n",
+})
+```
+
+Notes in subdirectories are opened and written transparently, so nested paths
+such as `journals/2026-01-01.md.gpg` behave like top-level notes.
 
 ### Quick capture
 

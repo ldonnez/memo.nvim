@@ -19,7 +19,9 @@ end
 local abs_notes = vim.fn.fnamemodify(notes_dir, ":p"):gsub("/$", "")
 local abs_scratch = vim.fn.fnamemodify(scratch_dir, ":p"):gsub("/$", "")
 
-local patterns = { abs_notes .. "/*" }
+-- Notes may live in subdirectories (e.g. `journals/2026-01-01.md.gpg`), so the
+-- notes pattern has to match recursively.
+local patterns = { abs_notes .. "/**" }
 
 if not is_same_or_child(abs_scratch, abs_notes) then
 	table.insert(patterns, abs_scratch .. "/*")
@@ -99,6 +101,26 @@ end, {
 	nargs = 0,
 	range = true,
 	desc = "Save the current buffer or selection as an encrypted note in the notes dir",
+})
+
+vim.api.nvim_create_user_command("MemoNewNote", function(opts)
+	local new_note = require("memo.new_note")
+	local message = require("memo.message")
+	local path = opts.args
+
+	if path == "" then
+		path = vim.fn.input("Note path: ", new_note.default_path(), "file")
+	end
+
+	if path == "" then
+		message.warn("MemoNewNote: empty note path")
+		return
+	end
+
+	new_note.create({ path = path })
+end, {
+	nargs = "?",
+	desc = "Create a new encrypted note in the notes dir",
 })
 
 vim.api.nvim_create_user_command("MemoSync", function(opts)
