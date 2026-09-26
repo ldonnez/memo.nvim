@@ -1,5 +1,5 @@
 *memo.txt* Seamless Neovim interface for memo, a CLI-based encrypted notes system
-                            For NVIM v0.11.5    Last change: 2026 September 20
+                            For NVIM v0.11.5    Last change: 2026 September 26
 
 ==============================================================================
 Table of Contents                                     *memo-table-of-contents*
@@ -208,13 +208,21 @@ Example:
 
 COMMANDS                                             *memo-memo.nvim-commands*
 
-  Command             Description
-  ------------------- -----------------------------------------------
-  :MemoScratch        Open a new encrypted scratch buffer.
-  :MemoScratchFiles   Browse and open encrypted scratch files.
-  :MemoSaveAsNote     Save the current buffer as an encrypted note.
-  :MemoFiles          Browse and open files in the notes directory.
-  :MemoSync           Sync the git backend (memo sync git).
+  --------------------------------------------------------------------------
+  Command                Description
+  ---------------------- ---------------------------------------------------
+  :MemoScratch           Open a new encrypted scratch buffer.
+
+  :MemoScratchFiles      Browse and open encrypted scratch files.
+
+  :MemoScratchFilesCwd   Browse and open scratch files for the current dir.
+
+  :MemoSaveAsNote        Save the buffer or selection as an encrypted note.
+
+  :MemoFiles             Browse and open files in the notes directory.
+
+  :MemoSync              Sync the git backend (memo sync git).
+  --------------------------------------------------------------------------
 
 FEATURES                                             *memo-memo.nvim-features*
 
@@ -295,9 +303,10 @@ Turn any buffer into a note in your notes directory with `:MemoSaveAsNote` (or
 - Prompts for a note path, defaulting to `<notes_dir>/<buffer_name>.gpg`.
 - Relative paths are resolved against `<notes_dir>` and must stay inside it; saving elsewhere, overwriting an existing note, or using an empty path will not work.
 - Pairs naturally with scratch buffers: write something ephemeral, then promote it to a permanent note.
+- A visual selection is detected automatically and saves only the selected lines.
 
 >lua
-    vim.keymap.set("n", "<leader>msn", function()
+    vim.keymap.set({"n", "v"}, "<leader>msn", function()
       require("memo").save_as_note()
     end, { desc = "Memo: Save buffer as note" })
 <
@@ -367,13 +376,19 @@ memo.nvim includes pickers built on `require("fzf-lua").files` that scope the
 search to your notes directory or your encrypted scratch files.
 
 >lua
-    require("memo.pickers.fzf_lua").files_picker()          -- notes directory
-    require("memo.pickers.fzf_lua").scratch_files_picker()  -- scratch files
+    require("memo.pickers.fzf_lua").files_picker()             -- notes directory
+    require("memo.pickers.fzf_lua").scratch_files_picker()     -- all scratches
+    require("memo.pickers.fzf_lua").cwd_scratch_files_picker() -- current cwd
 <
 
-The scratch picker additionally binds `ctrl-x` to delete the selected scratch
+The scratch pickers additionally bind `ctrl-x` to delete the selected scratch
 files (multi-select with `tab`/`alt-a`) without closing the picker; any buffer
 holding a deleted file is wiped too.
+
+Scratch files are stored under the obfuscated name
+`<encoded-cwd>-<timestamp>-<hash>.gpg`, so the scratch pickers decode the cwd
+path for display and show `<cwd-path>-<timestamp>-<hash>.gpg`. The cwd picker
+shows the scratch files created in the current working directory.
 
 
 DEVELOPMENT                                       *memo-memo.nvim-development*
