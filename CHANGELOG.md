@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.13.0](https://github.com/ldonnez/memo.nvim/compare/v0.12.3...v0.13.0) (2026-09-26)
+
+
+### Features
+
+* add fzf-lua picker for current cwd scratch files ([f420ceb](https://github.com/ldonnez/memo.nvim/commit/f420ceb847901bb313518c352e9b5654009db059))
+* make save_as_note work on visual selection ([b7c761b](https://github.com/ldonnez/memo.nvim/commit/b7c761b02b25081ff8b783a2f0bf5d043d340028))
+* show readable cwd paths for scratch files in fzf-lua pickers ([c87e81b](https://github.com/ldonnez/memo.nvim/commit/c87e81b1365073d42131bc3d3d53b7f92e56e3f6))
+
 ## [0.12.3](https://github.com/ldonnez/memo.nvim/compare/v0.12.2...v0.12.3) (2026-09-20)
 
 
