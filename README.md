@@ -300,6 +300,12 @@ require("memo").new_note({
 })
 ```
 
+When a template and a selection are both given, the selection is inserted at
+the `|` marker and the cursor lands right after it. For example, selecting
+`Ada Lovelace` with `"## Agenda\n- | (carried over)"` produces
+`## Agenda` followed by `- Ada Lovelace (carried over)`. Without a marker there
+is nowhere to insert, so the selection becomes the whole note.
+
 Notes in subdirectories are opened and written transparently, so nested paths
 such as `journals/2026-01-01.md.gpg` behave like top-level notes.
 
