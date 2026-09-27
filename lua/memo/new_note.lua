@@ -12,12 +12,6 @@ function M.default_path()
 	return require("memo.utils").build_note_path(os.date("%Y-%m-%d.md"))
 end
 
----@param gpg_path string
----@return boolean
-local function exists(gpg_path)
-	return vim.fn.filereadable(gpg_path) == 1 and vim.fn.getfsize(gpg_path) > 0
-end
-
 ---Creates a new encrypted note and opens it in the current window.
 ---@param opts? MemoNewNoteOpts
 ---@return boolean success
@@ -26,7 +20,7 @@ function M.create(opts)
 	local config = require("memo.config")
 	local message = require("memo.message")
 	local utils = require("memo.utils")
-	local Template = require("memo.capture_template")
+	local Template = require("memo.note_template")
 
 	local path = new_opts.path
 	if not path or path == "" then
@@ -40,7 +34,7 @@ function M.create(opts)
 		return false
 	end
 
-	if exists(gpg_path) then
+	if utils.file_has_content(gpg_path) then
 		message.error("MemoNewNote: note already exists (%s)", gpg_path)
 		return false
 	end

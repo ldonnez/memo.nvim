@@ -1,6 +1,6 @@
 local M = {}
 
----@class MemoCaptureTemplateConfig
+---@class MemoNoteTemplateConfig
 ---@field template string?
 ---@field target_header string?
 ---@field header_padding integer?
@@ -10,15 +10,15 @@ local defaults = {
 	header_padding = 0,
 }
 
----@class MemoCaptureTemplate
----@field config MemoCaptureTemplateConfig
+---@class MemoNoteTemplate
+---@field config MemoNoteTemplateConfig
 local Template = {}
 
 Template.__index = Template
 
 ---Constructor: Creates a new Template instance
----@param opts MemoCaptureTemplateConfig?
----@return MemoCaptureTemplate
+---@param opts MemoNoteTemplateConfig?
+---@return MemoNoteTemplate
 function M.new(opts)
 	local self = setmetatable({}, Template)
 

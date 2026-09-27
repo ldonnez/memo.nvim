@@ -1,7 +1,7 @@
-local core = require("memo.core")
+local crypto = require("memo.crypto")
 local utils = require("memo.utils")
 local memo_config = require("memo.config")
-local Template = require("memo.capture_template")
+local Template = require("memo.note_template")
 local message = require("memo.message")
 
 local M = {}
@@ -10,7 +10,7 @@ local M = {}
 
 ---@class CaptureConfig
 ---@field capture_file string
----@field capture_template MemoCaptureTemplateConfig
+---@field capture_template MemoNoteTemplateConfig
 ---@field window { split: CaptureSplit, size: integer, position: CapturePosition }
 
 ---@type CaptureConfig
@@ -59,7 +59,7 @@ end
 
 ---@param lines string[] The new lines from the capture window
 ---@param config CaptureConfig
----@param capture_template MemoCaptureTemplate
+---@param capture_template MemoNoteTemplate
 ---@return boolean -- true when the content was saved successfully
 local function append_capture(lines, config, capture_template)
 	local notes_dir = memo_config.notes_dir
@@ -67,17 +67,17 @@ local function append_capture(lines, config, capture_template)
 	local expanded = vim.fn.expand(notes_dir .. "/" .. config.capture_file) --[[@as string]]
 	local file = utils.get_gpg_path(expanded)
 
-	if vim.fn.filereadable(file) == 0 then
+	if not utils.file_exists(file) then
 		-- Ensure relative directories are created
 		if not utils.ensure_directories(vim.fs.dirname(file)) then
 			return false
 		end
 
 		local merged = capture_template:merge_with_content({}, lines)
-		return core.encrypt_from_stdin(file, merged).code == 0
+		return crypto.encrypt_from_stdin(file, merged).code == 0
 	end
 
-	local read_result = core.decrypt_to_stdout(file)
+	local read_result = crypto.decrypt_to_stdout(file)
 
 	if not read_result or read_result.code ~= 0 then
 		return false
@@ -93,7 +93,7 @@ local function append_capture(lines, config, capture_template)
 
 	local merged = capture_template:merge_with_content(existing, lines)
 
-	return core.encrypt_from_stdin(file, merged).code == 0
+	return crypto.encrypt_from_stdin(file, merged).code == 0
 end
 
 ---@param opts CaptureConfig

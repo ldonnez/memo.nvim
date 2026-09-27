@@ -114,7 +114,7 @@ end
 function M.get_gpg_passphrase(target_path)
 	local keyids = {}
 
-	if target_path and vim.fn.filereadable(target_path) == 1 then
+	if target_path and require("memo.utils").file_exists(target_path) then
 		keyids = M.get_file_key_ids(target_path)
 	end
 

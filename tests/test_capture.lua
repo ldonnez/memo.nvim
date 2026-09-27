@@ -11,7 +11,7 @@ describe("capture", function()
 		-- Load tested plugin
 		child.lua(
 			[[
-    core = require("memo.core")
+    crypto = require("memo.crypto")
 
     vim.g.memo_notes_dir = ...
 
@@ -295,7 +295,7 @@ describe("capture", function()
 
 			-- Simulate a failed encryption (e.g. memo CLI error).
 			child.lua([[
-				core.encrypt_from_stdin = function()
+				crypto.encrypt_from_stdin = function()
 					return { code = 1, stderr = "boom" }
 				end
 			]])
@@ -317,7 +317,7 @@ describe("capture", function()
 			-- The BufWriteCmd handler must survive the failed attempt: retrying
 			-- the write must save the content (and not fail with E676).
 			child.lua([[
-				core.encrypt_from_stdin = function(path, lines)
+				crypto.encrypt_from_stdin = function(path, lines)
 					vim.fn.writefile(lines, path)
 					return { code = 0 }
 				end
