@@ -303,16 +303,18 @@ such as `journals/2026-01-01.md.gpg` behave like top-level notes.
 
 ### Quick capture
 
-Wire a keybinding to write down text in a temporary buffer. On saving and closing the window, the content is appended to your configured `capture_file`, under the `target_header` (prepended if it does not exist).
+Wire a keybinding to write down text in a temporary buffer. On saving and
+closing the window, the content is appended to your configured `capture_file`,
+under the `target_header` (prepended if it does not exist).
 
 ```lua
 vim.keymap.set("n", "<leader>mc", function()
   require("memo").register_capture({
     capture_file = "inbox.md.gpg",
+    target_header = "# inbox", -- captures are inserted below this header
+    header_padding = 1, -- blank lines between capture content and target header
     capture_template = {
       template = "## %Y-%m-%d %H:%M\n\n|\n", -- '|' marks the cursor position in the capture window
-      target_header = "# inbox",
-      header_padding = 1, -- blank lines between capture content and target header
     },
     window = {
       split = "split", -- "split" | "vsplit"
@@ -323,7 +325,13 @@ vim.keymap.set("n", "<leader>mc", function()
 end, { desc = "Memo: Quick capture" })
 ```
 
-A visual selection is detected automatically: select text in visual mode and call `register_capture` to pre-fill the capture window:
+`target_header` and `header_padding` used to live inside `capture_template`.
+They now belong to the capture config, because the template only renders the
+capture window. Nesting them still errors instead of silently prepending to
+the top of the file.
+
+A visual selection is detected automatically: select text in visual mode and
+call `register_capture` to pre-fill the capture window:
 
 ```lua
 vim.keymap.set("v", "<leader>mc", function()
@@ -336,10 +344,8 @@ Turn a capture file into a journal with dynamic headers:
 ```lua
 require("memo").register_capture({
   capture_file = "journal.md.gpg",
-  capture_template = {
-    target_header = "# " .. os.date("%Y-%m-%d"),
-    header_padding = 1,
-  },
+  target_header = "# " .. os.date("%Y-%m-%d"),
+  header_padding = 1,
 })
 ```
 
@@ -348,10 +354,8 @@ Or create a journal file for each day automatically:
 ```lua
 require("memo").register_capture({
   capture_file = "journals/" .. os.date("%Y-%m-%d") .. ".md.gpg",
-  capture_template = {
-    target_header = "# " .. os.date("%Y-%m-%d"),
-    header_padding = 1,
-  },
+  target_header = "# " .. os.date("%Y-%m-%d"),
+  header_padding = 1,
 })
 ```
 

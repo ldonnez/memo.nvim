@@ -10,12 +10,15 @@ local M = {}
 
 ---@class CaptureConfig
 ---@field capture_file string
+---@field target_header string? header the capture is inserted under
+---@field header_padding integer? blank lines kept between the header and the capture
 ---@field capture_template MemoNoteTemplateConfig
 ---@field window { split: CaptureSplit, size: integer, position: CapturePosition }
 
 ---@type CaptureConfig
 local defaults = {
 	capture_file = "inbox.md.gpg",
+	header_padding = 0,
 	capture_template = {},
 	window = {
 		split = "split",
@@ -57,11 +60,72 @@ local function create_capture_window(config)
 	return win, buf
 end
 
+---@param existing string[]
+---@param target_header string?
+---@return integer
+local function find_target_header_idx(existing, target_header)
+	if not target_header or target_header == "" then
+		return -1
+	end
+
+	for i, line in ipairs(existing) do
+		if line == target_header then
+			return i
+		end
+	end
+
+	return -1
+end
+
+---Inserts capture lines into the content of the capture file. When a
+---`target_header` is configured the block goes right below it, otherwise the
+---block is prepended to the top of the file.
+---@param existing string[]
+---@param new_lines string[]
+---@param config CaptureConfig
+---@return string[]
+local function insert_lines(existing, new_lines, config)
+	if #new_lines == 0 then
+		return existing
+	end
+
+	local header = config.target_header
+	local padding = config.header_padding or 0
+	local target_idx = find_target_header_idx(existing, header)
+
+	-- Build the "block" to insert
+	local block = {}
+	if target_idx == -1 and header and header ~= "" then
+		table.insert(block, header)
+	end
+	for _ = 1, padding do
+		table.insert(block, "")
+	end
+	vim.list_extend(block, new_lines)
+
+	-- Construct the result
+	local merged = {}
+	if target_idx ~= -1 then
+		-- Insert after header: [Head] + [Block] + [Tail]
+		vim.list_extend(merged, vim.list_slice(existing, 1, target_idx))
+		vim.list_extend(merged, block)
+
+		-- Skip exactly one empty line if it follows the header to prevent gaps
+		local resume_at = (existing[target_idx + 1] == "") and (target_idx + 2) or (target_idx + 1)
+		vim.list_extend(merged, vim.list_slice(existing, resume_at))
+	else
+		-- Prepend to top: [Block] + [Existing]
+		vim.list_extend(merged, block)
+		vim.list_extend(merged, existing)
+	end
+
+	return merged
+end
+
 ---@param lines string[] The new lines from the capture window
 ---@param config CaptureConfig
----@param capture_template MemoNoteTemplate
 ---@return boolean -- true when the content was saved successfully
-local function append_capture(lines, config, capture_template)
+local function append_capture(lines, config)
 	local notes_dir = memo_config.notes_dir
 
 	local expanded = vim.fn.expand(notes_dir .. "/" .. config.capture_file) --[[@as string]]
@@ -73,7 +137,7 @@ local function append_capture(lines, config, capture_template)
 			return false
 		end
 
-		local merged = capture_template:merge_with_content({}, lines)
+		local merged = insert_lines({}, lines, config)
 		return crypto.encrypt_from_stdin(file, merged).code == 0
 	end
 
@@ -91,13 +155,28 @@ local function append_capture(lines, config, capture_template)
 		end
 	end
 
-	local merged = capture_template:merge_with_content(existing, lines)
+	local merged = insert_lines(existing, lines, config)
 
 	return crypto.encrypt_from_stdin(file, merged).code == 0
 end
 
 ---@param opts CaptureConfig
 function M.register(opts)
+	-- `target_header` and `header_padding` used to live inside
+	-- `capture_template`. They now belong to the capture config, because the
+	-- template only renders the capture window. Failing loudly beats silently
+	-- prepending captures to the top of the file.
+	-- Cast: this deliberately probes the pre-split config shape, which
+	-- `MemoNoteTemplateConfig` no longer describes.
+	local template_opts = opts and opts.capture_template --[[@as table?]]
+
+	if type(template_opts) == "table" and (template_opts.target_header or template_opts.header_padding) then
+		message.error(
+			"MemoCapture: target_header and header_padding moved out of capture_template: use register_capture({ target_header = ..., header_padding = ... })"
+		)
+		return
+	end
+
 	local cfg = opts --[[@as CaptureConfig]]
 	local config = vim.tbl_deep_extend("force", defaults, cfg) --[[@as CaptureConfig]]
 
@@ -134,7 +213,7 @@ function M.register(opts)
 			local is_not_empty = table.concat(lines, "\n"):gsub("%s+", "") ~= ""
 
 			if has_changed and is_not_empty then
-				local saved = append_capture(lines, config, capture_template)
+				local saved = append_capture(lines, config)
 
 				if not saved then
 					-- Keep the buffer so the content is not silently lost.

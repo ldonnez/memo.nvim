@@ -127,7 +127,7 @@ describe("capture", function()
 
 			child.lua(
 				[[
-	       M.register({ capture_file = ..., capture_template = { target_header = "inbox" }})
+	       M.register({ capture_file = ..., target_header = "inbox" })
 	   ]],
 				{ capture_file }
 			)
@@ -151,13 +151,129 @@ describe("capture", function()
 			MiniTest.expect.equality(result.stdout:find("inbox") ~= nil, true)
 		end)
 
+		it("inserts the capture below an existing target header", function()
+			local capture_file = "capture.md.gpg"
+			local encrypted = vim.env.NOTES_DIR .. "/" .. capture_file
+
+			helpers.encrypt_file(encrypted, "# Inbox\n\nPrevious Note\n")
+
+			child.lua(
+				[[ M.register({ capture_file = ..., target_header = "# Inbox", header_padding = 0 }) ]],
+				{ capture_file }
+			)
+
+			child.type_keys("i", "New Content", "<Esc>")
+			child.cmd("write")
+
+			local result = helpers.decrypt_file(encrypted)
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			local lines = vim.split(result.stdout, "\n", { plain = true })
+			MiniTest.expect.equality(lines, { "# Inbox", "New Content", "Previous Note", "" })
+		end)
+
+		it("inserts the capture below the first of two target headers", function()
+			local capture_file = "capture.md.gpg"
+			local encrypted = vim.env.NOTES_DIR .. "/" .. capture_file
+
+			helpers.encrypt_file(encrypted, "# Inbox\n\nSecond Note\n# Inbox\n\nFirst Note\n")
+
+			child.lua([[ M.register({ capture_file = ..., target_header = "# Inbox" }) ]], { capture_file })
+
+			child.type_keys("i", "New Content", "<Esc>")
+			child.cmd("write")
+
+			local result = helpers.decrypt_file(encrypted)
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			local lines = vim.split(result.stdout, "\n", { plain = true })
+			MiniTest.expect.equality(
+				lines,
+				{ "# Inbox", "New Content", "Second Note", "# Inbox", "", "First Note", "" }
+			)
+		end)
+
+		it("ignores partial matches for the target header", function()
+			local capture_file = "capture.md.gpg"
+			local encrypted = vim.env.NOTES_DIR .. "/" .. capture_file
+
+			helpers.encrypt_file(encrypted, "# Inbox is here\n\nPrevious Note\n")
+
+			child.lua([[ M.register({ capture_file = ..., target_header = "# Inbox" }) ]], { capture_file })
+
+			child.type_keys("i", "New Content", "<Esc>")
+			child.cmd("write")
+
+			local result = helpers.decrypt_file(encrypted)
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			local lines = vim.split(result.stdout, "\n", { plain = true })
+			MiniTest.expect.equality(lines, { "# Inbox", "New Content", "# Inbox is here", "", "Previous Note", "" })
+		end)
+
+		it("prepends the target header when the capture file does not contain it", function()
+			local capture_file = "capture.md.gpg"
+			local encrypted = vim.env.NOTES_DIR .. "/" .. capture_file
+
+			helpers.encrypt_file(encrypted, "# test\nexisting content\n")
+
+			child.lua([[ M.register({ capture_file = ..., target_header = "# Inbox" }) ]], { capture_file })
+
+			child.type_keys("i", "New Content", "<Esc>")
+			child.cmd("write")
+
+			local result = helpers.decrypt_file(encrypted)
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			local lines = vim.split(result.stdout, "\n", { plain = true })
+			MiniTest.expect.equality(lines, { "# Inbox", "New Content", "# test", "existing content", "" })
+		end)
+
+		it("keeps header_padding blank lines between the header and the capture", function()
+			local capture_file = "capture.md.gpg"
+			local encrypted = vim.env.NOTES_DIR .. "/" .. capture_file
+
+			helpers.encrypt_file(encrypted, "# Inbox\n\nPrevious Note\n")
+
+			child.lua(
+				[[ M.register({ capture_file = ..., target_header = "# Inbox", header_padding = 2 }) ]],
+				{ capture_file }
+			)
+
+			child.type_keys("i", "New Content", "<Esc>")
+			child.cmd("write")
+
+			local result = helpers.decrypt_file(encrypted)
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			local lines = vim.split(result.stdout, "\n", { plain = true })
+			MiniTest.expect.equality(lines, { "# Inbox", "", "", "New Content", "Previous Note", "" })
+		end)
+
+		it("errors when target_header is still nested in capture_template", function()
+			local capture_file = "nested-config.md.gpg"
+			local encrypted = vim.env.NOTES_DIR .. "/" .. capture_file
+
+			child.lua(
+				[[ M.register({ capture_file = ..., capture_template = { target_header = "inbox" } }) ]],
+				{ capture_file }
+			)
+
+			local messages = child.cmd_capture("messages")
+			MiniTest.expect.equality(
+				messages:find("target_header and header_padding moved out of capture_template", 1, true) ~= nil,
+				true
+			)
+			MiniTest.expect.equality(child.fn.filereadable(encrypted), 0)
+		end)
+
 		it("ensures relative directories from capture_file are created", function()
 			local capture_file = "journals/capture.md.gpg"
 			local capture_file_path = vim.env.NOTES_DIR .. "/journals/capture.md.gpg"
 
 			child.lua(
 				[[
-	       M.register({ capture_file = ..., capture_template = { target_header = "inbox" }})
+	       M.register({ capture_file = ..., target_header = "inbox" })
 	   ]],
 				{ capture_file }
 			)
