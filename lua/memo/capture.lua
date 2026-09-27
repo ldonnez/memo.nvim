@@ -14,17 +14,14 @@ local M = {}
 ---@field template? string window template, supports `os.date` formats and a `|`
 ---cursor marker. A selection is inserted at that marker, and becomes the whole
 ---capture window when the template has none.
----@field window MemoWindowConfig
+---@field window MemoWindowConfig opens the capture in a split, every option
+---has a default
 
 ---@type CaptureConfig
 local defaults = {
 	capture_file = "inbox.md.gpg",
 	header_padding = 0,
-	window = {
-		split = "split",
-		size = 10,
-		position = "botright",
-	},
+	window = {},
 }
 
 ---@param config CaptureConfig
@@ -45,7 +42,7 @@ local function create_capture_window(config)
 	vim.bo[buf].fileencoding = "utf-8"
 	vim.bo[buf].filetype = vim.filetype.match({ filename = base })
 
-	if config.window.split == "vsplit" then
+	if window.resolve_split(config.window) == "vsplit" then
 		vim.wo[win].winfixwidth = true
 	else
 		vim.wo[win].winfixheight = true
