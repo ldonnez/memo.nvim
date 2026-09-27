@@ -10,6 +10,15 @@ describe("new_note", function()
 		helpers.cache_gpg_password(gpg_key_password)
 	end)
 
+	---The screen size the window defaults are taken from, which is not the size
+	---of the current window once earlier tests have left splits open.
+	local function screen_size()
+		local lines = child.api.nvim_get_option_value("lines", { scope = "global" })
+		local columns = child.api.nvim_get_option_value("columns", { scope = "global" })
+
+		return lines, columns
+	end
+
 	---Opens a buffer to select from, and returns its path.
 	local function open_source()
 		local source = vim.env.NOTES_DIR .. "/random.txt"
@@ -102,7 +111,7 @@ describe("new_note", function()
 		new_note.create({
 			path = "split.md",
 			template = "## Notes | (kept)",
-			window = { split = "vsplit", size = 20, position = "botright" },
+			window = { split = "vsplit", size = 0.5, position = "botright" },
 		})
 	]])
 
@@ -119,7 +128,7 @@ describe("new_note", function()
 		end)
 
 		it("defaults a partial window config", function()
-			local width_before = child.api.nvim_win_get_width(0)
+			local _, columns = screen_size()
 
 			local created = child.lua_get([[
 		new_note.create({ path = "partial.md", window = { split = "vsplit" } })
@@ -128,15 +137,34 @@ describe("new_note", function()
 			MiniTest.expect.equality(created, true)
 
 			local win = child.api.nvim_get_current_win()
-			-- A vsplit, narrower than the window it came from, and wide enough
-			-- to read a note in.
-			MiniTest.expect.equality(child.api.nvim_win_get_width(win) < width_before, true)
-			MiniTest.expect.equality(child.api.nvim_win_get_width(win) >= 20, true)
-			MiniTest.expect.equality(child.api.nvim_win_get_height(win) > 0, true)
+			-- A vsplit, half the screen wide.
+			MiniTest.expect.equality(child.api.nvim_win_get_width(win), math.floor(columns / 2))
+		end)
+
+		it("treats a size of 1 or less as a share of the screen", function()
+			local lines, columns = screen_size()
+
+			local created = child.lua_get([[ new_note.create({ path = "ratio.md", window = { size = 0.25 } }) ]])
+
+			MiniTest.expect.equality(created, true)
+			MiniTest.expect.equality(
+				child.api.nvim_win_get_height(child.api.nvim_get_current_win()),
+				math.floor(lines / 4)
+			)
+
+			local second = child.lua_get(
+				[[ new_note.create({ path = "ratio-width.md", window = { split = "vsplit", size = 0.25 } }) ]]
+			)
+
+			MiniTest.expect.equality(second, true)
+			MiniTest.expect.equality(
+				child.api.nvim_win_get_width(child.api.nvim_get_current_win()),
+				math.floor(columns / 4)
+			)
 		end)
 
 		it("defaults the size and position of an empty window config", function()
-			local height_before = child.api.nvim_win_get_height(0)
+			local lines = screen_size()
 			local width_before = child.api.nvim_win_get_width(0)
 
 			local created = child.lua_get([[ new_note.create({ path = "emptywin.md", window = {} }) ]])
@@ -144,11 +172,10 @@ describe("new_note", function()
 			MiniTest.expect.equality(created, true)
 
 			local win = child.api.nvim_get_current_win()
-			-- The default 10 rows, and a horizontal split, so the width is
+			-- Half the screen tall, and a horizontal split, so the width is
 			-- untouched.
-			MiniTest.expect.equality(child.api.nvim_win_get_height(win), 10)
+			MiniTest.expect.equality(child.api.nvim_win_get_height(win), math.floor(lines / 2))
 			MiniTest.expect.equality(child.api.nvim_win_get_width(win), width_before)
-			MiniTest.expect.equality(height_before > 10, true)
 		end)
 
 		it("keeps the current window when no window config is given", function()
@@ -173,7 +200,7 @@ describe("new_note", function()
 		new_note.create({
 			path = "split-selection.md",
 			template = "## Notes\n- |",
-			window = { split = "split", size = 5, position = "botright" },
+			window = { split = "split", size = 0.5, position = "botright" },
 		})
 	]])
 

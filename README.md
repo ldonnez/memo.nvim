@@ -304,7 +304,7 @@ enough. Without a `window` the note takes over the current window:
 require("memo").new_note({
   window = {
     split = "vsplit", -- "split" (default) | "vsplit"
-    -- size defaults to 10 rows, or 40% of the width for a vsplit
+    size = 0.5, -- a share of the screen, 0 to 1; defaults to 0.5
     -- position defaults to "botright"
   },
 })
@@ -334,7 +334,7 @@ vim.keymap.set("n", "<leader>mc", function()
     template = "## %Y-%m-%d %H:%M\n\n|\n", -- '|' marks the cursor
     window = {
       split = "split", -- "split" (default) | "vsplit"
-      size = 10, -- rows, or columns for a vsplit
+      size = 0.5, -- a share of the screen, 0 to 1; defaults to 0.5
       position = "botright", -- "botright" (default) | "topleft" | "leftabove" | "rightbelow"
     },
   })
