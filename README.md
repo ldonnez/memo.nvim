@@ -272,10 +272,12 @@ Start an empty encrypted note with `:MemoNewNote` (or
 `require("memo").new_note()`):
 
 - Prompts for a note path, defaulting to the full path
-  `<notes_dir>/YYYY-MM-DD.md.gpg`, so it is clear where the note lands.
-- Relative paths resolve against `<notes_dir>` and may contain subdirectories,
-  e.g. `:MemoNewNote journals/2026-01-01.md`. Paths must stay inside
-  `<notes_dir>`.
+  `<notes_dir>/YYYY-MM-DD.md.gpg`, so it is clear where the note lands. The
+  prompt is the same for the command and `require("memo").new_note()`, and an
+  emptied prompt aborts.
+- A path can be passed instead, e.g. `:MemoNewNote journals/2026-01-01.md`.
+  Relative paths resolve against `<notes_dir>` and may contain subdirectories.
+  Paths must stay inside `<notes_dir>`.
 - With a visual selection or a range, e.g. `:'<,'>MemoNewNote`, the selected
   lines are inserted at the template's `|` marker. A template without a marker
   has nowhere to insert, so the selection becomes the whole note.
