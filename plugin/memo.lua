@@ -124,12 +124,12 @@ end, {
 })
 
 vim.api.nvim_create_user_command("MemoSync", function(opts)
-	local core = require("memo.core")
+	local sync = require("memo.sync")
 	local message = require("memo.message")
 	local backend = opts.args
 
 	if backend == "git" or backend == "" then
-		return core.sync_git()
+		return sync.sync_git()
 	end
 
 	message.error("Unknown sync backend: %s", backend)

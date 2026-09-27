@@ -12,7 +12,7 @@ function M.new_note(opts)
 end
 
 function M.sync_git()
-	return require("memo.core").sync_git()
+	return require("memo.sync").sync_git()
 end
 
 function M.save_as_note()
