@@ -1,7 +1,8 @@
 local M = {}
 
 ---@class MemoNewNoteOpts
----@field path? string note path, relative to the notes dir or absolute inside it
+---@field path? string note path, relative to the notes dir or absolute inside
+---it. Prompts for one, defaulting to today's date, when omitted.
 ---@field template? string body template, supports `os.date` formats and a `|`
 ---cursor marker. A range or visual selection is inserted at that marker, and
 ---becomes the whole note when the template has none.
@@ -30,8 +31,15 @@ function M.create(opts)
 	local Template = require("memo.note_template")
 
 	local path = new_opts.path
+
 	if not path or path == "" then
-		path = M.default_path()
+		-- Prompted here rather than in the command, so the Lua API behaves the
+		-- same way.
+		path = utils.prompt_note_path(M.default_path(), "MemoNewNote")
+
+		if not path then
+			return false
+		end
 	end
 
 	local gpg_path = utils.resolve_note_path(path)

@@ -56,12 +56,30 @@ describe("new_note", function()
 			MiniTest.expect.equality(decrypted.code, 0)
 		end)
 
-		it("falls back to the default path when none is given", function()
+		it("prompts for the path and uses the default when the prompt is accepted", function()
+			child.lua([[ vim.fn.input = function(_, default) return default end ]])
+
 			local created = child.lua_get([[ new_note.create() ]])
 			local default_path = vim.env.NOTES_DIR .. "/" .. os.date("%Y-%m-%d.md") .. ".gpg"
 
 			MiniTest.expect.equality(created, true)
 			MiniTest.expect.equality(child.fn.filereadable(default_path), 1)
+		end)
+
+		it("prompts for the path and uses what is entered", function()
+			child.lua([[ vim.fn.input = function() return "prompted.md" end ]])
+
+			local created = child.lua_get([[ new_note.create() ]])
+
+			MiniTest.expect.equality(created, true)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/prompted.md.gpg"), 1)
+		end)
+
+		it("aborts when the path prompt is emptied", function()
+			child.lua([[ vim.fn.input = function() return "" end ]])
+
+			MiniTest.expect.equality(child.lua_get([[ new_note.create() ]]), false)
+			MiniTest.expect.equality(child.cmd_capture("messages"), "MemoNewNote: empty note path")
 		end)
 
 		it("creates notes in nested directories", function()

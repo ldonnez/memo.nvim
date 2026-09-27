@@ -104,21 +104,9 @@ end, {
 })
 
 vim.api.nvim_create_user_command("MemoNewNote", function(opts)
-	local new_note = require("memo.new_note")
-	local path = opts.args
-
-	if path == "" then
-		local prompted = require("memo.utils").prompt_note_path(new_note.default_path(), "MemoNewNote")
-
-		if not prompted then
-			return
-		end
-
-		path = prompted
-	end
-
-	new_note.create({
-		path = path,
+	-- An empty `args` makes `create` prompt for the path.
+	require("memo.new_note").create({
+		path = opts.args,
 		range = opts.range,
 		line1 = opts.line1,
 		line2 = opts.line2,
