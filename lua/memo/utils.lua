@@ -20,6 +20,22 @@ function M.is_in_dir(path, dir)
 	return abs_path:sub(1, #abs_dir) == abs_dir and abs_path:sub(#abs_dir + 1, #abs_dir + 1) == "/"
 end
 
+---Checks whether a readable file exists at `path`.
+---@param path string
+---@return boolean
+function M.file_exists(path)
+	return vim.fn.filereadable(path) == 1
+end
+
+---Checks whether a file exists at `path` and holds content. Notes are treated
+---as missing while they are still empty, e.g. right after creation and before
+---the first write.
+---@param path string
+---@return boolean
+function M.file_has_content(path)
+	return M.file_exists(path) and vim.fn.getfsize(path) > 0
+end
+
 ---Builds a full note path for `name` inside the notes directory.
 ---@param name string note name, with or without a `.gpg` suffix
 ---@return string

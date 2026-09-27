@@ -54,6 +54,49 @@ describe("utils", function()
 		end)
 	end)
 
+	describe("file_exists", function()
+		it("returns true for a readable file", function()
+			local path = vim.fn.tempname()
+			helpers.write_file(path, "content")
+
+			MiniTest.expect.equality(util.file_exists(path), true)
+
+			vim.fn.delete(path)
+		end)
+
+		it("returns false for a missing file", function()
+			MiniTest.expect.equality(util.file_exists(vim.fn.tempname() .. "/nope.md.gpg"), false)
+		end)
+
+		it("returns false for a directory", function()
+			MiniTest.expect.equality(util.file_exists(vim.fn.tempname()), false)
+		end)
+	end)
+
+	describe("file_has_content", function()
+		it("returns true for a file with content", function()
+			local path = vim.fn.tempname()
+			helpers.write_file(path, "content")
+
+			MiniTest.expect.equality(util.file_has_content(path), true)
+
+			vim.fn.delete(path)
+		end)
+
+		it("returns false for an empty file", function()
+			local path = vim.fn.tempname()
+			helpers.write_file(path, "")
+
+			MiniTest.expect.equality(util.file_has_content(path), false)
+
+			vim.fn.delete(path)
+		end)
+
+		it("returns false for a missing file", function()
+			MiniTest.expect.equality(util.file_has_content(vim.fn.tempname()), false)
+		end)
+	end)
+
 	describe("build_note_path", function()
 		local notes_dir = "/tmp/memo_test_notes"
 		local original_notes_dir

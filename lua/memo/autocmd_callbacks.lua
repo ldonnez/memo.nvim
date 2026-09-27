@@ -81,7 +81,7 @@ end
 function M.on_read(args)
 	local bufnr = args.buf
 	local utils = require("memo.utils")
-	local core = require("memo.core")
+	local crypto = require("memo.crypto")
 	local message = require("memo.message")
 
 	-- Normalize to an absolute path: `args.file` can be relative and padding it
@@ -99,7 +99,7 @@ function M.on_read(args)
 	end
 
 	-- If the .gpg file doesn't exist, it's new, just open it
-	if vim.fn.filereadable(gpg_path) == 0 or vim.fn.getfsize(gpg_path) <= 0 then
+	if not utils.file_has_content(gpg_path) then
 		-- Read file - the regular way - into buffer
 		vim.cmd("silent edit " .. vim.fn.fnameescape(file))
 		vim.bo[bufnr].modifiable = true
@@ -119,7 +119,7 @@ function M.on_read(args)
 	vim.b[bufnr].decrypting = true
 	vim.api.nvim_exec_autocmds("BufReadPre", { buffer = bufnr, modeline = false })
 
-	core.decrypt_to_buffer(gpg_path, bufnr, function(result)
+	crypto.decrypt_to_buffer(gpg_path, bufnr, function(result)
 		if result.code ~= 0 then
 			vim.api.nvim_buf_delete(bufnr, { force = true })
 			local err = (result.stderr and result.stderr ~= "") and result.stderr or "Decryption failed"
@@ -139,7 +139,7 @@ end
 function M.on_write(args)
 	local bufnr = args.buf
 	local utils = require("memo.utils")
-	local core = require("memo.core")
+	local crypto = require("memo.crypto")
 	local message = require("memo.message")
 
 	-- Normalize to an absolute path so `file ~= gpg_path` and the buffer rename
@@ -167,7 +167,7 @@ function M.on_write(args)
 	end
 	vim.api.nvim_exec_autocmds("BufWritePre", { buffer = bufnr, modeline = false })
 
-	local result = core.encrypt_from_stdin(gpg_path, lines)
+	local result = crypto.encrypt_from_stdin(gpg_path, lines)
 
 	if result.code ~= 0 then
 		-- Defer: an ERROR-level vim.notify raises inside an autocmd, which
@@ -179,7 +179,7 @@ function M.on_write(args)
 
 	if file ~= gpg_path then
 		-- If saving a plain text file for the first time, delete the unencrypted original and change the buffer to the new .gpg path.
-		if vim.fn.filereadable(file) == 1 then
+		if utils.file_exists(file) then
 			vim.fn.delete(file)
 		end
 		vim.api.nvim_buf_set_name(bufnr, gpg_path)

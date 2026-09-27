@@ -76,9 +76,9 @@ describe("autocmd", function()
 		helpers.encrypt_file(encrypted, "Hello world!")
 
 		child.lua([[
-      local core = require('memo.core')
+      local crypto = require('memo.crypto')
 
-      core.decrypt_to_buffer = function(path, bufnr, on_exit)
+      crypto.decrypt_to_buffer = function(path, bufnr, on_exit)
         return vim.defer_fn(function()
           vim.bo[bufnr].modifiable = true
           vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {"Hello world!"})
@@ -207,8 +207,8 @@ describe("autocmd", function()
 
 		-- Force a failing `memo encrypt` invocation.
 		child.lua([[
-			local core = require("memo.core")
-			core.encrypt_from_stdin = function()
+			local crypto = require("memo.crypto")
+			crypto.encrypt_from_stdin = function()
 				return { code = 1, stderr = "boom" }
 			end
 		]])
