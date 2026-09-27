@@ -15,7 +15,7 @@ local M = {}
 ---Default note path used when no path is given. Like `save_as_note` this is a
 ---full path, so the prompt makes it obvious where the note will be created.
 ---@return string
-function M.default_path()
+local function default_path()
 	return require("memo.utils").build_note_path(os.date("%Y-%m-%d.md"))
 end
 
@@ -38,7 +38,7 @@ function M.create(opts)
 	if not path or path == "" then
 		-- Prompted here rather than in the command, so the Lua API behaves the
 		-- same way.
-		path = utils.prompt_note_path(M.default_path(), "MemoNewNote")
+		path = utils.prompt_note_path(default_path(), "MemoNewNote")
 
 		if not path then
 			return false
