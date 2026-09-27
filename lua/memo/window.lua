@@ -5,29 +5,33 @@ local M = {}
 
 ---@class MemoWindowConfig
 ---@field split? MemoWindowSplit "split" (default) or "vsplit"
----@field size? integer rows for a split, columns for a vsplit. Defaults to
----10 rows, or 40% of the editor width for a vsplit, where a row count would be
----unusably narrow.
+---@field size? number share of the screen to take, 0 to 1, e.g. 0.5 for half.
+---Defaults to half the screen in that direction, so a note has room to write
+---in without hiding what you are working against.
 ---@field position? MemoWindowPosition "botright" (default), "topleft",
 ---"leftabove" or "rightbelow"
 
 local DEFAULTS = {
 	split = "split",
 	position = "botright",
-	rows = 10,
-	width_ratio = 0.4,
+	ratio = 0.5,
 }
 
----A vsplit counts columns, so the row default would leave it a few characters
----wide.
+---A split counts rows and a vsplit counts columns, so the same share of the
+---screen means a different unit per direction. A share of 1 or more would be
+---larger than the screen, and 0 or less would leave no window, so both fall
+---back to the default.
 ---@param split MemoWindowSplit
+---@param size number?
 ---@return integer
-local function default_size(split)
-	if split == "vsplit" then
-		return math.max(20, math.floor(vim.o.columns * DEFAULTS.width_ratio))
+local function resolve_size(split, size)
+	local extent = split == "vsplit" and vim.o.columns or vim.o.lines
+
+	if size and size > 0 and size <= 1 then
+		return math.max(1, math.floor(extent * size))
 	end
 
-	return DEFAULTS.rows
+	return math.floor(extent * DEFAULTS.ratio)
 end
 
 ---The split that would be opened for this config, for callers that need to
@@ -50,7 +54,7 @@ function M.open(win_config)
 
 	local split = M.resolve_split(win_config)
 	local position = win_config.position or DEFAULTS.position
-	local size = win_config.size or default_size(split)
+	local size = resolve_size(split, win_config.size)
 
 	vim.cmd(string.format("%s %d%s", position, size, split))
 
