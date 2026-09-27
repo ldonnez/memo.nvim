@@ -296,12 +296,17 @@ require("memo").new_note({
 })
 ```
 
-A `window` opens the note in a split, the same options `register_capture`
-takes. Without one the note takes over the current window:
+A `window` opens the note in a split, with the same options
+`register_capture` takes. Every option has a default, so `split` alone is
+enough. Without a `window` the note takes over the current window:
 
 ```lua
 require("memo").new_note({
-  window = { split = "vsplit", size = 20, position = "botright" },
+  window = {
+    split = "vsplit", -- "split" (default) | "vsplit"
+    -- size defaults to 10 rows, or 40% of the width for a vsplit
+    -- position defaults to "botright"
+  },
 })
 ```
 
@@ -328,9 +333,9 @@ vim.keymap.set("n", "<leader>mc", function()
     header_padding = 1, -- blank lines between capture content and target header
     template = "## %Y-%m-%d %H:%M\n\n|\n", -- '|' marks the cursor
     window = {
-      split = "split", -- "split" | "vsplit"
-      size = 10,
-      position = "botright", -- "botright" | "topleft" | "leftabove" | "rightbelow"
+      split = "split", -- "split" (default) | "vsplit"
+      size = 10, -- rows, or columns for a vsplit
+      position = "botright", -- "botright" (default) | "topleft" | "leftabove" | "rightbelow"
     },
   })
 end, { desc = "Memo: Quick capture" })
