@@ -347,6 +347,11 @@ vim.keymap.set("v", "<leader>mc", function()
 end, { desc = "Memo: Quick capture selection" })
 ```
 
+With a `capture_template` that has a `|`, the selection is inserted at that
+marker instead of replacing the template, so a selected capture keeps its date
+header. A template without a marker has nowhere to insert, so the selection
+still becomes the whole capture window.
+
 Turn a capture file into a journal with dynamic headers:
 
 ```lua

@@ -182,7 +182,7 @@ function M.register(opts)
 
 	local capture_template = Template.new(config.capture_template)
 
-	local template_lines, template_cursor = capture_template:resolve_template()
+	local template_lines, template_cursor, has_cursor_marker = capture_template:resolve_template()
 
 	local bufnr = vim.api.nvim_get_current_buf()
 	local range_lines = utils.resolve_selection(bufnr)
@@ -191,7 +191,13 @@ function M.register(opts)
 
 	---@type string[], [integer, integer]
 	local initial_lines, cursor_pos
-	if range_lines then
+	if range_lines and has_cursor_marker then
+		-- The selection goes where the template asked for it, so a captured
+		-- selection keeps the header the template provides.
+		initial_lines, cursor_pos = capture_template:insert_at_cursor(range_lines)
+	elseif range_lines then
+		-- Without a marker there is nowhere to insert, so the selection becomes
+		-- the whole capture.
 		initial_lines = range_lines
 		cursor_pos = { #initial_lines, 0 }
 	else

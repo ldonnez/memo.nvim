@@ -297,6 +297,56 @@ describe("capture", function()
 			MiniTest.expect.equality(result.stdout:find("inbox") ~= nil, true)
 		end)
 
+		it("pre-fills the capture window with the selection at the template cursor", function()
+			local capture_file = "visual-capture.md.gpg"
+
+			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/source.txt"))
+			child.api.nvim_buf_set_lines(0, 0, -1, false, {
+				"alpha beta gamma",
+				"delta epsilon",
+			})
+
+			child.api.nvim_win_set_cursor(0, { 1, 6 })
+			child.cmd("normal! v")
+			child.api.nvim_win_set_cursor(0, { 1, 9 })
+
+			child.lua(
+				[[ M.register({ capture_file = ..., capture_template = { template = "## Notes\n- |" } }) ]],
+				{ capture_file }
+			)
+
+			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+			MiniTest.expect.equality(lines, { "## Notes", "- beta" })
+		end)
+
+		it("captures a selection under the template header", function()
+			local capture_file = "visual-template.md.gpg"
+			local encrypted = vim.env.NOTES_DIR .. "/" .. capture_file
+
+			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/source.txt"))
+			child.api.nvim_buf_set_lines(0, 0, -1, false, {
+				"alpha beta gamma",
+				"delta epsilon",
+			})
+
+			child.api.nvim_win_set_cursor(0, { 1, 6 })
+			child.cmd("normal! v")
+			child.api.nvim_win_set_cursor(0, { 1, 9 })
+
+			child.lua(
+				[[ M.register({ capture_file = ..., capture_template = { template = "## Notes\n- |" } }) ]],
+				{ capture_file }
+			)
+
+			child.cmd("write")
+
+			local result = helpers.decrypt_file(encrypted)
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			local lines = vim.split(result.stdout, "\n", { plain = true })
+			MiniTest.expect.equality(lines, { "## Notes", "- beta", "" })
+		end)
+
 		it("pre-fills the capture window with the characterwise visual selection", function()
 			local capture_file = "visual-capture.md.gpg"
 
