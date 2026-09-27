@@ -10,6 +10,18 @@ describe("new_note", function()
 		helpers.cache_gpg_password(gpg_key_password)
 	end)
 
+	---Opens a buffer to select from, and returns its path.
+	local function open_source()
+		local source = vim.env.NOTES_DIR .. "/random.txt"
+		child.cmd("edit " .. vim.fn.fnameescape(source))
+		child.api.nvim_buf_set_lines(0, 0, -1, false, {
+			"alpha beta gamma",
+			"delta epsilon",
+		})
+
+		return source
+	end
+
 	teardown(function()
 		helpers.cleanup_test_env()
 		helpers.kill_gpg_agent()
@@ -80,6 +92,64 @@ describe("new_note", function()
 
 			MiniTest.expect.equality(child.lua_get([[ new_note.create() ]]), false)
 			MiniTest.expect.equality(child.cmd_capture("messages"), "MemoNewNote: empty note path")
+		end)
+
+		it("opens the note in a configured split", function()
+			local win_before = child.api.nvim_get_current_win()
+			local wins_before = #child.api.nvim_list_wins()
+
+			local created = child.lua_get([[
+		new_note.create({
+			path = "split.md",
+			template = "## Notes | (kept)",
+			window = { split = "vsplit", size = 20, position = "botright" },
+		})
+	]])
+
+			MiniTest.expect.equality(created, true)
+			MiniTest.expect.equality(#child.api.nvim_list_wins(), wins_before + 1)
+
+			local win = child.api.nvim_get_current_win()
+			MiniTest.expect.equality(win ~= win_before, true)
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), vim.env.NOTES_DIR .. "/split.md.gpg")
+
+			-- The template cursor lands in the note's window, not the one the
+			-- call was made from.
+			MiniTest.expect.equality(child.api.nvim_win_get_cursor(win), { 1, 9 })
+		end)
+
+		it("keeps the current window when no window config is given", function()
+			local win_before = child.api.nvim_get_current_win()
+			local wins_before = #child.api.nvim_list_wins()
+
+			local created = child.lua_get([[ new_note.create({ path = "samewin.md" }) ]])
+
+			MiniTest.expect.equality(created, true)
+			MiniTest.expect.equality(#child.api.nvim_list_wins(), wins_before)
+			MiniTest.expect.equality(child.api.nvim_get_current_win(), win_before)
+		end)
+
+		it("takes a selection from the source window into the split", function()
+			open_source()
+
+			child.api.nvim_win_set_cursor(0, { 1, 6 })
+			child.cmd("normal! v")
+			child.api.nvim_win_set_cursor(0, { 1, 9 })
+
+			local created = child.lua_get([[
+		new_note.create({
+			path = "split-selection.md",
+			template = "## Notes\n- |",
+			window = { split = "split", size = 5, position = "botright" },
+		})
+	]])
+
+			MiniTest.expect.equality(created, true)
+
+			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/split-selection.md.gpg")
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout, "## Notes\n- beta\n")
 		end)
 
 		it("creates notes in nested directories", function()
@@ -156,17 +226,6 @@ describe("new_note", function()
 	end)
 
 	describe("range selection", function()
-		local function open_source()
-			local source = vim.env.NOTES_DIR .. "/random.txt"
-			child.cmd("edit " .. vim.fn.fnameescape(source))
-			child.api.nvim_buf_set_lines(0, 0, -1, false, {
-				"alpha beta gamma",
-				"delta epsilon",
-			})
-
-			return source
-		end
-
 		it("seeds the note with a characterwise visual selection via the user command", function()
 			open_source()
 

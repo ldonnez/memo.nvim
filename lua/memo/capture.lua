@@ -3,10 +3,9 @@ local utils = require("memo.utils")
 local memo_config = require("memo.config")
 local Template = require("memo.note_template")
 local message = require("memo.message")
+local window = require("memo.window")
 
 local M = {}
----@alias CaptureSplit "split" | "vsplit"
----@alias CapturePosition "botright" | "topleft" | "leftabove" | "rightbelow"
 
 ---@class CaptureConfig
 ---@field capture_file string
@@ -15,7 +14,7 @@ local M = {}
 ---@field template? string window template, supports `os.date` formats and a `|`
 ---cursor marker. A selection is inserted at that marker, and becomes the whole
 ---capture window when the template has none.
----@field window { split: CaptureSplit, size: integer, position: CapturePosition }
+---@field window MemoWindowConfig
 
 ---@type CaptureConfig
 local defaults = {
@@ -36,10 +35,7 @@ local function create_capture_window(config)
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_exec_autocmds("BufReadPre", { buffer = buf, modeline = false })
 
-	local cmd = string.format("%s %d%s", config.window.position, config.window.size, config.window.split)
-	vim.cmd(cmd)
-
-	local win = vim.api.nvim_get_current_win()
+	local win = window.open(config.window)
 
 	vim.api.nvim_win_set_buf(win, buf)
 
