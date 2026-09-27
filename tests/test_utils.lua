@@ -229,7 +229,7 @@ describe("utils", function()
 		end)
 	end)
 
-	describe("confirm_overwrite", function()
+	describe("confirm", function()
 		local original_confirm
 
 		before_each(function()
@@ -245,7 +245,7 @@ describe("utils", function()
 				return 1
 			end
 
-			MiniTest.expect.equality(util.confirm_overwrite("MemoTest"), true)
+			MiniTest.expect.equality(util.confirm("Overwrite?", "MemoTest"), true)
 		end)
 
 		it("returns false and warns when the user declines", function()
@@ -253,7 +253,7 @@ describe("utils", function()
 				return 2
 			end
 
-			MiniTest.expect.equality(util.confirm_overwrite("MemoTest"), false)
+			MiniTest.expect.equality(util.confirm("Overwrite?", "MemoTest"), false)
 
 			local messages = vim.api.nvim_exec2("messages", { output = true }).output
 			MiniTest.expect.equality(messages:find("MemoTest: aborted", 1, true) ~= nil, true)

@@ -3,7 +3,11 @@ local M = {}
 ---@class MemoNewNoteOpts
 ---@field path? string note path, relative to the notes dir or absolute inside it
 ---@field template? string body template, supports `os.date` formats and a `|`
----cursor marker. Defaults to `g:memo_new_note_template`.
+---cursor marker. Defaults to `g:memo_new_note_template`. Ignored when a range
+---or visual selection is given.
+---@field range? integer
+---@field line1? integer
+---@field line2? integer
 
 ---Default note path used when no path is given. Like `save_as_note` this is a
 ---full path, so the prompt makes it obvious where the note will be created.
@@ -13,6 +17,9 @@ function M.default_path()
 end
 
 ---Creates a new encrypted note and opens it in the current window.
+---When a visual selection is active (or the command is given a range, e.g.
+---`:'<,'>MemoNewNote`), the selected lines seed the note instead of the
+---template.
 ---@param opts? MemoNewNoteOpts
 ---@return boolean success
 function M.create(opts)
@@ -36,7 +43,7 @@ function M.create(opts)
 
 	local overwriting = utils.file_has_content(gpg_path)
 
-	if overwriting and not utils.confirm_overwrite("MemoNewNote") then
+	if overwriting and not utils.confirm("Note already exists. Overwrite?", "MemoNewNote") then
 		return false
 	end
 
@@ -52,8 +59,24 @@ function M.create(opts)
 		return false
 	end
 
-	local template = new_opts.template or config.new_note_template
-	local template_lines, cursor_pos = Template.new({ template = template }):resolve_template()
+	-- Resolved before editing, because the selection belongs to the buffer the
+	-- command was invoked from.
+	local source_bufnr = vim.api.nvim_get_current_buf()
+	local selected = utils.resolve_selection(source_bufnr, new_opts)
+
+	local initial_lines, cursor_pos
+	if selected then
+		if table.concat(selected, "\n"):gsub("%s+", "") == "" then
+			message.warn("MemoNewNote: aborted, selection is empty")
+			return false
+		end
+
+		initial_lines = selected
+		cursor_pos = { #selected, 0 }
+	else
+		local template = new_opts.template or config.new_note_template
+		initial_lines, cursor_pos = Template.new({ template = template }):resolve_template()
+	end
 
 	-- Opening a note that does not exist yet yields an empty buffer, which the
 	-- BufWriteCmd handler encrypts on the first write below.
@@ -61,8 +84,8 @@ function M.create(opts)
 
 	local bufnr = vim.api.nvim_get_current_buf()
 
-	if #template_lines > 0 then
-		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, template_lines)
+	if #initial_lines > 0 then
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
 	end
 
 	vim.bo[bufnr].modified = true

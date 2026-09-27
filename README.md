@@ -276,8 +276,10 @@ Start an empty encrypted note with `:MemoNewNote` (or
 - Relative paths resolve against `<notes_dir>` and may contain subdirectories,
   e.g. `:MemoNewNote journals/2026-01-01.md`. Paths must stay inside
   `<notes_dir>`.
-- Missing parent directories are created, and an existing note is never
-  overwritten.
+- With a visual selection or a range, e.g. `:'<,'>MemoNewNote`, the selected
+  lines seed the note instead of the template.
+- Missing parent directories are created. An existing note is only replaced
+  after you confirm the overwrite.
 - The note is written (and therefore encrypted) immediately, so it shows up in
   `:MemoFiles` right away.
 
