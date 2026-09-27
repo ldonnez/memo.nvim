@@ -3,8 +3,8 @@ local M = {}
 ---@class MemoNewNoteOpts
 ---@field path? string note path, relative to the notes dir or absolute inside it
 ---@field template? string body template, supports `os.date` formats and a `|`
----cursor marker. Defaults to `g:memo_new_note_template`. Ignored when a range
----or visual selection is given.
+---cursor marker. A range or visual selection is inserted at that marker, and
+---becomes the whole note when the template has none.
 ---@field range? integer
 ---@field line1? integer
 ---@field line2? integer
@@ -18,8 +18,8 @@ end
 
 ---Creates a new encrypted note and opens it in the current window.
 ---When a visual selection is active (or the command is given a range, e.g.
----`:'<,'>MemoNewNote`), the selected lines seed the note instead of the
----template.
+---`:'<,'>MemoNewNote`), the selected lines are inserted at the template's `|`
+---marker instead of replacing the template.
 ---@param opts? MemoNewNoteOpts
 ---@return boolean success
 function M.create(opts)
@@ -69,8 +69,7 @@ function M.create(opts)
 		return false
 	end
 
-	local template = new_opts.template or config.new_note_template
-	local note_template = Template.new({ template = template })
+	local note_template = Template.new({ template = new_opts.template })
 	local initial_lines, cursor_pos, has_cursor_marker = note_template:resolve_template()
 
 	if selected then

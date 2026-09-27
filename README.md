@@ -277,21 +277,15 @@ Start an empty encrypted note with `:MemoNewNote` (or
   e.g. `:MemoNewNote journals/2026-01-01.md`. Paths must stay inside
   `<notes_dir>`.
 - With a visual selection or a range, e.g. `:'<,'>MemoNewNote`, the selected
-  lines seed the note instead of the template.
+  lines are inserted at the template's `|` marker. A template without a marker
+  has nowhere to insert, so the selection becomes the whole note.
 - Missing parent directories are created. An existing note is only replaced
   after you confirm the overwrite.
 - The note is written (and therefore encrypted) immediately, so it shows up in
   `:MemoFiles` right away.
 
-Set `g:memo_new_note_template` to prefill every new note. Templates accept
-`os.date` formats and a `|` marker that is removed and used as the cursor
-position:
-
-```lua
-vim.g.memo_new_note_template = "# %Y-%m-%d\n\n## Agenda\n- |"
-```
-
-A template can also be passed per call:
+A template can be passed to prefill the note. Templates accept `os.date`
+formats and a `|` marker that is removed and used as the cursor position:
 
 ```lua
 require("memo").new_note({
@@ -321,9 +315,7 @@ vim.keymap.set("n", "<leader>mc", function()
     capture_file = "inbox.md.gpg",
     target_header = "# inbox", -- captures are inserted below this header
     header_padding = 1, -- blank lines between capture content and target header
-    capture_template = {
-      template = "## %Y-%m-%d %H:%M\n\n|\n", -- '|' marks the cursor position in the capture window
-    },
+    template = "## %Y-%m-%d %H:%M\n\n|\n", -- '|' marks the cursor
     window = {
       split = "split", -- "split" | "vsplit"
       size = 10,
@@ -332,11 +324,6 @@ vim.keymap.set("n", "<leader>mc", function()
   })
 end, { desc = "Memo: Quick capture" })
 ```
-
-`target_header` and `header_padding` used to live inside `capture_template`.
-They now belong to the capture config, because the template only renders the
-capture window. Nesting them still errors instead of silently prepending to
-the top of the file.
 
 A visual selection is detected automatically: select text in visual mode and
 call `register_capture` to pre-fill the capture window:
@@ -347,10 +334,10 @@ vim.keymap.set("v", "<leader>mc", function()
 end, { desc = "Memo: Quick capture selection" })
 ```
 
-With a `capture_template` that has a `|`, the selection is inserted at that
-marker instead of replacing the template, so a selected capture keeps its date
-header. A template without a marker has nowhere to insert, so the selection
-still becomes the whole capture window.
+With a template that has a `|`, the selection is inserted at that marker instead
+of replacing the template, so a selected capture keeps its date header. A
+template without a marker has nowhere to insert, so the selection still
+becomes the whole capture window.
 
 Turn a capture file into a journal with dynamic headers:
 

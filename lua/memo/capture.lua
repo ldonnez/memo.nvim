@@ -12,14 +12,15 @@ local M = {}
 ---@field capture_file string
 ---@field target_header string? header the capture is inserted under
 ---@field header_padding integer? blank lines kept between the header and the capture
----@field capture_template MemoNoteTemplateConfig
+---@field template? string window template, supports `os.date` formats and a `|`
+---cursor marker. A selection is inserted at that marker, and becomes the whole
+---capture window when the template has none.
 ---@field window { split: CaptureSplit, size: integer, position: CapturePosition }
 
 ---@type CaptureConfig
 local defaults = {
 	capture_file = "inbox.md.gpg",
 	header_padding = 0,
-	capture_template = {},
 	window = {
 		split = "split",
 		size = 10,
@@ -162,25 +163,10 @@ end
 
 ---@param opts CaptureConfig
 function M.register(opts)
-	-- `target_header` and `header_padding` used to live inside
-	-- `capture_template`. They now belong to the capture config, because the
-	-- template only renders the capture window. Failing loudly beats silently
-	-- prepending captures to the top of the file.
-	-- Cast: this deliberately probes the pre-split config shape, which
-	-- `MemoNoteTemplateConfig` no longer describes.
-	local template_opts = opts and opts.capture_template --[[@as table?]]
-
-	if type(template_opts) == "table" and (template_opts.target_header or template_opts.header_padding) then
-		message.error(
-			"MemoCapture: target_header and header_padding moved out of capture_template: use register_capture({ target_header = ..., header_padding = ... })"
-		)
-		return
-	end
-
 	local cfg = opts --[[@as CaptureConfig]]
 	local config = vim.tbl_deep_extend("force", defaults, cfg) --[[@as CaptureConfig]]
 
-	local capture_template = Template.new(config.capture_template)
+	local capture_template = Template.new({ template = config.template })
 
 	local template_lines, template_cursor, has_cursor_marker = capture_template:resolve_template()
 

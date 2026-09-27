@@ -92,14 +92,12 @@ describe("new_note", function()
 			MiniTest.expect.equality(cursor[2], 4)
 		end)
 
-		it("uses the configured template", function()
-			child.lua([[ vim.g.memo_new_note_template = "from config| here" ]])
-			child.lua([[ require("memo.config").setup() ]])
-			child.lua_get([[ new_note.create({ path = "configured.md" }) ]])
+		it("uses the template passed to the call", function()
+			child.lua_get([[ new_note.create({ path = "configured.md", template = "from call| here" }) ]])
 
 			local cursor = child.api.nvim_win_get_cursor(0)
 			MiniTest.expect.equality(cursor[1], 1)
-			MiniTest.expect.equality(cursor[2], 11)
+			MiniTest.expect.equality(cursor[2], 9)
 		end)
 
 		it("asks before overwriting an existing note and keeps it when declined", function()
@@ -122,10 +120,11 @@ describe("new_note", function()
 			helpers.encrypt_file(existing, "old content\n")
 
 			child.lua("vim.fn.confirm = function() return 1 end")
-			child.lua([[ vim.g.memo_new_note_template = "fresh| content" ]])
-			child.lua([[ require("memo.config").setup() ]])
 
-			MiniTest.expect.equality(child.lua_get([[ new_note.create({ path = "existing.md" }) ]]), true)
+			MiniTest.expect.equality(
+				child.lua_get([[ new_note.create({ path = "existing.md", template = "fresh| content" }) ]]),
+				true
+			)
 
 			local decrypted = helpers.decrypt_file(existing)
 			MiniTest.expect.equality(decrypted.code, 0)
@@ -186,11 +185,11 @@ describe("new_note", function()
 		it("inserts a range selection at the template cursor position", function()
 			open_source()
 
-			child.lua([[ vim.g.memo_new_note_template = "## Notes\n- | (kept)" ]])
-			child.lua([[ require("memo.config").setup() ]])
 			child.lua("vim.fn.input = function() return 'ranged' end")
 
-			child.lua_get([[ new_note.create({ path = "ranged.md", range = 2, line1 = 2, line2 = 2 }) ]])
+			child.lua_get(
+				[[ new_note.create({ path = "ranged.md", range = 2, line1 = 2, line2 = 2, template = "## Notes\n- | (kept)" }) ]]
+			)
 
 			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/ranged.md.gpg")
 			MiniTest.expect.equality(result.code, 0)
@@ -205,11 +204,11 @@ describe("new_note", function()
 		it("uses the selection as the whole note when the template has no marker", function()
 			open_source()
 
-			child.lua([[ vim.g.memo_new_note_template = "## Notes" ]])
-			child.lua([[ require("memo.config").setup() ]])
 			child.lua("vim.fn.input = function() return 'unmarked' end")
 
-			child.lua_get([[ new_note.create({ path = "unmarked.md", range = 2, line1 = 2, line2 = 2 }) ]])
+			child.lua_get(
+				[[ new_note.create({ path = "unmarked.md", range = 2, line1 = 2, line2 = 2, template = "## Notes" }) ]]
+			)
 
 			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/unmarked.md.gpg")
 			MiniTest.expect.equality(result.code, 0)
@@ -220,26 +219,20 @@ describe("new_note", function()
 		it("inserts a visual selection at the template cursor position", function()
 			open_source()
 
-			child.lua([[ vim.g.memo_new_note_template = "## Notes\n- | (kept)" ]])
-			child.lua([[ require("memo.config").setup() ]])
-			child.lua("vim.fn.input = function() return 'fromvisual' end")
-
 			child.api.nvim_win_set_cursor(0, { 1, 6 })
 			child.cmd("normal! v")
 			child.api.nvim_win_set_cursor(0, { 1, 9 })
-			child.type_keys(":", "MemoNewNote", "<CR>")
+			child.lua_get([[ require("memo").new_note({ path = "fromvisual.md", template = "## Notes\n- | (kept)" }) ]])
 
-			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/fromvisual.gpg")
+			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/fromvisual.md.gpg")
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(result.stdout, "## Notes\n- beta (kept)\n")
 		end)
 
-		it("prefers an explicit template over the configured one for a selection", function()
+		it("inserts a selection into an explicit template", function()
 			open_source()
 
-			child.lua([[ vim.g.memo_new_note_template = "config|" ]])
-			child.lua([[ require("memo.config").setup() ]])
 			child.lua("vim.fn.input = function() return 'explicit' end")
 
 			child.lua_get(
