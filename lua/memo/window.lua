@@ -13,8 +13,8 @@ local M = {}
 
 local DEFAULTS = {
 	split = "split",
+	size = 0.5,
 	position = "botright",
-	ratio = 0.5,
 }
 
 ---A split counts rows and a vsplit counts columns, so the same share of the
@@ -31,7 +31,7 @@ local function resolve_size(split, size)
 		return math.max(1, math.floor(extent * size))
 	end
 
-	return math.floor(extent * DEFAULTS.ratio)
+	return math.floor(extent * DEFAULTS.size)
 end
 
 ---The split that would be opened for this config, for callers that need to

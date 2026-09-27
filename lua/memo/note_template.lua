@@ -3,7 +3,7 @@ local M = {}
 ---@class MemoNoteTemplateConfig
 ---@field template string?
 
-local defaults = {
+local DEFAULTS = {
 	template = "",
 }
 
@@ -19,7 +19,7 @@ Template.__index = Template
 function M.new(opts)
 	local self = setmetatable({}, Template)
 
-	self.config = vim.tbl_deep_extend("force", defaults, opts or {})
+	self.config = vim.tbl_deep_extend("force", DEFAULTS, opts or {})
 
 	return self
 end

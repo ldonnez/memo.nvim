@@ -14,7 +14,7 @@ local M = {}
 local options
 
 ---@type MemoConfig
-local defaults = {
+local DEFAULTS = {
 	notes_dir = vim.fn.expand("~/notes") --[[@as string]],
 	scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch"),
 	ignore_patterns = {
@@ -28,7 +28,7 @@ local defaults = {
 }
 
 function M.setup()
-	options = vim.deepcopy(defaults)
+	options = vim.deepcopy(DEFAULTS)
 
 	if vim.g.memo_notes_dir ~= nil then
 		options.notes_dir = vim.g.memo_notes_dir
