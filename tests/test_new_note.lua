@@ -35,41 +35,12 @@ describe("new_note", function()
 		child.stop()
 	end)
 
-	describe("resolve_path", function()
-		it("resolves a relative path inside the notes dir", function()
-			local path = child.lua_get([[ new_note.resolve_path("todo.md") ]])
-
-			MiniTest.expect.equality(path, vim.env.NOTES_DIR .. "/todo.md.gpg")
-		end)
-
-		it("resolves a nested relative path", function()
-			local path = child.lua_get([[ new_note.resolve_path("journals/2026-01-01.md") ]])
-
-			MiniTest.expect.equality(path, vim.env.NOTES_DIR .. "/journals/2026-01-01.md.gpg")
-		end)
-
-		it("keeps an absolute path that is already inside the notes dir", function()
-			local path = child.lua_get([[ new_note.resolve_path(...) ]], { vim.env.NOTES_DIR .. "/abs.md" })
-
-			MiniTest.expect.equality(path, vim.env.NOTES_DIR .. "/abs.md.gpg")
-		end)
-
-		it("rejects a path outside the notes dir", function()
-			MiniTest.expect.equality(child.lua_get([[ new_note.resolve_path("../escape.md") ]]), vim.NIL)
-		end)
-
-		it("rejects an absolute path outside the notes dir", function()
-			MiniTest.expect.equality(child.lua_get([[ new_note.resolve_path("/tmp/escape.md") ]]), vim.NIL)
-		end)
-
-		it("rejects an empty path", function()
-			MiniTest.expect.equality(child.lua_get([[ new_note.resolve_path("") ]]), vim.NIL)
-		end)
-	end)
-
 	describe("default_path", function()
-		it("defaults to today's date", function()
-			MiniTest.expect.equality(child.lua_get([[ new_note.default_path() ]]), os.date("%Y-%m-%d.md"))
+		it("defaults to today's date inside the notes dir", function()
+			MiniTest.expect.equality(
+				child.lua_get([[ new_note.default_path() ]]),
+				vim.env.NOTES_DIR .. "/" .. os.date("%Y-%m-%d.md") .. ".gpg"
+			)
 		end)
 	end)
 
@@ -83,6 +54,14 @@ describe("new_note", function()
 
 			local decrypted = helpers.decrypt_file(vim.env.NOTES_DIR .. "/inbox.md.gpg")
 			MiniTest.expect.equality(decrypted.code, 0)
+		end)
+
+		it("falls back to the default path when none is given", function()
+			local created = child.lua_get([[ new_note.create() ]])
+			local default_path = vim.env.NOTES_DIR .. "/" .. os.date("%Y-%m-%d.md") .. ".gpg"
+
+			MiniTest.expect.equality(created, true)
+			MiniTest.expect.equality(child.fn.filereadable(default_path), 1)
 		end)
 
 		it("creates notes in nested directories", function()

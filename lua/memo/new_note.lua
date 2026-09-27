@@ -5,30 +5,11 @@ local M = {}
 ---@field template? string body template, supports `os.date` formats and a `|`
 ---cursor marker. Defaults to `g:memo_new_note_template`.
 
----Default note name used when no path is given.
+---Default note path used when no path is given. Like `save_as_note` this is a
+---full path, so the prompt makes it obvious where the note will be created.
 ---@return string
 function M.default_path()
-	return os.date("%Y-%m-%d.md")
-end
-
----Resolves a user supplied note path to an absolute `.gpg` path inside the
----notes directory.
----@param path string
----@return string? gpg_path nil when the path escapes the notes directory
-function M.resolve_path(path)
-	local config = require("memo.config")
-	local utils = require("memo.utils")
-	local notes_dir = config.notes_dir
-	local expanded = vim.fn.expand(path) --[[@as string]]
-
-	if expanded == "" then
-		return nil
-	end
-
-	local target = expanded:sub(1, 1) == "/" and expanded or (notes_dir .. "/" .. expanded)
-	local gpg_path = utils.get_gpg_path(target)
-
-	return utils.is_in_dir(gpg_path, notes_dir) and gpg_path or nil
+	return require("memo.utils").build_note_path(os.date("%Y-%m-%d.md"))
 end
 
 ---@param gpg_path string
@@ -52,7 +33,7 @@ function M.create(opts)
 		path = M.default_path()
 	end
 
-	local gpg_path = M.resolve_path(path)
+	local gpg_path = utils.resolve_note_path(path)
 
 	if not gpg_path then
 		message.error("MemoNewNote: note path must be inside the notes directory (%s)", config.notes_dir)

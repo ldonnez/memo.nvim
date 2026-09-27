@@ -124,18 +124,16 @@ function M.save_as_note(opts)
 	local current = vim.api.nvim_buf_get_name(bufnr)
 
 	local default_name = vim.fn.fnamemodify(current, ":t"):gsub("%.gpg$", "")
-	local default_path = utils.get_gpg_path(notes_dir .. "/" .. default_name)
-	local target = vim.fn.input("Note path: ", default_path, "file")
+	local default_path = utils.build_note_path(default_name)
+	local target = utils.prompt_note_path(default_path, "MemoSaveAsNote")
 
-	if target == "" then
-		message.warn("MemoSaveAsNote: empty note path")
+	if not target then
 		return false
 	end
 
-	local path = target:sub(1, 1) == "/" and target or notes_dir .. "/" .. target
-	local gpg_path = utils.get_gpg_path(vim.fn.expand(path) --[[@as string]])
+	local gpg_path = utils.resolve_note_path(target)
 
-	if not utils.is_in_dir(gpg_path, notes_dir) then
+	if not gpg_path then
 		message.error("MemoSaveAsNote: note path must be inside the notes directory (%s)", notes_dir)
 		return false
 	end
