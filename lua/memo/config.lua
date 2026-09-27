@@ -2,14 +2,12 @@
 ---@field notes_dir string
 ---@field scratch_dir string
 ---@field ignore_patterns string[]
----@field new_note_template? string
 
 ---@class MemoConfigModule
 ---@field setup fun()
 ---@field notes_dir string
 ---@field scratch_dir string
 ---@field ignore_patterns string[]
----@field new_note_template? string
 
 local M = {}
 
@@ -42,10 +40,6 @@ function M.setup()
 
 	if vim.g.memo_ignore_patterns ~= nil then
 		vim.list_extend(options.ignore_patterns, vim.g.memo_ignore_patterns)
-	end
-
-	if vim.g.memo_new_note_template ~= nil then
-		options.new_note_template = vim.g.memo_new_note_template
 	end
 end
 
