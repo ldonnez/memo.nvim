@@ -271,7 +271,8 @@ end, { desc = "Memo: Save buffer as note" })
 Start an empty encrypted note with `:MemoNewNote` (or
 `require("memo").new_note()`):
 
-- Prompts for a note path, defaulting to `YYYY-MM-DD.md`.
+- Prompts for a note path, defaulting to the full path
+  `<notes_dir>/YYYY-MM-DD.md.gpg`, so it is clear where the note lands.
 - Relative paths resolve against `<notes_dir>` and may contain subdirectories,
   e.g. `:MemoNewNote journals/2026-01-01.md`. Paths must stay inside
   `<notes_dir>`.

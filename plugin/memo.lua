@@ -105,16 +105,16 @@ end, {
 
 vim.api.nvim_create_user_command("MemoNewNote", function(opts)
 	local new_note = require("memo.new_note")
-	local message = require("memo.message")
 	local path = opts.args
 
 	if path == "" then
-		path = vim.fn.input("Note path: ", new_note.default_path(), "file")
-	end
+		local prompted = require("memo.utils").prompt_note_path(new_note.default_path(), "MemoNewNote")
 
-	if path == "" then
-		message.warn("MemoNewNote: empty note path")
-		return
+		if not prompted then
+			return
+		end
+
+		path = prompted
 	end
 
 	new_note.create({ path = path })

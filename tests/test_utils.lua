@@ -54,6 +54,138 @@ describe("utils", function()
 		end)
 	end)
 
+	describe("build_note_path", function()
+		local notes_dir = "/tmp/memo_test_notes"
+		local original_notes_dir
+
+		before_each(function()
+			original_notes_dir = vim.g.memo_notes_dir
+			vim.g.memo_notes_dir = notes_dir
+			require("memo.config").setup()
+		end)
+
+		after_each(function()
+			vim.g.memo_notes_dir = original_notes_dir
+			require("memo.config").setup()
+		end)
+
+		it("builds a full path inside the notes dir", function()
+			MiniTest.expect.equality(util.build_note_path("note.md"), notes_dir .. "/note.md.gpg")
+		end)
+
+		it("keeps a name that already ends with .gpg", function()
+			MiniTest.expect.equality(util.build_note_path("note.md.gpg"), notes_dir .. "/note.md.gpg")
+		end)
+
+		it("builds a full path for a nested name", function()
+			MiniTest.expect.equality(
+				util.build_note_path("journals/2026-01-01.md"),
+				notes_dir .. "/journals/2026-01-01.md.gpg"
+			)
+		end)
+	end)
+
+	describe("resolve_note_path", function()
+		local notes_dir = "/tmp/memo_test_notes"
+		local original_notes_dir
+
+		before_each(function()
+			original_notes_dir = vim.g.memo_notes_dir
+			vim.g.memo_notes_dir = notes_dir
+			require("memo.config").setup()
+		end)
+
+		after_each(function()
+			vim.g.memo_notes_dir = original_notes_dir
+			require("memo.config").setup()
+		end)
+
+		it("resolves a relative path against the notes dir", function()
+			MiniTest.expect.equality(util.resolve_note_path("note.md"), notes_dir .. "/note.md.gpg")
+		end)
+
+		it("keeps a relative path that already ends with .gpg", function()
+			MiniTest.expect.equality(util.resolve_note_path("note.md.gpg"), notes_dir .. "/note.md.gpg")
+		end)
+
+		it("resolves a nested relative path", function()
+			MiniTest.expect.equality(
+				util.resolve_note_path("journals/2026-01-01.md"),
+				notes_dir .. "/journals/2026-01-01.md.gpg"
+			)
+		end)
+
+		it("keeps an absolute path inside the notes dir", function()
+			MiniTest.expect.equality(util.resolve_note_path(notes_dir .. "/abs.md"), notes_dir .. "/abs.md.gpg")
+		end)
+
+		it("expands a leading tilde", function()
+			local home_notes = vim.fn.expand("~") .. "/memo_test_notes"
+			vim.g.memo_notes_dir = home_notes
+			require("memo.config").setup()
+
+			MiniTest.expect.equality(util.resolve_note_path("~/memo_test_notes/t.md"), home_notes .. "/t.md.gpg")
+		end)
+
+		it("returns nil for a relative path escaping the notes dir", function()
+			MiniTest.expect.equality(util.resolve_note_path("../escape.md"), nil)
+		end)
+
+		it("returns nil for an absolute path outside the notes dir", function()
+			MiniTest.expect.equality(util.resolve_note_path("/tmp/elsewhere/note.md"), nil)
+		end)
+
+		it("returns nil for a sibling directory sharing the notes dir prefix", function()
+			MiniTest.expect.equality(util.resolve_note_path(notes_dir .. "_evil/note.md"), nil)
+		end)
+
+		it("returns nil for the notes dir itself", function()
+			MiniTest.expect.equality(util.resolve_note_path(notes_dir), nil)
+		end)
+
+		it("returns nil for an empty path", function()
+			MiniTest.expect.equality(util.resolve_note_path(""), nil)
+		end)
+	end)
+
+	describe("prompt_note_path", function()
+		it("returns the entered path", function()
+			local original_input = vim.fn.input
+			vim.fn.input = function()
+				return "typed.md"
+			end
+
+			MiniTest.expect.equality(util.prompt_note_path("/tmp/notes/default.md.gpg", "MemoTest"), "typed.md")
+
+			vim.fn.input = original_input
+		end)
+
+		it("returns the default when input returns it unchanged", function()
+			local original_input = vim.fn.input
+			vim.fn.input = function(_, default)
+				return default
+			end
+
+			MiniTest.expect.equality(
+				util.prompt_note_path("/tmp/notes/default.md.gpg", "MemoTest"),
+				"/tmp/notes/default.md.gpg"
+			)
+
+			vim.fn.input = original_input
+		end)
+
+		it("returns nil for an empty path", function()
+			local original_input = vim.fn.input
+			vim.fn.input = function()
+				return ""
+			end
+
+			MiniTest.expect.equality(util.prompt_note_path("/tmp/notes/default.md.gpg", "MemoTest"), nil)
+
+			vim.fn.input = original_input
+		end)
+	end)
+
 	describe("ensure_directories", function()
 		it("returns true when the directory already exists", function()
 			local dir = vim.fn.tempname() .. "_exists"

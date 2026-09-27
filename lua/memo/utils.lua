@@ -20,6 +20,47 @@ function M.is_in_dir(path, dir)
 	return abs_path:sub(1, #abs_dir) == abs_dir and abs_path:sub(#abs_dir + 1, #abs_dir + 1) == "/"
 end
 
+---Builds a full note path for `name` inside the notes directory.
+---@param name string note name, with or without a `.gpg` suffix
+---@return string
+function M.build_note_path(name)
+	return M.get_gpg_path(require("memo.config").notes_dir .. "/" .. name)
+end
+
+---Resolves a user supplied note path to an absolute `.gpg` path inside the
+---notes directory. Relative paths are resolved against the notes dir and `~` is
+---expanded.
+---@param path string
+---@return string? gpg_path nil when the path is empty or escapes the notes dir
+function M.resolve_note_path(path)
+	local notes_dir = require("memo.config").notes_dir
+	local expanded = vim.fn.expand(path) --[[@as string]]
+
+	if expanded == "" then
+		return nil
+	end
+
+	local target = expanded:sub(1, 1) == "/" and expanded or (notes_dir .. "/" .. expanded)
+	local gpg_path = M.get_gpg_path(target)
+
+	return M.is_in_dir(gpg_path, notes_dir) and gpg_path or nil
+end
+
+---Prompts for a note path, pre-filled with `default_path`.
+---@param default_path string
+---@param title string command name used in the message
+---@return string? path nil when an empty path was entered
+function M.prompt_note_path(default_path, title)
+	local target = vim.fn.input("Note path: ", default_path, "file")
+
+	if target == "" then
+		require("memo.message").warn("%s: empty note path", title)
+		return nil
+	end
+
+	return target
+end
+
 ---Ensures a directory exists, creating it (including any missing parents)
 ---when needed.
 ---@param dir string
