@@ -102,10 +102,35 @@ describe("new_note", function()
 			MiniTest.expect.equality(cursor[2], 11)
 		end)
 
-		it("refuses to overwrite an existing note", function()
-			child.lua_get([[ new_note.create({ path = "existing.md" }) ]])
+		it("asks before overwriting an existing note and keeps it when declined", function()
+			local existing = vim.env.NOTES_DIR .. "/existing.md.gpg"
+			helpers.encrypt_file(existing, "old content\n")
+
+			child.lua("vim.fn.confirm = function() return 2 end")
 
 			MiniTest.expect.equality(child.lua_get([[ new_note.create({ path = "existing.md" }) ]]), false)
+			MiniTest.expect.equality(child.cmd_capture("messages"), "MemoNewNote: aborted")
+
+			local decrypted = helpers.decrypt_file(existing)
+			MiniTest.expect.equality(decrypted.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(decrypted.stdout:find("old content") ~= nil, true)
+		end)
+
+		it("overwrites an existing note when the user confirms", function()
+			local existing = vim.env.NOTES_DIR .. "/existing.md.gpg"
+			helpers.encrypt_file(existing, "old content\n")
+
+			child.lua("vim.fn.confirm = function() return 1 end")
+			child.lua([[ vim.g.memo_new_note_template = "fresh| content" ]])
+			child.lua([[ require("memo.config").setup() ]])
+
+			MiniTest.expect.equality(child.lua_get([[ new_note.create({ path = "existing.md" }) ]]), true)
+
+			local decrypted = helpers.decrypt_file(existing)
+			MiniTest.expect.equality(decrypted.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(decrypted.stdout, "fresh content\n")
 		end)
 
 		it("refuses a path outside the notes dir", function()

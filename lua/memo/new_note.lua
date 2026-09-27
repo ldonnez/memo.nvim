@@ -34,12 +34,21 @@ function M.create(opts)
 		return false
 	end
 
-	if utils.file_has_content(gpg_path) then
-		message.error("MemoNewNote: note already exists (%s)", gpg_path)
+	local overwriting = utils.file_has_content(gpg_path)
+
+	if overwriting and not utils.confirm_overwrite("MemoNewNote") then
 		return false
 	end
 
 	if not utils.ensure_directories(vim.fs.dirname(gpg_path)) then
+		return false
+	end
+
+	-- The existing note is discarded instead of opened: a note opened from disk
+	-- comes back decrypted and read-only, and its async decrypt would race with
+	-- writing the template into the buffer.
+	if overwriting and vim.fn.delete(gpg_path) ~= 0 then
+		message.error("MemoNewNote: could not remove existing note (%s)", gpg_path)
 		return false
 	end
 

@@ -36,6 +36,20 @@ function M.file_has_content(path)
 	return M.file_exists(path) and vim.fn.getfsize(path) > 0
 end
 
+---Asks the user whether an existing note may be overwritten.
+---@param title string command name used in the message
+---@return boolean
+function M.confirm_overwrite(title)
+	local choice = vim.fn.confirm("Note already exists. Overwrite?", "&Yes\n&No", 2)
+
+	if choice ~= 1 then
+		require("memo.message").warn("%s: aborted", title)
+		return false
+	end
+
+	return true
+end
+
 ---Builds a full note path for `name` inside the notes directory.
 ---@param name string note name, with or without a `.gpg` suffix
 ---@return string

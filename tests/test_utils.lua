@@ -229,6 +229,37 @@ describe("utils", function()
 		end)
 	end)
 
+	describe("confirm_overwrite", function()
+		local original_confirm
+
+		before_each(function()
+			original_confirm = vim.fn.confirm
+		end)
+
+		after_each(function()
+			vim.fn.confirm = original_confirm
+		end)
+
+		it("returns true when the user confirms", function()
+			vim.fn.confirm = function()
+				return 1
+			end
+
+			MiniTest.expect.equality(util.confirm_overwrite("MemoTest"), true)
+		end)
+
+		it("returns false and warns when the user declines", function()
+			vim.fn.confirm = function()
+				return 2
+			end
+
+			MiniTest.expect.equality(util.confirm_overwrite("MemoTest"), false)
+
+			local messages = vim.api.nvim_exec2("messages", { output = true }).output
+			MiniTest.expect.equality(messages:find("MemoTest: aborted", 1, true) ~= nil, true)
+		end)
+	end)
+
 	describe("ensure_directories", function()
 		it("returns true when the directory already exists", function()
 			local dir = vim.fn.tempname() .. "_exists"
