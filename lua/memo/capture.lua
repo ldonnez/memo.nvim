@@ -18,7 +18,7 @@ local M = {}
 ---has a default
 
 ---@type CaptureConfig
-local defaults = {
+local DEFAULTS = {
 	capture_file = "inbox.md.gpg",
 	header_padding = 0,
 	window = {},
@@ -157,7 +157,7 @@ end
 ---@param opts CaptureConfig
 function M.register(opts)
 	local cfg = opts --[[@as CaptureConfig]]
-	local config = vim.tbl_deep_extend("force", defaults, cfg) --[[@as CaptureConfig]]
+	local config = vim.tbl_deep_extend("force", DEFAULTS, cfg) --[[@as CaptureConfig]]
 
 	local capture_template = Template.new({ template = config.template })
 
