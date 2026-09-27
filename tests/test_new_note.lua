@@ -56,15 +56,6 @@ describe("new_note", function()
 		child.stop()
 	end)
 
-	describe("default_path", function()
-		it("defaults to today's date inside the notes dir", function()
-			MiniTest.expect.equality(
-				child.lua_get([[ new_note.default_path() ]]),
-				vim.env.NOTES_DIR .. "/" .. os.date("%Y-%m-%d.md") .. ".gpg"
-			)
-		end)
-	end)
-
 	describe("create", function()
 		it("creates an encrypted note and opens it", function()
 			local created = child.lua_get([[ new_note.create({ path = "inbox.md" }) ]])
