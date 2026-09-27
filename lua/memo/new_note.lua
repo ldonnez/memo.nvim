@@ -9,6 +9,8 @@ local M = {}
 ---@field range? integer
 ---@field line1? integer
 ---@field line2? integer
+---@field window? MemoWindowConfig opens the note in a split, the current
+---window is kept when omitted
 
 ---Default note path used when no path is given. Like `save_as_note` this is a
 ---full path, so the prompt makes it obvious where the note will be created.
@@ -29,6 +31,7 @@ function M.create(opts)
 	local message = require("memo.message")
 	local utils = require("memo.utils")
 	local Template = require("memo.note_template")
+	local window = require("memo.window")
 
 	local path = new_opts.path
 
@@ -90,6 +93,10 @@ function M.create(opts)
 		end
 	end
 
+	-- After the selection is resolved: it belongs to the window the call was
+	-- made from, and a split would replace that window.
+	local win = window.open(new_opts.window)
+
 	-- Opening a note that does not exist yet yields an empty buffer, which the
 	-- BufWriteCmd handler encrypts on the first write below.
 	vim.cmd("silent edit " .. vim.fn.fnameescape(gpg_path))
@@ -103,8 +110,9 @@ function M.create(opts)
 	vim.bo[bufnr].modified = true
 	vim.cmd("silent write")
 
-	if vim.api.nvim_get_current_buf() == bufnr then
-		vim.api.nvim_win_set_cursor(0, cursor_pos)
+	-- Only when the note is still in `win`: an autocmd may have moved it.
+	if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == bufnr then
+		vim.api.nvim_win_set_cursor(win, cursor_pos)
 	end
 
 	return true

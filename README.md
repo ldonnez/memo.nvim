@@ -296,6 +296,15 @@ require("memo").new_note({
 })
 ```
 
+A `window` opens the note in a split, the same options `register_capture`
+takes. Without one the note takes over the current window:
+
+```lua
+require("memo").new_note({
+  window = { split = "vsplit", size = 20, position = "botright" },
+})
+```
+
 When a template and a selection are both given, the selection is inserted at
 the `|` marker and the cursor lands right after it. For example, selecting
 `Ada Lovelace` with `"## Agenda\n- | (carried over)"` produces
