@@ -34,12 +34,8 @@ function M.save_as_note(opts)
 		return false
 	end
 
-	if utils.file_exists(gpg_path) then
-		local choice = vim.fn.confirm("Note already exists. Overwrite?", "&Yes\n&No", 2)
-		if choice ~= 1 then
-			message.warn("MemoSaveAsNote: aborted")
-			return false
-		end
+	if utils.file_exists(gpg_path) and not utils.confirm_overwrite("MemoSaveAsNote") then
+		return false
 	end
 
 	if not utils.ensure_directories(vim.fs.dirname(gpg_path)) then
