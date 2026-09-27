@@ -34,7 +34,7 @@ function M.save_as_note(opts)
 		return false
 	end
 
-	if utils.file_exists(gpg_path) and not utils.confirm_overwrite("MemoSaveAsNote") then
+	if utils.file_exists(gpg_path) and not utils.confirm("Note already exists. Overwrite?", "MemoSaveAsNote") then
 		return false
 	end
 

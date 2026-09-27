@@ -138,6 +138,95 @@ describe("new_note", function()
 		end)
 	end)
 
+	describe("range selection", function()
+		local function open_source()
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.api.nvim_buf_set_lines(0, 0, -1, false, {
+				"alpha beta gamma",
+				"delta epsilon",
+			})
+
+			return source
+		end
+
+		it("seeds the note with a characterwise visual selection via the user command", function()
+			open_source()
+
+			child.api.nvim_win_set_cursor(0, { 1, 6 })
+			child.cmd("normal! v")
+			child.api.nvim_win_set_cursor(0, { 1, 9 })
+
+			child.lua("vim.fn.input = function() return 'visual' end")
+			child.type_keys(":", "MemoNewNote", "<CR>")
+
+			local note = vim.env.NOTES_DIR .. "/visual.gpg"
+			MiniTest.expect.equality(child.fn.filereadable(note), 1)
+
+			local result = helpers.decrypt_file(note)
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout, "beta\n")
+		end)
+
+		it("seeds the note with a linewise range via the user command", function()
+			open_source()
+
+			child.cmd("2,2normal! V")
+			child.lua("vim.fn.input = function() return 'linewise' end")
+			child.type_keys(":", "MemoNewNote", "<CR>")
+
+			local note = vim.env.NOTES_DIR .. "/linewise.gpg"
+			local result = helpers.decrypt_file(note)
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout, "delta epsilon\n")
+		end)
+
+		it("ignores the template when a range is given", function()
+			open_source()
+
+			child.lua([[ vim.g.memo_new_note_template = "from template|" ]])
+			child.lua([[ require("memo.config").setup() ]])
+			child.lua("vim.fn.input = function() return 'ranged' end")
+
+			child.lua_get([[ new_note.create({ path = "ranged.md", range = 2, line1 = 2, line2 = 2 }) ]])
+
+			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/ranged.md.gpg")
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout, "delta epsilon\n")
+		end)
+
+		it("places the cursor at the end of the selection", function()
+			open_source()
+
+			child.cmd("2,2normal! V")
+			child.lua("vim.fn.input = function() return 'cursor' end")
+			child.type_keys(":", "MemoNewNote", "<CR>")
+
+			local cursor = child.api.nvim_win_get_cursor(0)
+			MiniTest.expect.equality(cursor[1], 1)
+			MiniTest.expect.equality(cursor[2], 0)
+		end)
+
+		it("aborts without creating a note when the selection is blank", function()
+			open_source()
+
+			-- select the single space between "alpha" and "beta" (getregion is
+			-- inclusive, so both endpoints have to be the same column)
+			child.api.nvim_win_set_cursor(0, { 1, 5 })
+			child.cmd("normal! v")
+			child.api.nvim_win_set_cursor(0, { 1, 5 })
+
+			child.lua("vim.fn.input = function() return 'blank' end")
+			child.type_keys(":", "MemoNewNote", "<CR>")
+
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/blank.gpg"), 0)
+			MiniTest.expect.equality(child.cmd_capture("messages"), "MemoNewNote: aborted, selection is empty")
+		end)
+	end)
+
 	describe("nested note autocmds", function()
 		it("decrypts a nested note when opened", function()
 			vim.fn.mkdir(vim.env.NOTES_DIR .. "/journals", "p")

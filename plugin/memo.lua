@@ -117,9 +117,15 @@ vim.api.nvim_create_user_command("MemoNewNote", function(opts)
 		path = prompted
 	end
 
-	new_note.create({ path = path })
+	new_note.create({
+		path = path,
+		range = opts.range,
+		line1 = opts.line1,
+		line2 = opts.line2,
+	})
 end, {
 	nargs = "?",
+	range = true,
 	desc = "Create a new encrypted note in the notes dir",
 })
 

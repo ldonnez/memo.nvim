@@ -36,11 +36,13 @@ function M.file_has_content(path)
 	return M.file_exists(path) and vim.fn.getfsize(path) > 0
 end
 
----Asks the user whether an existing note may be overwritten.
+---Asks the user a yes/no question. Warns and returns false when declined, so
+---callers can treat a decline as a plain abort.
+---@param prompt string question shown in the dialog
 ---@param title string command name used in the message
 ---@return boolean
-function M.confirm_overwrite(title)
-	local choice = vim.fn.confirm("Note already exists. Overwrite?", "&Yes\n&No", 2)
+function M.confirm(prompt, title)
+	local choice = vim.fn.confirm(prompt, "&Yes\n&No", 2)
 
 	if choice ~= 1 then
 		require("memo.message").warn("%s: aborted", title)
