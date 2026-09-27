@@ -64,18 +64,23 @@ function M.create(opts)
 	local source_bufnr = vim.api.nvim_get_current_buf()
 	local selected = utils.resolve_selection(source_bufnr, new_opts)
 
-	local initial_lines, cursor_pos
-	if selected then
-		if table.concat(selected, "\n"):gsub("%s+", "") == "" then
-			message.warn("MemoNewNote: aborted, selection is empty")
-			return false
-		end
+	if selected and table.concat(selected, "\n"):gsub("%s+", "") == "" then
+		message.warn("MemoNewNote: aborted, selection is empty")
+		return false
+	end
 
-		initial_lines = selected
-		cursor_pos = { #selected, 0 }
-	else
-		local template = new_opts.template or config.new_note_template
-		initial_lines, cursor_pos = Template.new({ template = template }):resolve_template()
+	local template = new_opts.template or config.new_note_template
+	local note_template = Template.new({ template = template })
+	local initial_lines, cursor_pos, has_cursor_marker = note_template:resolve_template()
+
+	if selected then
+		if has_cursor_marker then
+			initial_lines, cursor_pos = note_template:insert_at_cursor(selected)
+		else
+			-- Without a marker there is nowhere to insert into, so the
+			-- selection becomes the whole note.
+			initial_lines, cursor_pos = selected, { #selected, 0 }
+		end
 	end
 
 	-- Opening a note that does not exist yet yields an empty buffer, which the

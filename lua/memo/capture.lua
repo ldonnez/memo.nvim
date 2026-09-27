@@ -189,6 +189,7 @@ function M.register(opts)
 
 	local win, buf = create_capture_window(config)
 
+	---@type string[], [integer, integer]
 	local initial_lines, cursor_pos
 	if range_lines then
 		initial_lines = range_lines

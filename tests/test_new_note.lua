@@ -183,10 +183,10 @@ describe("new_note", function()
 			MiniTest.expect.equality(result.stdout, "delta epsilon\n")
 		end)
 
-		it("ignores the template when a range is given", function()
+		it("inserts a range selection at the template cursor position", function()
 			open_source()
 
-			child.lua([[ vim.g.memo_new_note_template = "from template|" ]])
+			child.lua([[ vim.g.memo_new_note_template = "## Notes\n- | (kept)" ]])
 			child.lua([[ require("memo.config").setup() ]])
 			child.lua("vim.fn.input = function() return 'ranged' end")
 
@@ -195,7 +195,61 @@ describe("new_note", function()
 			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/ranged.md.gpg")
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout, "## Notes\n- delta epsilon (kept)\n")
+
+			local cursor = child.api.nvim_win_get_cursor(0)
+			MiniTest.expect.equality(cursor[1], 2)
+			MiniTest.expect.equality(cursor[2], 15)
+		end)
+
+		it("uses the selection as the whole note when the template has no marker", function()
+			open_source()
+
+			child.lua([[ vim.g.memo_new_note_template = "## Notes" ]])
+			child.lua([[ require("memo.config").setup() ]])
+			child.lua("vim.fn.input = function() return 'unmarked' end")
+
+			child.lua_get([[ new_note.create({ path = "unmarked.md", range = 2, line1 = 2, line2 = 2 }) ]])
+
+			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/unmarked.md.gpg")
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(result.stdout, "delta epsilon\n")
+		end)
+
+		it("inserts a visual selection at the template cursor position", function()
+			open_source()
+
+			child.lua([[ vim.g.memo_new_note_template = "## Notes\n- | (kept)" ]])
+			child.lua([[ require("memo.config").setup() ]])
+			child.lua("vim.fn.input = function() return 'fromvisual' end")
+
+			child.api.nvim_win_set_cursor(0, { 1, 6 })
+			child.cmd("normal! v")
+			child.api.nvim_win_set_cursor(0, { 1, 9 })
+			child.type_keys(":", "MemoNewNote", "<CR>")
+
+			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/fromvisual.gpg")
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout, "## Notes\n- beta (kept)\n")
+		end)
+
+		it("prefers an explicit template over the configured one for a selection", function()
+			open_source()
+
+			child.lua([[ vim.g.memo_new_note_template = "config|" ]])
+			child.lua([[ require("memo.config").setup() ]])
+			child.lua("vim.fn.input = function() return 'explicit' end")
+
+			child.lua_get(
+				[[ new_note.create({ path = "explicit.md", range = 2, line1 = 2, line2 = 2, template = "call | arg" }) ]]
+			)
+
+			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/explicit.md.gpg")
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout, "call delta epsilon arg\n")
 		end)
 
 		it("places the cursor at the end of the selection", function()
