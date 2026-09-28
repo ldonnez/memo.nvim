@@ -27,7 +27,7 @@ describe("save_as_note", function()
 			helpers.kill_gpg_agent()
 		end)
 
-		it("save_as_note: saves a plain buffer in the notes dir and keeps it open", function()
+		it("saves a plain buffer in the notes dir and keeps it open", function()
 			local source = vim.env.NOTES_DIR .. "/random.txt"
 			child.cmd("edit " .. vim.fn.fnameescape(source))
 			child.type_keys("i", "Plain buffer content", "<Esc>")
@@ -45,7 +45,7 @@ describe("save_as_note", function()
 			MiniTest.expect.equality(result.stdout:find("Plain buffer content") ~= nil, true)
 		end)
 
-		it("save_as_note: saves a buffer not under the notes dir", function()
+		it("saves a buffer not under the notes dir", function()
 			local source = vim.env.HOME .. "/todo.txt"
 			child.cmd("edit " .. vim.fn.fnameescape(source))
 			child.type_keys("i", "Unrelated content", "<Esc>")
@@ -58,7 +58,7 @@ describe("save_as_note", function()
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), source)
 		end)
 
-		it("save_as_note: defaults to the notes dir path with .gpg", function()
+		it("defaults to the notes dir path with .gpg", function()
 			local note = vim.env.NOTES_DIR .. "/my-note.md.gpg"
 			child.cmd("edit " .. vim.fn.fnameescape(note))
 			child.type_keys("i", "content", "<Esc>")
@@ -82,7 +82,7 @@ describe("save_as_note", function()
 			MiniTest.expect.equality(result.stdout:find("content") ~= nil, true)
 		end)
 
-		it("save_as_note: defaults to the notes dir path for non-gpg buffers", function()
+		it("defaults to the notes dir path for non-gpg buffers", function()
 			local path = vim.env.HOME .. "/todo.txt"
 			child.cmd("edit " .. vim.fn.fnameescape(path))
 
@@ -99,7 +99,7 @@ describe("save_as_note", function()
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/todo.txt.gpg"), 1)
 		end)
 
-		it("save_as_note: creates subdirectories for nested note names", function()
+		it("creates subdirectories for nested note names", function()
 			local source = vim.env.NOTES_DIR .. "/random.txt"
 			child.cmd("edit " .. vim.fn.fnameescape(source))
 			child.type_keys("i", "nested", "<Esc>")
@@ -110,18 +110,18 @@ describe("save_as_note", function()
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/projects/idea.gpg"), 1)
 		end)
 
-		it("save_as_note: aborts when the note name is empty", function()
+		it("aborts when the note name is empty", function()
 			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
 
 			child.lua("vim.fn.input = function() return '' end")
-			local result = child.lua_get("{ pcall(function() return M.save_as_note() end) }")
+			local result = child.lua_get("{ pcall(function() return M.create() end) }")
 
 			MiniTest.expect.equality(result[1], true)
 			MiniTest.expect.equality(result[2], false)
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), vim.env.NOTES_DIR .. "/random.txt")
 		end)
 
-		it("save_as_note: refuses to overwrite when user declines", function()
+		it("refuses to overwrite when user declines", function()
 			local existing = vim.env.NOTES_DIR .. "/occupied.gpg"
 			helpers.encrypt_file(existing, "old content\n")
 
@@ -130,7 +130,7 @@ describe("save_as_note", function()
 
 			child.lua("vim.fn.input = function() return 'occupied' end")
 			child.lua("vim.fn.confirm = function() return 2 end")
-			local result = child.lua_get("{ pcall(function() return M.save_as_note() end) }")
+			local result = child.lua_get("{ pcall(function() return M.create() end) }")
 
 			MiniTest.expect.equality(result[1], true)
 			MiniTest.expect.equality(result[2], false)
@@ -141,7 +141,7 @@ describe("save_as_note", function()
 			MiniTest.expect.equality(decrypted.stdout:find("old content") ~= nil, true)
 		end)
 
-		it("save_as_note: overwrites when user confirms", function()
+		it("overwrites when user confirms", function()
 			local existing = vim.env.NOTES_DIR .. "/occupied.gpg"
 			helpers.encrypt_file(existing, "old content\n")
 
@@ -150,7 +150,7 @@ describe("save_as_note", function()
 
 			child.lua("vim.fn.input = function() return 'occupied' end")
 			child.lua("vim.fn.confirm = function() return 1 end")
-			local result = child.lua_get("{ pcall(function() return M.save_as_note() end) }")
+			local result = child.lua_get("{ pcall(function() return M.create() end) }")
 
 			MiniTest.expect.equality(result[1], true)
 			MiniTest.expect.equality(result[2], true)
@@ -161,11 +161,11 @@ describe("save_as_note", function()
 			MiniTest.expect.equality(decrypted.stdout:find("new content") ~= nil, true)
 		end)
 
-		it("save_as_note: refuses an absolute path outside the notes dir", function()
+		it("refuses an absolute path outside the notes dir", function()
 			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
 
 			child.lua("vim.fn.input = function() return vim.env.HOME .. '/outside.gpg' end")
-			local result = child.lua_get("{ pcall(function() return M.save_as_note() end) }")
+			local result = child.lua_get("{ pcall(function() return M.create() end) }")
 
 			MiniTest.expect.equality(result[1], true)
 			MiniTest.expect.equality(result[2], false)
@@ -173,18 +173,18 @@ describe("save_as_note", function()
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), vim.env.NOTES_DIR .. "/random.txt")
 		end)
 
-		it("save_as_note: refuses a relative path escaping the notes dir", function()
+		it("refuses a relative path escaping the notes dir", function()
 			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
 
 			child.lua("vim.fn.input = function() return '../escape.gpg' end")
-			local result = child.lua_get("{ pcall(function() return M.save_as_note() end) }")
+			local result = child.lua_get("{ pcall(function() return M.create() end) }")
 
 			MiniTest.expect.equality(result[1], true)
 			MiniTest.expect.equality(result[2], false)
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.HOME .. "/escape.gpg"), 0)
 		end)
 
-		it("save_as_note: saves only the characterwise visual selection via the user command", function()
+		it("saves only the characterwise visual selection via the user command", function()
 			local source = vim.env.NOTES_DIR .. "/random.txt"
 			child.cmd("edit " .. vim.fn.fnameescape(source))
 			child.api.nvim_buf_set_lines(0, 0, -1, false, {
@@ -210,7 +210,7 @@ describe("save_as_note", function()
 			MiniTest.expect.equality(result.stdout:find("alpha") ~= nil, false)
 		end)
 
-		it("save_as_note: saves only the visual selection when called during visual mode", function()
+		it("saves only the visual selection when called during visual mode", function()
 			local source = vim.env.NOTES_DIR .. "/random.txt"
 			child.cmd("edit " .. vim.fn.fnameescape(source))
 			child.api.nvim_buf_set_lines(0, 0, -1, false, {
@@ -223,7 +223,7 @@ describe("save_as_note", function()
 			child.api.nvim_win_set_cursor(0, { 1, 9 })
 
 			child.lua("vim.fn.input = function() return 'direct' end")
-			local result = child.lua_get("{ pcall(function() return M.save_as_note() end) }")
+			local result = child.lua_get("{ pcall(function() return M.create() end) }")
 
 			MiniTest.expect.equality(result[1], true)
 			MiniTest.expect.equality(result[2], true)
@@ -239,7 +239,7 @@ describe("save_as_note", function()
 			MiniTest.expect.equality(decrypted.stdout:find("alpha") ~= nil, false)
 		end)
 
-		it("save_as_note: saves the linewise visual selection via the user command", function()
+		it("saves the linewise visual selection via the user command", function()
 			local source = vim.env.NOTES_DIR .. "/random.txt"
 			child.cmd("edit " .. vim.fn.fnameescape(source))
 			child.api.nvim_buf_set_lines(0, 0, -1, false, {
@@ -286,7 +286,7 @@ describe("save_as_note", function()
 			helpers.kill_gpg_agent()
 		end)
 
-		it("save_as_note: saves a plain buffer when gpg key has password", function()
+		it("saves a plain buffer when gpg key has password", function()
 			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
 			child.type_keys("i", "Secret plain content", "<Esc>")
 

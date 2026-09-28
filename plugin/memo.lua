@@ -96,7 +96,7 @@ end, {
 })
 
 vim.api.nvim_create_user_command("MemoSaveAsNote", function(opts)
-	require("memo.save_as_note").save_as_note({ range = opts.range, line1 = opts.line1, line2 = opts.line2 })
+	require("memo.save_as_note").create({ range = opts.range, line1 = opts.line1, line2 = opts.line2 })
 end, {
 	nargs = 0,
 	range = true,

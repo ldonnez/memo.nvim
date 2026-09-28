@@ -16,7 +16,7 @@ function M.sync_git()
 end
 
 function M.save_as_note()
-	return require("memo.save_as_note").save_as_note()
+	return require("memo.save_as_note").create()
 end
 
 --Opens a new encrypted scratch buffer.
