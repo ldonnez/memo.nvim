@@ -1,7 +1,8 @@
 local M = {}
 
 ---@class MemoOpenOpts
----@field path string note path, relative to the notes dir or absolute inside it
+---@field path? string note path, relative to the notes dir or absolute inside
+---it. Defaults to the configured capture file.
 ---@field window? MemoWindowConfig opens the note in a split, the current window
 ---is kept when omitted
 
@@ -15,10 +16,10 @@ function M.open(opts)
 	local window = require("memo.window")
 
 	local open_opts = opts or {}
-	local path = open_opts.path or ""
+	local path = open_opts.path or config.capture_file
 
 	if path == "" then
-		message.error("MemoOpen: a note path is required")
+		message.error("MemoOpen: a note path is required, or set g:memo_default_capture_file")
 		return false
 	end
 

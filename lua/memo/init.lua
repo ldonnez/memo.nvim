@@ -12,7 +12,7 @@ function M.new_note(opts)
 end
 
 --Opens an existing encrypted note, which is decrypted on open.
----@param opts MemoOpenOpts
+---@param opts? MemoOpenOpts
 function M.open(opts)
 	return require("memo.open_note").open(opts)
 end

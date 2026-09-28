@@ -152,6 +152,17 @@ Directory where encrypted scratch files are stored.
 vim.g.memo_scratch_dir = "~/.local/state/memo-scratch"
 ```
 
+### `g:memo_default_capture_file`
+
+The note `:Memo` and `require("memo").open()` open when no path is given, and
+the one `register_capture` writes to when no `capture_file` is given. A path
+relative to `<notes_dir>`, with or without the `.gpg` extension. Default:
+`inbox.md.gpg`.
+
+```lua
+vim.g.memo_default_capture_file = "quick/inbox.gpg"
+```
+
 ### `g:memo_ignore_patterns`
 
 Additional `.gitignore`-style glob patterns to leave as plaintext. Files matching these patterns are not decrypted on open and not encrypted on write. Custom patterns are merged with the defaults below.
@@ -181,6 +192,7 @@ vim.g.memo_ignore_patterns = {
 
 | Command             | Description                                        |
 | ------------------- | -------------------------------------------------- |
+| `:Memo`             | Open the default capture file.                     |
 | `:MemoScratch`      | Open a new encrypted scratch buffer.               |
 | `:MemoNewNote`      | Create a new encrypted note in the notes dir.      |
 | `:MemoScratchFiles` | Browse and open encrypted scratch files.           |
@@ -280,6 +292,13 @@ require("memo").open({
   path = "journals/2026-01-01.md",
   window = { split = "vsplit", size = 0.4 },
 })
+```
+
+`:Memo` and `require("memo").open()` without a path open
+`g:memo_default_capture_file`, which is the same note a capture writes to:
+
+```lua
+require("memo").open()
 ```
 
 A path that is missing, outside `<notes_dir>` or does not exist reports an

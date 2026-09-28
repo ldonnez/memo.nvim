@@ -117,6 +117,13 @@ end, {
 	desc = "Create a new encrypted note in the notes dir",
 })
 
+vim.api.nvim_create_user_command("Memo", function()
+	require("memo").open()
+end, {
+	nargs = 0,
+	desc = "Open the default capture file",
+})
+
 vim.api.nvim_create_user_command("MemoSync", function(opts)
 	local sync = require("memo.sync")
 	local message = require("memo.message")
