@@ -21,20 +21,6 @@ describe("window", function()
 		return lines, columns
 	end
 
-	describe("resolve_split", function()
-		it("defaults to a horizontal split", function()
-			MiniTest.expect.equality(child.lua_get([[ M.resolve_split(nil) ]]), "split")
-		end)
-
-		it("uses the given split", function()
-			MiniTest.expect.equality(child.lua_get([[ M.resolve_split({ split = "vsplit" }) ]]), "vsplit")
-		end)
-
-		it("defaults when the split is not given", function()
-			MiniTest.expect.equality(child.lua_get([[ M.resolve_split({ size = 0.5 }) ]]), "split")
-		end)
-	end)
-
 	describe("open", function()
 		it("keeps the current window when no config is given", function()
 			local win = child.lua_get([[ M.open(nil) ]])

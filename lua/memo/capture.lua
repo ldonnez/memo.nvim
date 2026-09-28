@@ -42,12 +42,6 @@ local function create_capture_window(config)
 	vim.bo[buf].fileencoding = "utf-8"
 	vim.bo[buf].filetype = vim.filetype.match({ filename = base })
 
-	if window.resolve_split(config.window) == "vsplit" then
-		vim.wo[win].winfixwidth = true
-	else
-		vim.wo[win].winfixheight = true
-	end
-
 	vim.api.nvim_buf_set_name(buf, "capture://" .. config.capture_file)
 	vim.api.nvim_exec_autocmds("BufReadPost", { buffer = buf, modeline = false })
 
