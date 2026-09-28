@@ -36,6 +36,39 @@ describe("capture", function()
 			helpers.kill_gpg_agent()
 		end)
 
+		it("uses the default capture file when none is given", function()
+			helpers.encrypt_file(vim.env.NOTES_DIR .. "/inbox.md.gpg", "Inbox\n")
+
+			child.lua([[ M.register({}) ]])
+
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), "capture://inbox.md.gpg")
+		end)
+
+		it("uses vim.g.memo_default_capture_file when no capture file is given", function()
+			helpers.encrypt_file(vim.env.NOTES_DIR .. "/quick.gpg", "Quick\n")
+
+			child.lua([[
+				vim.g.memo_default_capture_file = "quick.gpg"
+				require("memo.config").setup()
+				M.register({})
+			]])
+
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), "capture://quick.gpg")
+		end)
+
+		it("prefers the given capture file over vim.g.memo_default_capture_file", function()
+			helpers.encrypt_file(vim.env.NOTES_DIR .. "/inbox.md.gpg", "Inbox\n")
+			helpers.encrypt_file(vim.env.NOTES_DIR .. "/given.gpg", "Given\n")
+
+			child.lua([[
+				vim.g.memo_default_capture_file = "quick.gpg"
+				require("memo.config").setup()
+				M.register({ capture_file = "given.md" })
+			]])
+
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), "capture://given.md")
+		end)
+
 		it("captures window contains correct buffer options", function()
 			local capture_file = "capture.md"
 			local capture_file_path = vim.env.NOTES_DIR .. "/" .. capture_file

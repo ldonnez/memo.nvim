@@ -17,9 +17,8 @@ local M = {}
 ---@field window MemoWindowConfig opens the capture in a split, every option
 ---has a default
 
----@type CaptureConfig
+---@type table
 local DEFAULTS = {
-	capture_file = "inbox.md.gpg",
 	header_padding = 0,
 	window = {},
 }
@@ -152,6 +151,10 @@ end
 function M.register(opts)
 	local cfg = opts --[[@as CaptureConfig]]
 	local config = vim.tbl_deep_extend("force", DEFAULTS, cfg) --[[@as CaptureConfig]]
+
+	-- Owned by the config module, so it is resolved here and `DEFAULTS` stays
+	-- a partial.
+	config.capture_file = config.capture_file or memo_config.capture_file
 
 	local capture_template = Template.new({ template = config.template })
 

@@ -1,12 +1,14 @@
 ---@class MemoConfig
 ---@field notes_dir string
 ---@field scratch_dir string
+---@field capture_file string
 ---@field ignore_patterns string[]
 
 ---@class MemoConfigModule
 ---@field setup fun()
 ---@field notes_dir string
 ---@field scratch_dir string
+---@field capture_file string
 ---@field ignore_patterns string[]
 
 local M = {}
@@ -16,6 +18,7 @@ local options
 ---@type MemoConfig
 local DEFAULTS = {
 	notes_dir = vim.fn.expand("~/notes") --[[@as string]],
+	capture_file = "inbox.md.gpg",
 	scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch"),
 	ignore_patterns = {
 		"**/.git/**",
@@ -36,6 +39,10 @@ function M.setup()
 
 	if vim.g.memo_scratch_dir ~= nil then
 		options.scratch_dir = vim.g.memo_scratch_dir
+	end
+
+	if vim.g.memo_default_capture_file ~= nil then
+		options.capture_file = vim.g.memo_default_capture_file
 	end
 
 	if vim.g.memo_ignore_patterns ~= nil then

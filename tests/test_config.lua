@@ -56,6 +56,29 @@ describe("config", function()
 		end)
 	end)
 
+	describe("capture_file", function()
+		before_each(function()
+			setup_child()
+		end)
+
+		it("defaults to the inbox", function()
+			local result = child.lua_get("M.capture_file")
+
+			MiniTest.expect.equality(result, "inbox.md.gpg")
+		end)
+
+		it("uses vim.g.memo_default_capture_file when set", function()
+			child.lua([[
+        vim.g.memo_default_capture_file = "quick/inbox.gpg"
+       	M.setup()
+      ]])
+
+			local result = child.lua_get("M.capture_file")
+
+			MiniTest.expect.equality(result, "quick/inbox.gpg")
+		end)
+	end)
+
 	describe("ignore_patterns", function()
 		before_each(function()
 			setup_child()
