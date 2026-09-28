@@ -12,7 +12,7 @@ local M = {}
 ---e.g. `:'<,'>MemoSaveAsNote`), only the selected lines are saved.
 ---@param opts? { range?: integer, line1?: integer, line2?: integer }
 ---@return boolean success
-function M.save_as_note(opts)
+function M.create(opts)
 	local utils = require("memo.utils")
 	local config = require("memo.config")
 	local bufnr = vim.api.nvim_get_current_buf()
