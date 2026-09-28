@@ -34,11 +34,10 @@ local function resolve_size(split, size)
 	return math.floor(extent * DEFAULTS.size)
 end
 
----The split that would be opened for this config, for callers that need to
----adjust the window they get.
+---The split that would be opened for this config.
 ---@param win_config MemoWindowConfig?
 ---@return MemoWindowSplit
-function M.resolve_split(win_config)
+local function resolve_split(win_config)
 	return win_config and win_config.split or DEFAULTS.split
 end
 
@@ -52,7 +51,7 @@ function M.open(win_config)
 		return vim.api.nvim_get_current_win()
 	end
 
-	local split = M.resolve_split(win_config)
+	local split = resolve_split(win_config)
 	local position = win_config.position or DEFAULTS.position
 	local size = resolve_size(split, win_config.size)
 
