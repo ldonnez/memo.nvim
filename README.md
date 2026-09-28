@@ -266,6 +266,26 @@ vim.keymap.set({"n", "v"}, "<leader>msn", function()
 end, { desc = "Memo: Save buffer as note" })
 ```
 
+### Open a note
+
+Open a note by path, with the same `window` options as a new note. Paths are
+resolved against `<notes_dir>` and may carry the `.gpg` extension or leave it
+off:
+
+```lua
+require("memo").open({ path = "journals/2026-01-01.md" })
+
+-- Beside the buffer, instead of replacing it
+require("memo").open({
+  path = "journals/2026-01-01.md",
+  window = { split = "vsplit", size = 0.4 },
+})
+```
+
+A path that is missing, outside `<notes_dir>` or does not exist reports an
+error instead of opening an empty buffer. `:MemoFiles` remains the way to
+browse for a path.
+
 ### Create a new note
 
 Start an empty encrypted note with `:MemoNewNote` (or

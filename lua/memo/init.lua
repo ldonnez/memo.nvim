@@ -11,6 +11,12 @@ function M.new_note(opts)
 	return require("memo.new_note").create(opts)
 end
 
+--Opens an existing encrypted note, which is decrypted on open.
+---@param opts MemoOpenOpts
+function M.open(opts)
+	return require("memo.open_note").open(opts)
+end
+
 function M.sync_git()
 	return require("memo.sync").sync_git()
 end
