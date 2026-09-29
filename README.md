@@ -37,7 +37,7 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
       mode = { "n", "v" },
       "<leader>mc",
       function()
-        require("memo").register_capture({ capture_file = "inbox.md.gpg" })
+        require("memo").capture({ capture_file = "inbox.md.gpg" })
       end,
       desc = "Memo: Capture to braindump",
     },
@@ -100,7 +100,7 @@ vim.pack.add({
 })
 
 vim.keymap.set({ "n", "v" }, "<leader>mc", function()
-   require("memo").register_capture({ capture_file = "inbox.md.gpg" })
+   require("memo").capture({ capture_file = "inbox.md.gpg" })
 end, { desc = "Memo: Capture to braindump" })
 
 vim.keymap.set("n", "<leader>ms", function()
@@ -155,9 +155,9 @@ vim.g.memo_scratch_dir = "~/.local/state/memo-scratch"
 ### `g:memo_default_capture_file`
 
 The note `:Memo` and `require("memo").open()` open when no path is given, and
-the one `register_capture` writes to when no `capture_file` is given. A path
-relative to `<notes_dir>`, with or without the `.gpg` extension. Default:
-`inbox.md.gpg`.
+the one `require("memo").capture()` writes to when no `capture_file` is
+given. A path relative to `<notes_dir>`, with or without the `.gpg`
+extension. Default: `inbox.md.gpg`.
 
 ```lua
 vim.g.memo_default_capture_file = "quick/inbox.gpg"
@@ -336,8 +336,9 @@ require("memo").new_note({
 ```
 
 A `window` opens the note in a split, with the same options
-`register_capture` takes. Every option has a default, so `split` alone is
-enough. Without a `window` the note takes over the current window:
+`require("memo").capture()` takes. Every option has a default, so `split`
+alone is enough. Without a `window` the note takes over the current
+window:
 
 ```lua
 require("memo").new_note({
@@ -366,7 +367,7 @@ under the `target_header` (prepended if it does not exist).
 
 ```lua
 vim.keymap.set("n", "<leader>mc", function()
-  require("memo").register_capture({
+  require("memo").capture({
     capture_file = "inbox.md.gpg",
     target_header = "# inbox", -- captures are inserted below this header
     header_padding = 1, -- blank lines between capture content and target header
@@ -381,11 +382,11 @@ end, { desc = "Memo: Quick capture" })
 ```
 
 A visual selection is detected automatically: select text in visual mode and
-call `register_capture` to pre-fill the capture window:
+call `require("memo").capture()` to pre-fill the capture window:
 
 ```lua
 vim.keymap.set("v", "<leader>mc", function()
-  require("memo").register_capture({ capture_file = "inbox.md.gpg" })
+  require("memo").capture({ capture_file = "inbox.md.gpg" })
 end, { desc = "Memo: Quick capture selection" })
 ```
 
@@ -397,7 +398,7 @@ becomes the whole capture window.
 Turn a capture file into a journal with dynamic headers:
 
 ```lua
-require("memo").register_capture({
+require("memo").capture({
   capture_file = "journal.md.gpg",
   target_header = "# " .. os.date("%Y-%m-%d"),
   header_padding = 1,
@@ -407,7 +408,7 @@ require("memo").register_capture({
 Or create a journal file for each day automatically:
 
 ```lua
-require("memo").register_capture({
+require("memo").capture({
   capture_file = "journals/" .. os.date("%Y-%m-%d") .. ".md.gpg",
   target_header = "# " .. os.date("%Y-%m-%d"),
   header_padding = 1,
