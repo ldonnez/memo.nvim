@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.13.0](https://github.com/ldonnez/memo.nvim/compare/v0.12.3...v0.13.0) (2026-09-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* name the capture template option `template`
+
+### Features
+
+* add fzf-lua picker for current cwd scratch files ([f420ceb](https://github.com/ldonnez/memo.nvim/commit/f420ceb847901bb313518c352e9b5654009db059))
+* add g:memo_default_capture_file and the :Memo command ([98b527b](https://github.com/ldonnez/memo.nvim/commit/98b527bb7235897ed2c7e805683d43ce474fb313))
+* add memo.open for opening a note by path ([967d2bf](https://github.com/ldonnez/memo.nvim/commit/967d2bfbec93d5f41a33a76038e122c9d9ac656b))
+* add MemoNewNote for creating encrypted notes ([74cab4e](https://github.com/ldonnez/memo.nvim/commit/74cab4e226e29be47e031d3470577d4f90c14297))
+* ask to overwrite an existing note in MemoNewNote ([3a97552](https://github.com/ldonnez/memo.nvim/commit/3a97552358cfeed37d289ef72f395d48c9c94b3d))
+* default every window option ([1c04c98](https://github.com/ldonnez/memo.nvim/commit/1c04c98da96166357c492767a952303103397df0))
+* insert a selection at the new note template cursor ([795d178](https://github.com/ldonnez/memo.nvim/commit/795d178583577949c5a378d51a1a1fe7493255b6))
+* keep the capture template when capturing a selection ([e7587cc](https://github.com/ldonnez/memo.nvim/commit/e7587ccdb3f12ea964f8aa4cb6c1fcaac76d2fee))
+* make save_as_note work on visual selection ([b7c761b](https://github.com/ldonnez/memo.nvim/commit/b7c761b02b25081ff8b783a2f0bf5d043d340028))
+* make the window size a share of the screen ([39b289d](https://github.com/ldonnez/memo.nvim/commit/39b289d5687dbd339b22bbb0aa2051985bdc3577))
+* open a new note in a split ([b0a5f32](https://github.com/ldonnez/memo.nvim/commit/b0a5f326f06f3b970d444d840c638994a30ecdff))
+* prompt for the note path from the Lua API too ([dc9bfa6](https://github.com/ldonnez/memo.nvim/commit/dc9bfa6ec3323cb6fcbdf91b1df1c22c55a99665))
+* seed new notes from a range or visual selection ([0ab740a](https://github.com/ldonnez/memo.nvim/commit/0ab740a483c5848d4713b61361830b781a511402))
+* show readable cwd paths for scratch files in fzf-lua pickers ([c87e81b](https://github.com/ldonnez/memo.nvim/commit/c87e81b1365073d42131bc3d3d53b7f92e56e3f6))
+* support opening a note in a tab ([c1dae5c](https://github.com/ldonnez/memo.nvim/commit/c1dae5c1577d25930b886b382ac77e7839054da3))
+
+
+### Code Refactoring
+
+* name the capture template option `template` ([5dd2fc0](https://github.com/ldonnez/memo.nvim/commit/5dd2fc099d070cc710f80a573e7a9c6aa8d39341))
+
 ## [0.12.3](https://github.com/ldonnez/memo.nvim/compare/v0.12.2...v0.12.3) (2026-09-20)
 
 
