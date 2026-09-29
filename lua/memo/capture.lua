@@ -147,8 +147,9 @@ local function append_capture(lines, config)
 	return crypto.encrypt_from_stdin(file, merged).code == 0
 end
 
+---Opens a capture buffer, prefilled with the target header and the template.
 ---@param opts CaptureConfig
-function M.register(opts)
+function M.create(opts)
 	local cfg = opts --[[@as CaptureConfig]]
 	local config = vim.tbl_deep_extend("force", DEFAULTS, cfg) --[[@as CaptureConfig]]
 

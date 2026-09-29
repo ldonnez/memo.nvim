@@ -39,7 +39,7 @@ describe("capture", function()
 		it("uses the default capture file when none is given", function()
 			helpers.encrypt_file(vim.env.NOTES_DIR .. "/inbox.md.gpg", "Inbox\n")
 
-			child.lua([[ M.register({}) ]])
+			child.lua([[ M.create({}) ]])
 
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), "capture://inbox.md.gpg")
 		end)
@@ -50,7 +50,7 @@ describe("capture", function()
 			child.lua([[
 				vim.g.memo_default_capture_file = "quick.gpg"
 				require("memo.config").setup()
-				M.register({})
+				M.create({})
 			]])
 
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), "capture://quick.gpg")
@@ -63,7 +63,7 @@ describe("capture", function()
 			child.lua([[
 				vim.g.memo_default_capture_file = "quick.gpg"
 				require("memo.config").setup()
-				M.register({ capture_file = "given.md" })
+				M.create({ capture_file = "given.md" })
 			]])
 
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), "capture://given.md")
@@ -78,7 +78,7 @@ describe("capture", function()
 
 			helpers.track_autocmds(child, { "BufReadPre", "BufReadPost" })
 
-			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file .. ".gpg" })
+			child.lua([[ M.create({ capture_file = ... }) ]], { capture_file .. ".gpg" })
 
 			local swap = child.bo.swapfile
 			local bufhidden = child.bo.bufhidden
@@ -98,7 +98,7 @@ describe("capture", function()
 
 			helpers.encrypt_file(encrypted, "CAPTURE\n")
 
-			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file .. ".gpg" })
+			child.lua([[ M.create({ capture_file = ... }) ]], { capture_file .. ".gpg" })
 
 			helpers.track_autocmds(child, { "BufWritePre", "BufWritePost" })
 
@@ -133,7 +133,7 @@ describe("capture", function()
 
 			helpers.encrypt_file(encrypted, "CAPTURE")
 
-			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file .. ".gpg" })
+			child.lua([[ M.create({ capture_file = ... }) ]], { capture_file .. ".gpg" })
 
 			child.cmd("write")
 			local messages = child.cmd_capture("messages")
@@ -143,7 +143,7 @@ describe("capture", function()
 		it("aborts capture when capture window has no content", function()
 			local capture_file = "capture.md"
 
-			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file .. ".gpg" })
+			child.lua([[ M.create({ capture_file = ... }) ]], { capture_file .. ".gpg" })
 
 			-- empty the buffer
 			local buf = child.api.nvim_get_current_buf()
@@ -160,7 +160,7 @@ describe("capture", function()
 
 			child.lua(
 				[[
-	       M.register({ capture_file = ..., target_header = "inbox" })
+	       M.create({ capture_file = ..., target_header = "inbox" })
 	   ]],
 				{ capture_file }
 			)
@@ -191,7 +191,7 @@ describe("capture", function()
 			helpers.encrypt_file(encrypted, "# Inbox\n\nPrevious Note\n")
 
 			child.lua(
-				[[ M.register({ capture_file = ..., target_header = "# Inbox", header_padding = 0 }) ]],
+				[[ M.create({ capture_file = ..., target_header = "# Inbox", header_padding = 0 }) ]],
 				{ capture_file }
 			)
 
@@ -211,7 +211,7 @@ describe("capture", function()
 
 			helpers.encrypt_file(encrypted, "# Inbox\n\nSecond Note\n# Inbox\n\nFirst Note\n")
 
-			child.lua([[ M.register({ capture_file = ..., target_header = "# Inbox" }) ]], { capture_file })
+			child.lua([[ M.create({ capture_file = ..., target_header = "# Inbox" }) ]], { capture_file })
 
 			child.type_keys("i", "New Content", "<Esc>")
 			child.cmd("write")
@@ -232,7 +232,7 @@ describe("capture", function()
 
 			helpers.encrypt_file(encrypted, "# Inbox is here\n\nPrevious Note\n")
 
-			child.lua([[ M.register({ capture_file = ..., target_header = "# Inbox" }) ]], { capture_file })
+			child.lua([[ M.create({ capture_file = ..., target_header = "# Inbox" }) ]], { capture_file })
 
 			child.type_keys("i", "New Content", "<Esc>")
 			child.cmd("write")
@@ -250,7 +250,7 @@ describe("capture", function()
 
 			helpers.encrypt_file(encrypted, "# test\nexisting content\n")
 
-			child.lua([[ M.register({ capture_file = ..., target_header = "# Inbox" }) ]], { capture_file })
+			child.lua([[ M.create({ capture_file = ..., target_header = "# Inbox" }) ]], { capture_file })
 
 			child.type_keys("i", "New Content", "<Esc>")
 			child.cmd("write")
@@ -269,7 +269,7 @@ describe("capture", function()
 			helpers.encrypt_file(encrypted, "# Inbox\n\nPrevious Note\n")
 
 			child.lua(
-				[[ M.register({ capture_file = ..., target_header = "# Inbox", header_padding = 2 }) ]],
+				[[ M.create({ capture_file = ..., target_header = "# Inbox", header_padding = 2 }) ]],
 				{ capture_file }
 			)
 
@@ -289,7 +289,7 @@ describe("capture", function()
 
 			child.lua(
 				[[
-	       M.register({ capture_file = ..., target_header = "inbox" })
+	       M.create({ capture_file = ..., target_header = "inbox" })
 	   ]],
 				{ capture_file }
 			)
@@ -326,7 +326,7 @@ describe("capture", function()
 			child.cmd("normal! v")
 			child.api.nvim_win_set_cursor(0, { 1, 9 })
 
-			child.lua([[ M.register({ capture_file = ..., template = "## Notes\n- |" }) ]], { capture_file })
+			child.lua([[ M.create({ capture_file = ..., template = "## Notes\n- |" }) ]], { capture_file })
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 			MiniTest.expect.equality(lines, { "## Notes", "- beta" })
@@ -346,7 +346,7 @@ describe("capture", function()
 			child.cmd("normal! v")
 			child.api.nvim_win_set_cursor(0, { 1, 9 })
 
-			child.lua([[ M.register({ capture_file = ..., template = "## Notes\n- |" }) ]], { capture_file })
+			child.lua([[ M.create({ capture_file = ..., template = "## Notes\n- |" }) ]], { capture_file })
 
 			child.cmd("write")
 
@@ -370,7 +370,7 @@ describe("capture", function()
 			child.cmd("normal! v")
 			child.api.nvim_win_set_cursor(0, { 1, 9 })
 
-			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file })
+			child.lua([[ M.create({ capture_file = ... }) ]], { capture_file })
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 			MiniTest.expect.equality(lines, { "beta" })
@@ -393,7 +393,7 @@ describe("capture", function()
 			child.cmd("normal! v")
 			child.api.nvim_win_set_cursor(0, { 3, 4 })
 
-			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file })
+			child.lua([[ M.create({ capture_file = ... }) ]], { capture_file })
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 			MiniTest.expect.equality(lines, { "beta", "gamma" })
@@ -411,7 +411,7 @@ describe("capture", function()
 			child.cmd("normal! v")
 			child.api.nvim_win_set_cursor(0, { 1, 6 })
 
-			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file })
+			child.lua([[ M.create({ capture_file = ... }) ]], { capture_file })
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 			MiniTest.expect.equality(lines, { "beta" })
@@ -420,7 +420,7 @@ describe("capture", function()
 		it("captures the visual selection through the capture mapping", function()
 			child.lua([[
 		vim.keymap.set({ "n", "v" }, "<leader>mc", function()
-			require("memo.capture").register({
+			require("memo.capture").create({
 				capture_file = "visual-mapping.md.gpg",
 			})
 		end, { desc = "Capture to braindump" })
@@ -455,7 +455,7 @@ describe("capture", function()
 
 			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/source.txt"))
 
-			child.lua([[ M.register({ capture_file = ..., range = { 1, -1 } }) ]], { capture_file })
+			child.lua([[ M.create({ capture_file = ..., range = { 1, -1 } }) ]], { capture_file })
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 			MiniTest.expect.equality(lines, { "" })
@@ -476,7 +476,7 @@ describe("capture", function()
 				end
 			]])
 
-			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file })
+			child.lua([[ M.create({ capture_file = ... }) ]], { capture_file })
 
 			child.type_keys("i", "precious content", "<Esc>")
 
@@ -523,7 +523,7 @@ describe("capture", function()
 			local capture_file = "capture-test-password.md.gpg"
 			local capture_file_path = vim.env.NOTES_DIR .. "/capture-test-password.md.gpg"
 
-			child.lua([[ M.register({ capture_file = ... }) ]], { capture_file })
+			child.lua([[ M.create({ capture_file = ... }) ]], { capture_file })
 
 			child.type_keys("i", "Integration Test Content 1", "<Esc>")
 
@@ -559,7 +559,7 @@ describe("capture", function()
           return password
         end
 
-	      M.register({ capture_file = capture_file })
+	      M.create({ capture_file = capture_file })
 	    ]],
 				{ gpg_key_password, capture_file .. ".gpg" }
 			)

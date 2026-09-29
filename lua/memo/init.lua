@@ -1,8 +1,9 @@
 local M = {}
 
+--Opens a capture buffer, prefilled with the target header and the template.
 ---@param opts CaptureConfig
-function M.register_capture(opts)
-	require("memo.capture").register(opts)
+function M.capture(opts)
+	require("memo.capture").create(opts)
 end
 
 --Creates a new encrypted note and opens it.
