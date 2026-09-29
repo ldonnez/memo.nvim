@@ -89,5 +89,28 @@ describe("window", function()
 			local bottom = child.lua_get([[ M.open({ position = "botright" }) ]])
 			MiniTest.expect.equality(child.api.nvim_win_get_position(bottom)[1] > 0, true)
 		end)
+
+		it("opens a tab", function()
+			local tabs = child.lua_get([[ #vim.api.nvim_list_tabpages() ]])
+
+			child.lua_get([[ M.open({ split = "tab" }) ]])
+
+			MiniTest.expect.equality(child.lua_get([[ #vim.api.nvim_list_tabpages() ]]), tabs + 1)
+		end)
+
+		it("ignores the size for a tab", function()
+			local _, columns = screen_size()
+
+			local win = child.lua_get([[ M.open({ split = "tab", size = 0.25 }) ]])
+
+			MiniTest.expect.equality(child.api.nvim_win_get_width(win), columns)
+		end)
+
+		it("opens the tab after the current one whatever the position", function()
+			local win = child.lua_get([[ M.open({ split = "tab", position = "topleft" }) ]])
+			local tab = child.api.nvim_win_get_tabpage(win)
+
+			MiniTest.expect.equality(child.api.nvim_tabpage_get_number(tab), 2)
+		end)
 	end)
 end)

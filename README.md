@@ -343,12 +343,15 @@ window:
 ```lua
 require("memo").new_note({
   window = {
-    split = "vsplit", -- "split" (default) | "vsplit"
+    split = "vsplit", -- "split" (default) | "vsplit" | "tab"
     size = 0.5, -- a share of the screen, 0 to 1; defaults to 0.5
     -- position defaults to "botright"
   },
 })
 ```
+
+A `tab` is opened after the current one and takes the whole screen, so `size`
+and `position` do not apply to it.
 
 When a template and a selection are both given, the selection is inserted at
 the `|` marker and the cursor lands right after it. For example, selecting
