@@ -326,4 +326,303 @@ describe("crypto", function()
 			MiniTest.expect.equality(vim.split(result.stdout, "\n"), { "Line 1", "Line 2", "Line 3" })
 		end)
 	end)
+	describe("with a symmetric passphrase", function()
+		local passphrase = "sym-pass"
+
+		setup(function()
+			helpers.setup_test_env()
+		end)
+
+		teardown(function()
+			helpers.cleanup_test_env()
+			helpers.kill_gpg_agent()
+		end)
+
+		it("decrypts a symmetric file into a buffer and keeps the passphrase", function()
+			local path = vim.env.NOTES_DIR .. "/sym.md.gpg"
+
+			helpers.encrypt_symmetric_file(path, "Line 1\nLine 2\n", passphrase)
+
+			child.lua(
+				[[
+      local password, path = ...
+      local gpg = require("memo.gpg")
+
+      local bufnr = vim.api.nvim_create_buf(true, false)
+      vim.api.nvim_win_set_buf(0, bufnr)
+
+      gpg.prompt_passphrase = function()
+        return password
+      end
+
+      M.decrypt_to_buffer(path, bufnr, function(obj)
+        vim.b.decrypting = false
+        return true
+      end)
+    ]],
+				{ passphrase, path }
+			)
+
+			child.wait_until(function()
+				return child.b.decrypting == false
+			end)
+
+			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+
+			MiniTest.expect.equality(lines, { "Line 1", "Line 2" })
+			MiniTest.expect.equality(child.b.memo_symmetric_passphrase, passphrase)
+		end)
+
+		it("asks for the passphrase by file name", function()
+			local path = vim.env.NOTES_DIR .. "/sym.md.gpg"
+
+			helpers.encrypt_symmetric_file(path, "Line 1\n", passphrase)
+
+			local label = child.lua(
+				[[
+      local path = ...
+      require("memo.gpg").prompt_passphrase = function(l)
+        return l
+      end
+
+      return require("memo.gpg").get_symmetric_passphrase(path)
+    ]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(label, "note sym.md.gpg (symmetric)")
+		end)
+
+		it("decrypts a symmetric file to stdout", function()
+			local path = vim.env.NOTES_DIR .. "/sym.md.gpg"
+
+			helpers.encrypt_symmetric_file(path, "Line 1\nLine 2", passphrase)
+
+			local result = child.lua(
+				[[
+      local password, path = ...
+      require("memo.gpg").prompt_passphrase = function()
+        return password
+      end
+
+      return M.decrypt_to_stdout(path)
+    ]],
+				{ passphrase, path }
+			)
+
+			MiniTest.expect.equality(vim.split(result.stdout, "\n"), { "Line 1", "Line 2" })
+		end)
+
+		it("writes a symmetric note back symmetrically without asking again", function()
+			local path = vim.env.NOTES_DIR .. "/sym.md.gpg"
+
+			helpers.encrypt_symmetric_file(path, "Line 1\n", passphrase)
+
+			child.lua(
+				[[
+      local password, path = ...
+      local gpg = require("memo.gpg")
+      local prompts = 0
+
+      local bufnr = vim.api.nvim_create_buf(true, false)
+      vim.api.nvim_win_set_buf(0, bufnr)
+
+      gpg.prompt_passphrase = function()
+        prompts = prompts + 1
+        return password
+      end
+
+      M.decrypt_to_buffer(path, bufnr, function(obj)
+        vim.b.decrypting = false
+        M.encrypt_from_stdin(path, { "Rewritten" }, bufnr)
+        vim.b.prompts = prompts
+        vim.b.done = true
+        return true
+      end)
+    ]],
+				{ passphrase, path }
+			)
+
+			child.wait_until(function()
+				return child.b.done == true
+			end)
+
+			MiniTest.expect.equality(child.b.prompts, 1)
+
+			local is_symmetric = child.lua_get([[ require("memo.gpg").is_symmetric(...) ]], { path })
+			MiniTest.expect.equality(is_symmetric, true)
+
+			local decrypted = helpers.decrypt_symmetric_file(path, passphrase)
+			MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Rewritten")
+		end)
+
+		it("fails when the passphrase is wrong", function()
+			local path = vim.env.NOTES_DIR .. "/sym.md.gpg"
+
+			helpers.encrypt_symmetric_file(path, "Line 1\n", passphrase)
+
+			child.lua(
+				[[
+      local path = ...
+      require("memo.gpg").prompt_passphrase = function()
+        return "wrong"
+      end
+
+      local bufnr = vim.api.nvim_create_buf(true, false)
+      vim.api.nvim_win_set_buf(0, bufnr)
+
+      M.decrypt_to_buffer(path, bufnr, function(obj)
+        vim.b.code = obj.code
+        vim.b.done = true
+        return true
+      end)
+    ]],
+				{ path }
+			)
+
+			child.wait_until(function()
+				return child.b.done == true
+			end)
+
+			MiniTest.expect.equality(child.b.code ~= 0, true)
+		end)
+
+		it("wipes the buffer when the prompt is dismissed", function()
+			local path = vim.env.NOTES_DIR .. "/sym.md.gpg"
+
+			helpers.encrypt_symmetric_file(path, "Line 1\n", passphrase)
+
+			child.lua(
+				[[
+      local path = ...
+      local prompts = 0
+      require("memo.gpg").prompt_passphrase = function()
+        prompts = prompts + 1
+        return ""
+      end
+
+      local bufnr = vim.api.nvim_create_buf(true, false)
+      vim.api.nvim_win_set_buf(0, bufnr)
+
+      -- Globals, because the buffer holding them is the one that gets wiped.
+      vim.g.sym_bufnr = bufnr
+      vim.g.sym_called_back = false
+
+      M.decrypt_to_buffer(path, bufnr, function(obj)
+        vim.g.sym_called_back = true
+        return true
+      end)
+    ]],
+				{ path }
+			)
+
+			child.wait_until(function()
+				return child.cmd_capture("messages"):find("passphrase was not given", 1, true) ~= nil
+			end)
+
+			MiniTest.expect.equality(child.g.sym_called_back, false)
+			MiniTest.expect.equality(child.api.nvim_buf_is_valid(child.g.sym_bufnr), false)
+		end)
+
+		it("asks once and returns nothing when the prompt is dismissed", function()
+			local path = vim.env.NOTES_DIR .. "/sym.md.gpg"
+
+			helpers.encrypt_symmetric_file(path, "Line 1\n", passphrase)
+
+			child.lua(
+				[[
+      local path = ...
+      require("memo.gpg").prompt_passphrase = function()
+        vim.g.sym_prompts = (vim.g.sym_prompts or 0) + 1
+        return ""
+      end
+
+      vim.g.sym_prompts = 0
+      vim.g.sym_stdout = "unset"
+
+      local result = M.decrypt_to_stdout(path)
+      vim.g.sym_stdout = result == nil and "nil" or "object"
+    ]],
+				{ path }
+			)
+
+			child.wait_until(function()
+				return child.g.sym_stdout ~= "unset"
+			end)
+
+			MiniTest.expect.equality(child.g.sym_stdout, "nil")
+			MiniTest.expect.equality(child.g.sym_prompts, 1)
+		end)
+
+		it("hands the passphrase to memo through the environment", function()
+			local path = vim.env.NOTES_DIR .. "/sym.md.gpg"
+
+			helpers.encrypt_symmetric_file(path, "Line 1\n", passphrase)
+
+			child.lua(
+				[[
+      local path, passphrase = ...
+      require("memo.gpg").prompt_passphrase = function()
+        return passphrase
+      end
+
+      local seen = {}
+      local system = vim.system
+      vim.system = function(cmd, opts, on_exit)
+        table.insert(seen, { cmd = cmd, env = opts and opts.env })
+        return system(cmd, opts, on_exit)
+      end
+
+      local result = M.encrypt_from_stdin(path, { "Rewritten" })
+
+      -- The first call is gpg detecting the symmetric note, so pick the one that
+      -- asks for --symmetric.
+      local encrypt_call
+      for _, call in ipairs(seen) do
+        if vim.tbl_contains(call.cmd, "--symmetric") then
+          encrypt_call = call
+        end
+      end
+
+      vim.g.cmd = encrypt_call and encrypt_call.cmd or {}
+      vim.g.leaked = encrypt_call and vim.inspect(encrypt_call.env) or ""
+      vim.g.code = result.code
+    ]],
+				{ path, passphrase }
+			)
+
+			MiniTest.expect.equality(child.g.code, 0)
+			MiniTest.expect.equality(child.g.cmd[1], "memo")
+			MiniTest.expect.equality(child.g.cmd[2], "encrypt")
+			MiniTest.expect.equality(child.g.cmd[3], "--symmetric")
+			MiniTest.expect.equality(child.g.cmd[4], path)
+			MiniTest.expect.equality(child.g.cmd[5], "--passphrase-env")
+			MiniTest.expect.equality(child.g.cmd[6], "MEMO_NOTE_PASSPHRASE")
+			-- The passphrase must not appear in the arguments themselves.
+			MiniTest.expect.equality(vim.tbl_contains(child.g.cmd, passphrase), false)
+			MiniTest.expect.equality(child.g.leaked:find("MEMO_NOTE_PASSPHRASE", 1, true) ~= nil, true)
+		end)
+
+		it("does not re-encrypt a symmetric note when the passphrase is dismissed", function()
+			local path = vim.env.NOTES_DIR .. "/sym.md.gpg"
+
+			helpers.encrypt_symmetric_file(path, "Line 1\n", passphrase)
+
+			child.lua(
+				[[
+      local path = ...
+      require("memo.gpg").prompt_passphrase = function()
+        return ""
+      end
+
+      vim.g.write_code = M.encrypt_from_stdin(path, { "Rewritten" }).code
+    ]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(child.g.write_code ~= 0, true)
+			MiniTest.expect.equality(helpers.is_symmetric_file(path), true)
+			MiniTest.expect.equality(vim.trim(helpers.decrypt_symmetric_file(path, passphrase).stdout or ""), "Line 1")
+		end)
+	end)
 end)

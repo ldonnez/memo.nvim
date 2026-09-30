@@ -215,6 +215,33 @@ vim.g.memo_ignore_patterns = {
 
 This means your usual workflows (search, LSP, macros) operate on plaintext while the data on disk stays encrypted.
 
+### Notes encrypted with a passphrase
+
+A note encrypted symmetrically, with `gpg --symmetric` instead of a key, opens
+without needing a key in the keyring:
+
+- Opening one asks for the passphrase of that file, e.g. `GPG Passphrase for
+  note inbox.md.gpg (symmetric):`.
+- Writing it back encrypts it with the same passphrase, so it stays
+  symmetric instead of being re-encrypted to your key. The passphrase is kept
+  in the buffer, so it is asked for once per buffer rather than once per write.
+- Reading and writing them goes through `memo encrypt --symmetric` and
+  `memo decrypt`, so a note is exactly what the CLI writes. The passphrase is
+  handed over in the child process environment, not on the command line. This
+  needs a memo release with `--symmetric`; older versions cannot open these
+  notes here.
+- A wrong passphrase reports a decryption failure and the buffer is dropped.
+- Dismissing the prompt does the same, and never falls back to your key: a
+  passphrase note is not rewritten as a key-encrypted one. Retry and answer
+  the prompt.
+- The passphrase lives in `b:memo_symmetric_passphrase` for the life of the
+  buffer. Avoid `:mksession` with `sessionoptions` containing `globals`, which
+  would write it out.
+
+The [memo CLI](https://github.com/ldonnez/memo) creates these notes with
+`memo encrypt --symmetric`, and keeps them symmetric when you open them with
+`memo FILE`, so both tools can work on the same notes.
+
 ### Formatting with conform.nvim
 
 `prettier` cannot infer a parser from `.gpg` filenames. If you use [conform.nvim](https://github.com/stevearc/conform.nvim) to format notes, map each filetype to its parser:

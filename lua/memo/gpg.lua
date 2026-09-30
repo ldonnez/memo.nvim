@@ -1,4 +1,8 @@
 local M = {}
+
+--- Name of the environment variable exec_with_passphrase hands the passphrase over
+--- in, for a command that knows to read it from there.
+M.PASSPHRASE_ENV = "MEMO_NOTE_PASSPHRASE"
 local message = require("memo.message")
 
 --- Check if a specific key (or default) is unlocked in gpg-agent
@@ -168,6 +172,59 @@ function M.get_gpg_passphrase(target_path)
 	return cache_passphrase(pass, target_id)
 end
 
+--- The passphrase a buffer already holds for a note.
+--- @param bufnr? integer
+--- @return string?
+local function cached_passphrase(bufnr)
+	if not bufnr then
+		return nil
+	end
+
+	return vim.b[bufnr].memo_symmetric_passphrase
+end
+
+--- Whether a file is encrypted with a passphrase instead of a key. The agent
+--- only caches key passphrases, so `memo decrypt` is told where the passphrase
+--- is. A buffer that holds one counts as symmetric.
+--- @param path string
+--- @param bufnr? integer buffer the note was decrypted into
+--- @return boolean
+function M.is_symmetric(path, bufnr)
+	if cached_passphrase(bufnr) then
+		return true
+	end
+
+	local obj = vim.system({ "gpg", "--batch", "--list-packets", "--no-tty", path }, { text = true }):wait()
+
+	return ((obj.stdout or "") .. (obj.stderr or "")):find("symkey enc packet", 1, true) ~= nil
+end
+
+--- The passphrase of a symmetrically encrypted file: the one the buffer already
+--- holds, or a prompt for it. A new passphrase is kept in the buffer, so writing the
+--- note back wil keep it cached and wil not ask for it again.
+--- @param path string
+--- @param bufnr? integer buffer to keep the passphrase in
+--- @return string? nil when the prompt was dismissed
+function M.get_symmetric_passphrase(path, bufnr)
+	local cached = cached_passphrase(bufnr)
+
+	if cached then
+		return cached
+	end
+
+	local pass = M.prompt_passphrase(("note %s (symmetric)"):format(vim.fn.fnamemodify(path, ":t")))
+
+	if pass == "" then
+		return nil
+	end
+
+	if bufnr then
+		vim.b[bufnr].memo_symmetric_passphrase = pass
+	end
+
+	return pass
+end
+
 --- Get the Key IDs used for a specific file
 --- @param path string
 --- @return string[]
@@ -205,6 +262,20 @@ function M.exec_with_gpg_auth(cmd, opts, on_exit)
 	end
 
 	return vim.system(cmd, opts):wait()
+end
+
+--- Runs a command with the passphrase.
+--- It passes it with PASSPHRASE_ENV, which keeps it out of the process list and off disk.
+--- This works for memo and for a plain gpg call.
+--- @param cmd string[] The command to run.
+--- @param passphrase string
+--- @param opts? vim.SystemOpts
+--- @param on_exit? fun(obj: vim.SystemCompleted) Optional callback for async execution
+--- @return vim.SystemObj
+function M.exec_with_passphrase(cmd, passphrase, opts, on_exit)
+	local all = vim.tbl_extend("force", opts or {}, { env = { [M.PASSPHRASE_ENV] = passphrase } })
+
+	return vim.system(cmd, all, on_exit)
 end
 
 return M

@@ -3,10 +3,32 @@ local message = require("memo.message")
 
 local M = {}
 
+local NO_PASSPHRASE = "the passphrase was not given"
+
 ---@param path string
 ---@param input string[]
+---@param bufnr? integer buffer the note was decrypted into, so a symmetric note
+---is written back the way it was encrypted
 ---@return vim.SystemCompleted
-function M.encrypt_from_stdin(path, input)
+function M.encrypt_from_stdin(path, input, bufnr)
+	if gpg.is_symmetric(path, bufnr) then
+		local passphrase = gpg.get_symmetric_passphrase(path, bufnr)
+
+		if not passphrase then
+			-- A result the caller can still read .code from, for a command that
+			-- never ran.
+			return { code = 1, signal = 0, stdout = "", stderr = ("Not writing %s: %s"):format(path, NO_PASSPHRASE) }
+		end
+
+		-- `memo` owns the encryption, so a passphrase note is byte for byte what
+		-- the CLI writes.
+		return gpg.exec_with_passphrase(
+			{ "memo", "encrypt", "--symmetric", path, "--passphrase-env", gpg.PASSPHRASE_ENV },
+			passphrase,
+			{ stdin = input }
+		):wait()
+	end
+
 	return vim.system({ "memo", "encrypt", path }, {
 		stdin = input,
 	}):wait()
@@ -14,8 +36,21 @@ end
 
 --- Decrypts a file and returns the content
 --- @param path string The path to the encrypted file.
+--- @param bufnr? integer buffer to remember a symmetric passphrase in.
 --- @return vim.SystemCompleted?
-function M.decrypt_to_stdout(path)
+function M.decrypt_to_stdout(path, bufnr)
+	if gpg.is_symmetric(path, bufnr) then
+		local passphrase = gpg.get_symmetric_passphrase(path, bufnr)
+
+		if not passphrase then
+			message.error("Could not read %s: %s", path, NO_PASSPHRASE)
+			return nil
+		end
+
+		return gpg.exec_with_passphrase({ "memo", "decrypt", path, "--passphrase-env", gpg.PASSPHRASE_ENV }, passphrase)
+			:wait()
+	end
+
 	return gpg.exec_with_gpg_auth({ "memo", "decrypt", path })
 end
 
@@ -39,18 +74,29 @@ local function append_to_buffer(bufnr, lines, state)
 	vim.bo[bufnr].modified = false
 end
 
---- Decrypts a file and handles all buffer insertions.
---- aborted the passphrase prompt); in that case an error message is shown and
---- the buffer is wiped. The `on_exit` callback is NOT invoked then.
---- @param path string The path to the encrypted file.
---- @param bufnr integer The buffer handle to write into.
+--- Reports that decryption never started and drops the buffer. Leaving it in
+--- place would freeze it: `modifiable` stays false and nothing would reset it.
+--- @param bufnr integer
+--- @param reason string
+local function report_no_passphrase(bufnr, reason)
+	message.defer_error("Decryption failed: %s", reason)
+	vim.schedule(function()
+		if vim.api.nvim_buf_is_valid(bufnr) then
+			vim.api.nvim_buf_delete(bufnr, { force = true })
+		end
+	end)
+end
+
+--- Streams a decrypt command into a buffer as its output arrives.
+--- @param bufnr integer the buffer handle to write into
 --- @param on_exit fun(result: vim.SystemCompleted)
+--- @param run fun(opts: vim.SystemOpts, on_exit: fun(result: vim.SystemCompleted)): vim.SystemObj? nil when the passphrase could not be obtained
 --- @return vim.SystemObj?
-function M.decrypt_to_buffer(path, bufnr, on_exit)
+local function stream_into_buffer(bufnr, on_exit, run)
 	local accumulator = ""
 	local state = { first_write = true }
 
-	local obj = gpg.exec_with_gpg_auth({ "memo", "decrypt", path }, {
+	local obj = run({
 		stdout = function(_, data)
 			if not data or data == "" then
 				return
@@ -81,16 +127,43 @@ function M.decrypt_to_buffer(path, bufnr, on_exit)
 		end)
 	end)
 
-	-- exec_with_gpg_auth returns nil when the passphrase could not be obtained.
-	-- Leaving the buffer in place would freeze it: modifiable stays false and
-	-- nothing would reset it, so wipe it and tell the user.
-	if not obj then
-		message.defer_error("Decryption failed: could not authenticate")
-		vim.schedule(function()
-			if vim.api.nvim_buf_is_valid(bufnr) then
-				vim.api.nvim_buf_delete(bufnr, { force = true })
-			end
+	return obj
+end
+
+--- Decrypts a file and handles all buffer insertions.
+--- A note encrypted with a passphrase is decrypted by `memo` with the passphrase
+--- kept in the buffer, so writing it back stays symmetric. If the
+--- passphrase cannot be obtained the `on_exit` callback is NOT invoked, the
+--- buffer is wiped and an error message is shown.
+--- @param path string The path to the encrypted file.
+--- @param bufnr integer The buffer handle to write into.
+--- @param on_exit fun(result: vim.SystemCompleted)
+--- @return vim.SystemObj?
+function M.decrypt_to_buffer(path, bufnr, on_exit)
+	if gpg.is_symmetric(path, bufnr) then
+		local passphrase = gpg.get_symmetric_passphrase(path, bufnr)
+
+		if not passphrase then
+			report_no_passphrase(bufnr, NO_PASSPHRASE)
+			return nil
+		end
+
+		return stream_into_buffer(bufnr, on_exit, function(opts, exit)
+			return gpg.exec_with_passphrase(
+				{ "memo", "decrypt", path, "--passphrase-env", gpg.PASSPHRASE_ENV },
+				passphrase,
+				opts,
+				exit
+			)
 		end)
+	end
+
+	local obj = stream_into_buffer(bufnr, on_exit, function(opts, exit)
+		return gpg.exec_with_gpg_auth({ "memo", "decrypt", path }, opts, exit)
+	end)
+
+	if not obj then
+		report_no_passphrase(bufnr, "could not authenticate")
 	end
 
 	return obj

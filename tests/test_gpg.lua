@@ -170,4 +170,106 @@ describe("gpg", function()
 
 		MiniTest.expect.equality(child.cmd_capture("messages"), "")
 	end)
+
+	it("hands the passphrase to whatever command it is given", function()
+		local passphrase = "sym-pass"
+
+		local result = child.lua(
+			[[
+        local passphrase = ...
+        local cmd = { "sh", "-c", 'printf %s "$' .. M.PASSPHRASE_ENV .. '"' }
+
+        return M.exec_with_passphrase(cmd, passphrase, { text = true }):wait()
+    ]],
+			{ passphrase }
+		)
+
+		MiniTest.expect.equality(result.code, 0)
+		MiniTest.expect.equality(result.stdout, passphrase)
+	end)
+
+	it("names the environment variable it hands the passphrase over in", function()
+		local result = child.lua_get("M.PASSPHRASE_ENV")
+
+		MiniTest.expect.equality(result, "MEMO_NOTE_PASSPHRASE")
+	end)
+
+	it("keeps the caller's options when it adds the passphrase", function()
+		local result = child.lua([[
+        return M.exec_with_passphrase({ "cat" }, "any-pass", { stdin = { "payload" }, text = true }):wait()
+    ]])
+
+		MiniTest.expect.equality(result.code, 0)
+		-- vim.system sends stdin lines with a trailing newline.
+		MiniTest.expect.equality(result.stdout, "payload\n")
+	end)
+
+	it("reports the result through the callback when given one", function()
+		child.lua([[
+        _G.called_with = nil
+
+        M.exec_with_passphrase({ "sh", "-c", "echo done" }, "pass", {}, function(obj)
+          _G.called_with = obj.code
+        end)
+    ]])
+
+		child.wait_until(function()
+			return child.lua_get("_G.called_with ~= nil") == true
+		end)
+
+		MiniTest.expect.equality(child.lua_get("_G.called_with"), 0)
+	end)
+
+	it("counts a buffer that holds a passphrase as symmetric without reading the file", function()
+		local result = child.lua([[
+        local bufnr = vim.api.nvim_create_buf(true, false)
+        vim.b[bufnr].memo_symmetric_passphrase = "pass"
+
+        -- A plain file, so only the buffer can be telling us it is symmetric.
+        return M.is_symmetric("/tmp/memo-test-not-a-note.gpg", bufnr)
+    ]])
+
+		MiniTest.expect.equality(result, true)
+	end)
+
+	it("asks once for a passphrase and keeps it in the buffer", function()
+		local passphrase = "sym-pass"
+
+		local result = child.lua(
+			[[
+        local passphrase = ...
+        local prompts = 0
+
+        M.prompt_passphrase = function()
+          prompts = prompts + 1
+          return passphrase
+        end
+
+        local bufnr = vim.api.nvim_create_buf(true, false)
+        local asked = M.get_symmetric_passphrase("/tmp/memo-test-note.md.gpg", bufnr)
+        local cached = M.get_symmetric_passphrase("/tmp/memo-test-note.md.gpg", bufnr)
+
+        return { asked, cached, prompts, vim.b[bufnr].memo_symmetric_passphrase }
+    ]],
+			{ passphrase }
+		)
+
+		MiniTest.expect.equality(result, { passphrase, passphrase, 1, passphrase })
+	end)
+
+	it("keeps nothing in the buffer when the passphrase prompt is dismissed", function()
+		local result = child.lua([[
+        M.prompt_passphrase = function() return "" end
+
+        local bufnr = vim.api.nvim_create_buf(true, false)
+        local asked = M.get_symmetric_passphrase("/tmp/memo-test-note.md.gpg", bufnr)
+
+        return {
+          is_nil = asked == nil,
+          cached = vim.b[bufnr].memo_symmetric_passphrase ~= nil,
+        }
+    ]])
+
+		MiniTest.expect.equality(result, { is_nil = true, cached = false })
+	end)
 end)
