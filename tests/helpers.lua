@@ -25,6 +25,67 @@ function M.encrypt_file(path, content, opts)
 	return vim.system(cmd, vim.tbl_deep_extend("force", { stdin = content }, opts or {})):wait()
 end
 
+--- Encrypts with a passphrase instead of a key, the way a symmetric note on
+--- disk is.
+--- @param path string
+--- @param content string
+--- @param passphrase string
+--- @return vim.SystemCompleted
+function M.encrypt_symmetric_file(path, content, passphrase)
+	local cmd = {
+		"gpg",
+		"--batch",
+		"--quiet",
+		"--yes",
+		"--armor",
+		"-z",
+		"0",
+		"--compress-algo",
+		"none",
+		"--cipher-algo",
+		"AES256",
+		"--pinentry-mode=loopback",
+		"--passphrase",
+		passphrase,
+		"--symmetric",
+		"-o",
+		path,
+	}
+
+	return vim.system(cmd, { stdin = content }):wait()
+end
+
+--- Whether a file on disk is encrypted with a passphrase rather than a key.
+--- @param path string
+--- @return boolean
+function M.is_symmetric_file(path)
+	local cmd = { "gpg", "--list-packets", "--batch", "--no-tty", path }
+	local result = vim.system(cmd):wait()
+	local packets = (result.stdout or "") .. (result.stderr or "")
+
+	return packets:find("symkey enc packet", 1, true) ~= nil
+end
+
+--- Decrypts a symmetric file with a passphrase.
+--- @param path string
+--- @param passphrase string
+--- @return vim.SystemCompleted
+function M.decrypt_symmetric_file(path, passphrase)
+	local cmd = {
+		"gpg",
+		"--batch",
+		"--quiet",
+		"--yes",
+		"--pinentry-mode=loopback",
+		"--passphrase",
+		passphrase,
+		"--decrypt",
+		path,
+	}
+
+	return vim.system(cmd):wait()
+end
+
 --- @param path string
 --- @return vim.SystemCompleted
 function M.decrypt_file(path)

@@ -167,7 +167,7 @@ function M.on_write(args)
 	end
 	vim.api.nvim_exec_autocmds("BufWritePre", { buffer = bufnr, modeline = false })
 
-	local result = crypto.encrypt_from_stdin(gpg_path, lines)
+	local result = crypto.encrypt_from_stdin(gpg_path, lines, bufnr)
 
 	if result.code ~= 0 then
 		-- Defer: an ERROR-level vim.notify raises inside an autocmd, which

@@ -111,8 +111,10 @@ end
 
 ---@param lines string[] The new lines from the capture window
 ---@param config CaptureConfig
+---@param bufnr integer The capture buffer, which holds the passphrase of a
+---symmetric capture file so it is not asked for twice
 ---@return boolean -- true when the content was saved successfully
-local function append_capture(lines, config)
+local function append_capture(lines, config, bufnr)
 	local notes_dir = memo_config.notes_dir
 
 	local expanded = vim.fn.expand(notes_dir .. "/" .. config.capture_file) --[[@as string]]
@@ -125,10 +127,10 @@ local function append_capture(lines, config)
 		end
 
 		local merged = insert_lines({}, lines, config)
-		return crypto.encrypt_from_stdin(file, merged).code == 0
+		return crypto.encrypt_from_stdin(file, merged, bufnr).code == 0
 	end
 
-	local read_result = crypto.decrypt_to_stdout(file)
+	local read_result = crypto.decrypt_to_stdout(file, bufnr)
 
 	if not read_result or read_result.code ~= 0 then
 		return false
@@ -144,7 +146,7 @@ local function append_capture(lines, config)
 
 	local merged = insert_lines(existing, lines, config)
 
-	return crypto.encrypt_from_stdin(file, merged).code == 0
+	return crypto.encrypt_from_stdin(file, merged, bufnr).code == 0
 end
 
 ---Opens a capture buffer, prefilled with the target header and the template.
@@ -197,7 +199,7 @@ function M.create(opts)
 			local is_not_empty = table.concat(lines, "\n"):gsub("%s+", "") ~= ""
 
 			if has_changed and is_not_empty then
-				local saved = append_capture(lines, config)
+				local saved = append_capture(lines, config, buf)
 
 				if not saved then
 					-- Keep the buffer so the content is not silently lost.
