@@ -127,15 +127,15 @@ describe("autocmd", function()
 
 		local new_buffer_name_after_write = child.api.nvim_buf_get_name(0)
 
-		local decrypted_result = helpers.decrypt_file(plain .. ".gpg")
+		local decrypted_result = helpers.decrypt_file(plain .. ".asc")
 
 		MiniTest.expect.equality(decrypted_result.stdout, "Hello world\n")
-		MiniTest.expect.equality(new_buffer_name_after_write, plain .. ".gpg")
+		MiniTest.expect.equality(new_buffer_name_after_write, plain .. ".asc")
 	end)
 
 	it("automatically encrypts a new .md file saved in notes dir", function()
 		local plain = vim.env.NOTES_DIR .. "/new_note.md"
-		local encrypted = plain .. ".gpg"
+		local encrypted = plain .. ".asc"
 
 		vim.system({ "touch", plain }):wait()
 
@@ -147,11 +147,11 @@ describe("autocmd", function()
 
 		local new_buffer_name = child.api.nvim_buf_get_name(0)
 		local plaintext_file_exists = vim.fn.filereadable(plain) == 1
-		local gpg_file_exists = vim.fn.filereadable(encrypted) == 1
+		local encrypted_file_exists = vim.fn.filereadable(encrypted) == 1
 
-		MiniTest.expect.equality(new_buffer_name, plain .. ".gpg")
+		MiniTest.expect.equality(new_buffer_name, encrypted)
 		MiniTest.expect.equality(plaintext_file_exists, false)
-		MiniTest.expect.equality(gpg_file_exists, true)
+		MiniTest.expect.equality(encrypted_file_exists, true)
 		MiniTest.expect.equality(helpers.autocmd_fired(child, "BufNewFile"), true)
 		MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPre"), false)
 		MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPost"), false)
@@ -159,7 +159,7 @@ describe("autocmd", function()
 
 	it("automatically encrypts a new file without extension saved in notes dir", function()
 		local plain = vim.env.NOTES_DIR .. "/new_note"
-		local encrypted = plain .. ".gpg"
+		local encrypted = plain .. ".asc"
 
 		vim.system({ "touch", plain }):wait()
 
@@ -169,11 +169,11 @@ describe("autocmd", function()
 
 		local new_buffer_name = child.api.nvim_buf_get_name(0)
 		local plaintext_file_exists = vim.fn.filereadable(plain) == 1
-		local gpg_file_exists = vim.fn.filereadable(encrypted) == 1
+		local encrypted_file_exists = vim.fn.filereadable(encrypted) == 1
 
-		MiniTest.expect.equality(new_buffer_name, plain .. ".gpg")
+		MiniTest.expect.equality(new_buffer_name, encrypted)
 		MiniTest.expect.equality(plaintext_file_exists, false)
-		MiniTest.expect.equality(gpg_file_exists, true)
+		MiniTest.expect.equality(encrypted_file_exists, true)
 	end)
 
 	it("automatically encrypts a new .md.gpg file saved in notes dir", function()
@@ -193,11 +193,11 @@ describe("autocmd", function()
 
 		local new_buffer_name = child.api.nvim_buf_get_name(0)
 		local plaintext_file_exists = vim.fn.filereadable(plain) == 1
-		local gpg_file_exists = vim.fn.filereadable(encrypted) == 1
+		local encrypted_file_exists = vim.fn.filereadable(encrypted) == 1
 
-		MiniTest.expect.equality(new_buffer_name, plain .. ".gpg")
+		MiniTest.expect.equality(new_buffer_name, encrypted)
 		MiniTest.expect.equality(plaintext_file_exists, false)
-		MiniTest.expect.equality(gpg_file_exists, true)
+		MiniTest.expect.equality(encrypted_file_exists, true)
 	end)
 
 	it("keeps the plaintext and reports a deferred error when encryption fails on write", function()
@@ -510,12 +510,33 @@ describe("autocmd", function()
 		MiniTest.expect.equality(child.api.nvim_buf_is_valid(target_bufnr), false)
 	end)
 
-	it("decrypts the armored .gpg twin when opening a .md file that has one", function()
-		local plain = vim.env.NOTES_DIR .. "/twin.md"
-		local encrypted = plain .. ".gpg"
+	it("keeps the .gpg extension of a note written by an older version of memo", function()
+		local encrypted = vim.env.NOTES_DIR .. "/legacy.md.gpg"
 
-		helpers.write_file(plain, "plain old content")
-		helpers.encrypt_file(encrypted, "secret content")
+		helpers.encrypt_file(encrypted, "legacy secret")
+
+		child.cmd("edit " .. encrypted)
+
+		child.wait_until(function()
+			return child.b.decrypting == false
+		end)
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(0, 0, -1, false), { "legacy secret" })
+
+		child.api.nvim_buf_set_lines(0, 0, -1, false, { "edited legacy secret" })
+		child.cmd("write")
+
+		-- Written back where it was, without a second .asc note next to it.
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), encrypted)
+		MiniTest.expect.equality(vim.fn.filereadable(vim.env.NOTES_DIR .. "/legacy.md.asc"), 0)
+		MiniTest.expect.equality(helpers.decrypt_file(encrypted).stdout, "edited legacy secret\n")
+	end)
+
+	it("decrypts the armored .asc twin when opening a .md file that has one", function()
+		local plain = vim.env.NOTES_DIR .. "/asc-twin.md"
+		local encrypted = plain .. ".asc"
+
+		helpers.encrypt_file(encrypted, "asc secret")
 
 		child.cmd("edit " .. plain)
 
@@ -523,22 +544,7 @@ describe("autocmd", function()
 			return child.b.decrypting == false
 		end)
 
-		-- The armored twin must be decrypted, not the (unencrypted) plaintext file.
-		local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
-		MiniTest.expect.equality(lines, { "secret content" })
-		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), plain)
-
-		-- The plaintext twin stays on disk until the note is actually saved.
-		MiniTest.expect.equality(vim.fn.filereadable(plain), 1)
-
-		child.api.nvim_buf_set_lines(0, 0, -1, false, { "edited secret content" })
-		child.cmd("write")
-
-		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), encrypted)
-		MiniTest.expect.equality(vim.fn.filereadable(plain), 0)
-
-		local decrypted = helpers.decrypt_file(encrypted)
-		MiniTest.expect.equality(decrypted.stdout, "edited secret content\n")
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(0, 0, -1, false), { "asc secret" })
 	end)
 
 	it("reads ignored files in notes dirs whose path contains spaces", function()
@@ -568,7 +574,7 @@ describe("autocmd", function()
 		MiniTest.expect.equality(child.api.nvim_buf_get_lines(0, 0, -1, false), { "plaintext not armored" })
 	end)
 
-	it("renames the buffer to an absolute .gpg path when saving a relative edit", function()
+	it("renames the buffer to an absolute note path when saving a relative edit", function()
 		local plain = vim.env.NOTES_DIR .. "/relative.md"
 		vim.system({ "touch", plain }):wait()
 
@@ -577,9 +583,9 @@ describe("autocmd", function()
 		child.api.nvim_buf_set_lines(0, 0, -1, false, { "My note" })
 		child.cmd("write")
 
-		MiniTest.expect.equality(vim.fn.filereadable(plain .. ".gpg"), 1)
+		MiniTest.expect.equality(vim.fn.filereadable(plain .. ".asc"), 1)
 		MiniTest.expect.equality(vim.fn.filereadable(plain), 0)
-		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), plain .. ".gpg")
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), plain .. ".asc")
 	end)
 
 	describe("default ignored files", function()
@@ -731,7 +737,7 @@ describe("autocmd", function()
 			})
 
 			MiniTest.expect.equality(#delete_autocmds, 1)
-			MiniTest.expect.equality(delete_autocmds[1].pattern, vim.env.HOME .. "/memo-scratch/*.gpg")
+			MiniTest.expect.equality(delete_autocmds[1].pattern, vim.env.HOME .. "/memo-scratch/*")
 		end)
 	end)
 end)

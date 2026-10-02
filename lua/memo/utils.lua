@@ -1,13 +1,37 @@
 local M = {}
 
----Ensures path ends with .gpg
+---The note extension of `path`, e.g. "gpg" for "note.md.gpg". Nil for any other
+---extension, so a plaintext "note.md" still gets a note extension appended.
+---@param path string
+---@return string? ext nil when the path carries no note extension
+function M.get_extension(path)
+	local ext = path:match("%.(%a+)$")
+
+	return ext and vim.tbl_contains(require("memo.config").supported_extensions, ext) and ext or nil
+end
+
+---Strips the note extension of `path` (e.g. "note.md.gpg" -> "note.md").
 ---@param path string
 ---@return string
-function M.get_gpg_path(path)
-	if path == "" or path:match("%.gpg$") then
+function M.strip_extension(path)
+	local ext = M.get_extension(path)
+
+	return ext and path:sub(1, #path - #ext - 1) or path
+end
+
+---Resolves a path for a note file, adding the default extension if needed.
+---If a supported extension is provided, it's respected. Otherwise default is added.
+---@param path string
+---@return string
+function M.resolve_note_file(path)
+	local had_extension = path ~= "" and M.get_extension(path) ~= nil
+	if had_extension then
+		-- Provided a supported extension, respect it
 		return path
 	end
-	return path .. ".gpg"
+
+	-- No supported extension: add default
+	return path .. "." .. require("memo.config").extension
 end
 
 ---Checks whether `path` is inside `dir` after resolving both to absolute paths.
@@ -53,17 +77,20 @@ function M.confirm(prompt, title)
 end
 
 ---Builds a full note path for `name` inside the notes directory.
----@param name string note name, with or without a `.gpg` suffix
+---@param name string note name, with or without an note extension
 ---@return string
 function M.build_note_path(name)
-	return M.get_gpg_path(require("memo.config").notes_dir .. "/" .. name)
+	local path = require("memo.config").notes_dir .. "/" .. name
+	return M.resolve_note_file(path)
 end
 
----Resolves a user supplied note path to an absolute `.gpg` path inside the
----notes directory. Relative paths are resolved against the notes dir and `~` is
----expanded.
+---Resolves a supplied note path to an absolute note path inside the notes
+---directory. Relative paths are resolved against the notes dir and `~` is
+---expanded. An extension that is already there is kept, and a note that only
+---exists with the other supported extension is found, so `note.md` reaches both
+---`note.md.asc` and a legacy `note.md.gpg`.
 ---@param path string
----@return string? gpg_path nil when the path is empty or escapes the notes dir
+---@return string? note_path nil when the path is empty or escapes the notes dir
 function M.resolve_note_path(path)
 	local notes_dir = require("memo.config").notes_dir
 	local expanded = vim.fn.expand(path) --[[@as string]]
@@ -73,9 +100,9 @@ function M.resolve_note_path(path)
 	end
 
 	local target = expanded:sub(1, 1) == "/" and expanded or (notes_dir .. "/" .. expanded)
-	local gpg_path = M.get_gpg_path(target)
+	local note_path = M.resolve_note_file(target)
 
-	return M.is_in_dir(gpg_path, notes_dir) and gpg_path or nil
+	return M.is_in_dir(note_path, notes_dir) and note_path or nil
 end
 
 ---Prompts for a note path, pre-filled with `default_path`.

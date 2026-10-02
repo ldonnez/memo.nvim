@@ -27,7 +27,7 @@ local DEFAULTS = {
 ---@return integer win
 ---@return integer buf
 local function create_capture_window(config)
-	local base = config.capture_file:gsub("%.gpg$", "")
+	local base = utils.strip_extension(config.capture_file)
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_exec_autocmds("BufReadPre", { buffer = buf, modeline = false })
 
@@ -118,7 +118,9 @@ local function append_capture(lines, config, bufnr)
 	local notes_dir = memo_config.notes_dir
 
 	local expanded = vim.fn.expand(notes_dir .. "/" .. config.capture_file) --[[@as string]]
-	local file = utils.get_gpg_path(expanded)
+	-- The capture file may only exist with the other extension, e.g. an inbox
+	-- written by an older version of memo.
+	local file = utils.resolve_note_file(expanded)
 
 	if not utils.file_exists(file) then
 		-- Ensure relative directories are created

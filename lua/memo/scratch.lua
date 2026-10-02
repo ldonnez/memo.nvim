@@ -21,37 +21,54 @@ function M.encode_cwd_key(path)
 	return (path:gsub("[^%w%-]", "%%"))
 end
 
----Match the "<cwd key>-<timestamp>-<hash>.gpg" parts of a scratch filename.
+---Match the "<cwd key>-<timestamp>-<hash>.<ext>" parts of a scratch filename.
+---The extension is captured rather than hardcoded, so a scratch file keeps the
+---extension it was created with.
 ---@param filename string
 ---@return string? key
----@return string?, string? -- timestamp, hash
+---@return string? timestamp
+---@return string? hash
+---@return string? ext
 local function match_parts(filename)
+	local ext = utils.get_extension(filename)
+
+	if not ext then
+		return nil
+	end
+
 	-- The hash is wrapped in its own capture group: Lua's pattern engine
 	-- would otherwise return the previous capture for it after backtracking
 	-- the greedy leading `(.*)`.
-	return filename:match("^(.*)%-(%d%d%d%d%d%d%d%dT%d%d%d%d%d%d)%-([%x][%x][%x][%x][%x][%x])%.gpg$")
+	local key, ts, hash =
+		filename:match("^(.*)%-(%d%d%d%d%d%d%d%dT%d%d%d%d%d%d)%-([%x][%x][%x][%x][%x][%x])%." .. ext .. "$")
+
+	if not key then
+		return nil
+	end
+
+	return key, ts, hash, ext
 end
 
----Rewrite a scratch filename for display as "<cwd path>-<timestamp>-<hash>.gpg".
+---Rewrite a scratch filename for display as "<cwd path>-<timestamp>-<hash>.<ext>".
 ---@param filename string
 ---@return string
 function M.display_scratch(filename)
-	local key, ts, hash = match_parts(filename)
+	local key, ts, hash, ext = match_parts(filename)
 	if not key then
 		return filename
 	end
-	return M.decode_cwd_key(key) .. "-" .. ts .. "-" .. hash .. ".gpg"
+	return M.decode_cwd_key(key) .. "-" .. ts .. "-" .. hash .. "." .. ext
 end
 
 ---Recover the real scratch filename from a line rendered by `display_scratch`.
 ---@param entry string
 ---@return string
 function M.filename_from_display(entry)
-	local key, ts, hash = match_parts(entry)
+	local key, ts, hash, ext = match_parts(entry)
 	if not key then
 		return entry
 	end
-	return M.encode_cwd_key(key) .. "-" .. ts .. "-" .. hash .. ".gpg"
+	return M.encode_cwd_key(key) .. "-" .. ts .. "-" .. hash .. "." .. ext
 end
 
 ---@return string
@@ -71,7 +88,9 @@ local function get_scratch_file()
 		return nil
 	end
 
-	return vim.fs.joinpath(dir, M.cwd_key() .. "-" .. get_timestamp() .. "-" .. get_hash() .. ".gpg")
+	local base = M.cwd_key() .. "-" .. get_timestamp() .. "-" .. get_hash()
+
+	return vim.fs.joinpath(dir, base .. "." .. require("memo.config").extension)
 end
 
 ---@param direction? string any direction other than "vertical"/"tab" opens a horizontal split

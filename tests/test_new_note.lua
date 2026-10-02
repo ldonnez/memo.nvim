@@ -60,10 +60,10 @@ describe("new_note", function()
 			local created = child.lua_get([[ new_note.create({ path = "inbox.md" }) ]])
 
 			MiniTest.expect.equality(created, true)
-			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/inbox.md.gpg"), 1)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/inbox.md.asc"), 1)
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/inbox.md"), 0)
 
-			local decrypted = helpers.decrypt_file(vim.env.NOTES_DIR .. "/inbox.md.gpg")
+			local decrypted = helpers.decrypt_file(vim.env.NOTES_DIR .. "/inbox.md.asc")
 			MiniTest.expect.equality(decrypted.code, 0)
 		end)
 
@@ -71,7 +71,7 @@ describe("new_note", function()
 			child.lua([[ vim.fn.input = function(_, default) return default end ]])
 
 			local created = child.lua_get([[ new_note.create() ]])
-			local default_path = vim.env.NOTES_DIR .. "/" .. os.date("%Y-%m-%d.md") .. ".gpg"
+			local default_path = vim.env.NOTES_DIR .. "/" .. os.date("%Y-%m-%d.md") .. ".asc"
 
 			MiniTest.expect.equality(created, true)
 			MiniTest.expect.equality(child.fn.filereadable(default_path), 1)
@@ -83,7 +83,7 @@ describe("new_note", function()
 			local created = child.lua_get([[ new_note.create() ]])
 
 			MiniTest.expect.equality(created, true)
-			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/prompted.md.gpg"), 1)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/prompted.md.asc"), 1)
 		end)
 
 		it("aborts when the path prompt is emptied", function()
@@ -110,7 +110,7 @@ describe("new_note", function()
 
 			local win = child.api.nvim_get_current_win()
 			MiniTest.expect.equality(win ~= win_before, true)
-			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), vim.env.NOTES_DIR .. "/split.md.gpg")
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), vim.env.NOTES_DIR .. "/split.md.asc")
 
 			-- The template cursor lands in the note's window, not the one the
 			-- call was made from.
@@ -196,7 +196,7 @@ describe("new_note", function()
 
 			MiniTest.expect.equality(created, true)
 
-			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/split-selection.md.gpg")
+			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/split-selection.md.asc")
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(result.stdout, "## Notes\n- beta\n")
@@ -206,15 +206,15 @@ describe("new_note", function()
 			local created = child.lua_get([[ new_note.create({ path = "journals/2026-01-01.md" }) ]])
 
 			MiniTest.expect.equality(created, true)
-			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/journals/2026-01-01.md.gpg"), 1)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/journals/2026-01-01.md.asc"), 1)
 		end)
 
 		it("fills the note with the template", function()
 			child.lua_get([[ new_note.create({ path = "templated.md", template = "# %Y\n\n|" }) ]])
 
-			MiniTest.expect.equality(helpers.decrypt_file(vim.env.NOTES_DIR .. "/templated.md.gpg").code, 0)
+			MiniTest.expect.equality(helpers.decrypt_file(vim.env.NOTES_DIR .. "/templated.md.asc").code, 0)
 
-			child.lua([[ vim.cmd("silent edit " .. vim.env.NOTES_DIR .. "/templated.md.gpg") ]])
+			child.lua([[ vim.cmd("silent edit " .. vim.env.NOTES_DIR .. "/templated.md.asc") ]])
 			child.wait_until(function()
 				return child.lua_get("vim.b.decrypting") == false
 			end, 10000)
@@ -244,13 +244,46 @@ describe("new_note", function()
 
 			child.lua("vim.fn.confirm = function() return 2 end")
 
-			MiniTest.expect.equality(child.lua_get([[ new_note.create({ path = "existing.md" }) ]]), false)
+			MiniTest.expect.equality(child.lua_get([[ new_note.create({ path = "existing.md.gpg" }) ]]), false)
 			MiniTest.expect.equality(child.cmd_capture("messages"), "MemoNewNote: aborted")
+
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/existing.md.asc"), 0)
 
 			local decrypted = helpers.decrypt_file(existing)
 			MiniTest.expect.equality(decrypted.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(decrypted.stdout:find("old content") ~= nil, true)
+		end)
+
+		it("overwrites a note written with the other extension in place", function()
+			local existing = vim.env.NOTES_DIR .. "/legacy.md.gpg"
+			helpers.encrypt_file(existing, "old content\n")
+
+			child.lua("vim.fn.confirm = function() return 1 end")
+
+			MiniTest.expect.equality(
+				child.lua_get([[ new_note.create({ path = "legacy.md.gpg", template = "fresh| content" }) ]]),
+				true
+			)
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), existing)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/legacy.md.asc"), 0)
+
+			local decrypted = helpers.decrypt_file(existing)
+			MiniTest.expect.equality(decrypted.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(decrypted.stdout, "fresh content\n")
+		end)
+
+		it("keeps the .gpg extension when it is configured", function()
+			child.lua([[
+    	require("memo.config").extension = "gpg"
+    	new_note = require("memo.new_note")
+  	]])
+
+			local created = child.lua_get([[ new_note.create({ path = "legacy-default.md" }) ]])
+
+			MiniTest.expect.equality(created, true)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/legacy-default.md.gpg"), 1)
 		end)
 
 		it("overwrites an existing note when the user confirms", function()
@@ -260,7 +293,7 @@ describe("new_note", function()
 			child.lua("vim.fn.confirm = function() return 1 end")
 
 			MiniTest.expect.equality(
-				child.lua_get([[ new_note.create({ path = "existing.md", template = "fresh| content" }) ]]),
+				child.lua_get([[ new_note.create({ path = "existing.md.gpg", template = "fresh| content" }) ]]),
 				true
 			)
 
@@ -286,7 +319,7 @@ describe("new_note", function()
 			child.lua("vim.fn.input = function() return 'visual' end")
 			child.type_keys(":", "MemoNewNote", "<CR>")
 
-			local note = vim.env.NOTES_DIR .. "/visual.gpg"
+			local note = vim.env.NOTES_DIR .. "/visual.asc"
 			MiniTest.expect.equality(child.fn.filereadable(note), 1)
 
 			local result = helpers.decrypt_file(note)
@@ -302,7 +335,7 @@ describe("new_note", function()
 			child.lua("vim.fn.input = function() return 'linewise' end")
 			child.type_keys(":", "MemoNewNote", "<CR>")
 
-			local note = vim.env.NOTES_DIR .. "/linewise.gpg"
+			local note = vim.env.NOTES_DIR .. "/linewise.asc"
 			local result = helpers.decrypt_file(note)
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
@@ -318,7 +351,7 @@ describe("new_note", function()
 				[[ new_note.create({ path = "ranged.md", range = 2, line1 = 2, line2 = 2, template = "## Notes\n- | (kept)" }) ]]
 			)
 
-			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/ranged.md.gpg")
+			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/ranged.md.asc")
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(result.stdout, "## Notes\n- delta epsilon (kept)\n")
@@ -337,7 +370,7 @@ describe("new_note", function()
 				[[ new_note.create({ path = "unmarked.md", range = 2, line1 = 2, line2 = 2, template = "## Notes" }) ]]
 			)
 
-			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/unmarked.md.gpg")
+			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/unmarked.md.asc")
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(result.stdout, "delta epsilon\n")
@@ -351,7 +384,7 @@ describe("new_note", function()
 			child.api.nvim_win_set_cursor(0, { 1, 9 })
 			child.lua_get([[ require("memo").new_note({ path = "fromvisual.md", template = "## Notes\n- | (kept)" }) ]])
 
-			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/fromvisual.md.gpg")
+			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/fromvisual.md.asc")
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(result.stdout, "## Notes\n- beta (kept)\n")
@@ -366,7 +399,7 @@ describe("new_note", function()
 				[[ new_note.create({ path = "explicit.md", range = 2, line1 = 2, line2 = 2, template = "call | arg" }) ]]
 			)
 
-			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/explicit.md.gpg")
+			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/explicit.md.asc")
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(result.stdout, "call delta epsilon arg\n")
@@ -396,7 +429,7 @@ describe("new_note", function()
 			child.lua("vim.fn.input = function() return 'blank' end")
 			child.type_keys(":", "MemoNewNote", "<CR>")
 
-			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/blank.gpg"), 0)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/blank.asc"), 0)
 			MiniTest.expect.equality(child.cmd_capture("messages"), "MemoNewNote: aborted, selection is empty")
 		end)
 	end)

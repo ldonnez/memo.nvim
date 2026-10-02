@@ -2,7 +2,7 @@
 
 Seamless Neovim interface for [memo](https://github.com/ldonnez/memo), a CLI-based notes system with transparent GPG encryption. Create, read, and update encrypted files without leaving your editor.
 
-- Transparent encryption: `.gpg` files in your notes directory are decrypted into the buffer and re-encrypted on write; plaintext never touches disk.
+- Transparent encryption: `.asc` files in your notes directory are decrypted into the buffer and re-encrypted on write; plaintext never touches disk.
 - Encrypted scratch buffers for throwaway, sensitive content.
 - Quick capture workflow that appends to a capture file (e.g. a journal).
 - fzf-lua pickers for browsing notes and scratch files.
@@ -31,7 +31,7 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
   init = function()
     vim.g.memo_notes_dir = "~/my-notes-dir" -- default: ~/notes
     vim.g.memo_scratch_dir = "~/.local/state/memo-scratch" -- default: stdpath("data")/memo-scratch
-    vim.g.memo_default_capture_file = "journal.md.gpg" -- default: inbox.md.gpg
+    vim.g.memo_default_capture_file = "journal.md.asc" -- default: inbox.md.asc
   end,
   keys = {
     {
@@ -133,7 +133,7 @@ Set configuration before loading the plugin.
 ```lua
 vim.g.memo_notes_dir = "~/my-notes-dir" -- default: ~/notes
 vim.g.memo_scratch_dir = "~/.local/state/memo-scratch" -- default: stdpath("data")/memo-scratch
-vim.g.memo_default_capture_file = "journal.md.gpg" -- default: inbox.md.gpg
+vim.g.memo_default_capture_file = "journal.md.asc" -- default: inbox.md.asc
 
 vim.pack.add({
   { src = "https://github.com/ldonnez/memo.nvim", version = vim.version.range("*") },
@@ -217,19 +217,19 @@ vim.g.memo_scratch_dir = "~/.local/state/memo-scratch"
 
 The note `:Memo` and `require("memo").open()` open when no path is given, and
 the one `require("memo").capture()` writes to when no `capture_file` is
-given. A path relative to `<notes_dir>`, with or without the `.gpg`
-extension. Default: `inbox.md.gpg`.
+given. A path relative to `<notes_dir>`, with or without a note
+extension. Default: `inbox.md.asc`.
 
 The default, a single inbox at the top of the notes directory:
 
 ```lua
-vim.g.memo_default_capture_file = "inbox.gpg"
+vim.g.memo_default_capture_file = "inbox.asc"
 ```
 
 A subdirectory keeps captures out of the way, and the extension is optional:
 
 ```lua
-vim.g.memo_default_capture_file = "quick/inbox.gpg"
+vim.g.memo_default_capture_file = "quick/inbox.asc"
 ```
 
 The first capture creates the note and any missing parent directories;
@@ -247,7 +247,7 @@ Pair it with `target_header` and one note becomes a dated journal, with
 `<leader>mc` writing to it and `:Memo` opening it:
 
 ```lua
-vim.g.memo_default_capture_file = "journal.md.gpg"
+vim.g.memo_default_capture_file = "journal.md.asc"
 ```
 
 ```lua
@@ -261,6 +261,28 @@ end, { desc = "Memo: Capture to today" })
 
 This is only the fallback: `require("memo").capture({ capture_file = ... })`
 and `:MemoNewNote <path>` still take an explicit path and ignore the default.
+
+### `g:memo_extension`
+
+Extension used for new notes, new scratch buffers, and notes saved from a
+buffer whose path has no note extension yet. `.asc` (armored ASCII) and
+`.gpg` are both supported.
+
+- Default: `asc`
+
+```lua
+vim.g.memo_extension = "gpg"
+```
+
+An existing note always keeps its own extension, so notes created by an
+older version keep working: a `note.md.gpg` note opens, decrypts, and is
+written back to `note.md.gpg` even with the `asc` default. If the requested
+extension does not exist but the other one does, memo.nvim opens the one
+that is there.
+
+Paths in `g:memo_default_capture_file` and note paths passed to
+`require("memo")` may include a note extension or omit it; when omitted,
+`g:memo_extension` applies.
 
 ### `g:memo_ignore_patterns`
 
@@ -320,7 +342,7 @@ A note encrypted symmetrically, with `gpg --symmetric` instead of a key, opens
 without needing a key in the keyring:
 
 - Opening one asks for the passphrase of that file, e.g. `GPG Passphrase for
-note inbox.md.gpg (symmetric):`.
+note inbox.md.asc (symmetric):`.
 - Writing it back encrypts it with the same passphrase, so it stays
   symmetric instead of being re-encrypted to your key. The passphrase is kept
   in the buffer, so it is asked for once per buffer rather than once per write.
@@ -338,7 +360,7 @@ The [memo CLI](https://github.com/ldonnez/memo) creates these notes with
 
 ### Formatting with conform.nvim
 
-`prettier` cannot infer a parser from `.gpg` filenames. If you use [conform.nvim](https://github.com/stevearc/conform.nvim) to format notes, map each filetype to its parser:
+`prettier` cannot infer a parser from `.asc` filenames. If you use [conform.nvim](https://github.com/stevearc/conform.nvim) to format notes, map each filetype to its parser:
 
 ```lua
 require("conform").setup({
@@ -356,7 +378,7 @@ require("conform").setup({
 })
 ```
 
-`prettierd` infers the parser from the filename and cannot be made to work on `.gpg` buffers without overriding the formatter entirely.
+`prettierd` infers the parser from the filename and cannot be made to work on `.asc` buffers without overriding the formatter entirely.
 
 ### Encrypted scratch buffers
 
@@ -388,7 +410,7 @@ Notes:
 
 Turn any buffer into a note in your notes directory with `:MemoSaveAsNote` (or `require("memo").save_as_note()`):
 
-- Prompts for a note path, defaulting to `<notes_dir>/<buffer_name>.gpg`.
+- Prompts for a note path, defaulting to `<notes_dir>/<buffer_name>.asc`.
 - Relative paths are resolved against `<notes_dir>` and must stay inside it; saving elsewhere, overwriting an existing note, or using an empty path will not work.
 - Pairs naturally with scratch buffers: write something ephemeral, then promote it to a permanent note.
 - A visual selection is detected automatically and saves only the selected lines.
@@ -402,7 +424,7 @@ end, { desc = "Memo: Save buffer as note" })
 ### Open a note
 
 Open a note by path, with the same `window` options as a new note. Paths are
-resolved against `<notes_dir>` and may carry the `.gpg` extension or leave it
+resolved against `<notes_dir>` and may carry a note extension or leave it
 off:
 
 ```lua
@@ -431,7 +453,7 @@ Start an empty encrypted note with `:MemoNewNote` (or
 `require("memo").new_note()`):
 
 - Prompts for a note path, defaulting to the full path
-  `<notes_dir>/YYYY-MM-DD.md.gpg`, so it is clear where the note lands. The
+  `<notes_dir>/YYYY-MM-DD.md.asc`, so it is clear where the note lands. The
   prompt is the same for the command and `require("memo").new_note()`, and an
   emptied prompt aborts.
 - A path can be passed instead, e.g. `:MemoNewNote journals/2026-01-01.md`.
@@ -479,7 +501,7 @@ the `|` marker and the cursor lands right after it. For example, selecting
 is nowhere to insert, so the selection becomes the whole note.
 
 Notes in subdirectories are opened and written transparently, so nested paths
-such as `journals/2026-01-01.md.gpg` behave like top-level notes.
+such as `journals/2026-01-01.md.asc` behave like top-level notes.
 
 ### Quick capture
 
@@ -490,7 +512,7 @@ under the `target_header` (prepended if it does not exist).
 ```lua
 vim.keymap.set("n", "<leader>mc", function()
   require("memo").capture({
-    capture_file = "inbox.md.gpg",
+    capture_file = "inbox.md.asc",
     target_header = "# inbox", -- captures are inserted below this header
     header_padding = 1, -- blank lines between capture content and target header
     template = "## %Y-%m-%d %H:%M\n\n|\n", -- '|' marks the cursor
@@ -508,7 +530,7 @@ call `require("memo").capture()` to pre-fill the capture window:
 
 ```lua
 vim.keymap.set("v", "<leader>mc", function()
-  require("memo").capture({ capture_file = "inbox.md.gpg" })
+  require("memo").capture({ capture_file = "inbox.md.asc" })
 end, { desc = "Memo: Quick capture selection" })
 ```
 
@@ -521,7 +543,7 @@ Turn a capture file into a journal with dynamic headers:
 
 ```lua
 require("memo").capture({
-  capture_file = "journal.md.gpg",
+  capture_file = "journal.md.asc",
   target_header = "# " .. os.date("%Y-%m-%d"),
   header_padding = 1,
 })
@@ -531,7 +553,7 @@ Or create a journal file for each day automatically:
 
 ```lua
 require("memo").capture({
-  capture_file = "journals/" .. os.date("%Y-%m-%d") .. ".md.gpg",
+  capture_file = "journals/" .. os.date("%Y-%m-%d") .. ".md.asc",
   target_header = "# " .. os.date("%Y-%m-%d"),
   header_padding = 1,
 })
@@ -549,7 +571,7 @@ require("memo.pickers.fzf_lua").cwd_scratch_files_picker() -- current cwd
 
 The scratch pickers additionally bind `ctrl-x` to delete the selected scratch files (multi-select with `tab`/`alt-a`) without closing the picker; any buffer holding a deleted file is wiped too.
 
-Scratch files are stored under the obfuscated name `<encoded-cwd>-<timestamp>-<hash>.gpg`, so the scratch pickers decode the cwd path for display and show `<cwd-path>-<timestamp>-<hash>.gpg`. The cwd picker shows the scratch files created in the current working directory.
+Scratch files are stored under the obfuscated name `<encoded-cwd>-<timestamp>-<hash>.asc`, so the scratch pickers decode the cwd path for display and show `<cwd-path>-<timestamp>-<hash>.asc`. The cwd picker shows the scratch files created in the current working directory.
 
 ## Development
 

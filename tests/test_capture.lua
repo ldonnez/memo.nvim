@@ -36,11 +36,28 @@ describe("capture", function()
 		end)
 
 		it("uses the default capture file when none is given", function()
-			helpers.encrypt_file(vim.env.NOTES_DIR .. "/inbox.md.gpg", "Inbox\n")
-
 			child.lua([[ M.create({}) ]])
 
-			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), "capture://inbox.md.gpg")
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), "capture://inbox.md.asc")
+		end)
+
+		it("appends to an inbox written with the other extension", function()
+			helpers.encrypt_file(vim.env.NOTES_DIR .. "/inbox.md.gpg", "Inbox\n")
+
+			child.lua([[
+				vim.g.memo_default_capture_file = "inbox.md.gpg"
+				require("memo.config").setup()
+				M.create({})
+			]])
+			child.lua([[ vim.api.nvim_buf_set_lines(0, 0, -1, false, { "captured" }) ]])
+			child.cmd("write")
+
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/inbox.md.asc"), 0)
+
+			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/inbox.md.gpg")
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout, "captured\nInbox\n")
 		end)
 
 		it("uses vim.g.memo_default_capture_file when no capture file is given", function()

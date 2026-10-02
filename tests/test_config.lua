@@ -64,18 +64,53 @@ describe("config", function()
 		it("defaults to the inbox", function()
 			local result = child.lua_get("M.capture_file")
 
-			MiniTest.expect.equality(result, "inbox.md.gpg")
+			MiniTest.expect.equality(result, "inbox.md.asc")
 		end)
 
 		it("uses vim.g.memo_default_capture_file when set", function()
 			child.lua([[
-        vim.g.memo_default_capture_file = "quick/inbox.gpg"
+        vim.g.memo_default_capture_file = "quick/inbox.asc"
        	M.setup()
       ]])
 
 			local result = child.lua_get("M.capture_file")
 
-			MiniTest.expect.equality(result, "quick/inbox.gpg")
+			MiniTest.expect.equality(result, "quick/inbox.asc")
+		end)
+	end)
+
+	describe("extension", function()
+		before_each(function()
+			setup_child()
+		end)
+
+		it("defaults to asc", function()
+			local result = child.lua_get("M.extension")
+
+			MiniTest.expect.equality(result, "asc")
+		end)
+
+		it("uses vim.g.memo_extension when set", function()
+			child.lua([[
+        vim.g.memo_extension = "gpg"
+       	M.setup()
+      ]])
+
+			local result = child.lua_get("M.extension")
+
+			MiniTest.expect.equality(result, "gpg")
+		end)
+	end)
+
+	describe("supported_extensions", function()
+		before_each(function()
+			setup_child()
+		end)
+
+		it("reads both asc and gpg notes", function()
+			local result = child.lua_get("M.supported_extensions")
+
+			MiniTest.expect.equality(result, { "asc", "gpg" })
 		end)
 	end)
 

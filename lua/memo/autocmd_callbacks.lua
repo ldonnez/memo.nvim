@@ -86,10 +86,10 @@ function M.on_read(args)
 	-- Normalize to an absolute path: `args.file` can be relative and padding it
 	-- with `:p` keeps every downstream path comparison consistent.
 	local file = vim.fn.fnamemodify(args.file, ":p")
-	local gpg_path = utils.get_gpg_path(file)
+	local note_path = utils.resolve_note_file(file)
 
-	-- Force filetype detection based on the name without .gpg
-	local base = file:gsub("%.gpg$", "")
+	-- Force filetype detection based on the name without the note extension
+	local base = utils.strip_extension(file)
 	vim.bo[bufnr].filetype = vim.filetype.match({ filename = base })
 
 	if is_ignored(file) then
@@ -97,8 +97,8 @@ function M.on_read(args)
 		return
 	end
 
-	-- If the .gpg file doesn't exist, it's new, just open it
-	if not utils.file_has_content(gpg_path) then
+	-- If the encrypted note doesn't exist, it's new, just open it
+	if not utils.file_has_content(note_path) then
 		-- Read file - the regular way - into buffer
 		vim.cmd("silent edit " .. vim.fn.fnameescape(file))
 		vim.bo[bufnr].modifiable = true
@@ -108,7 +108,7 @@ function M.on_read(args)
 		return
 	end
 
-	if not is_armored_gpg(gpg_path) then
+	if not is_armored_gpg(note_path) then
 		read_regular_file(bufnr, file)
 		return
 	end
@@ -118,7 +118,7 @@ function M.on_read(args)
 	vim.b[bufnr].decrypting = true
 	vim.api.nvim_exec_autocmds("BufReadPre", { buffer = bufnr, modeline = false })
 
-	crypto.decrypt_to_buffer(gpg_path, bufnr, function(result)
+	crypto.decrypt_to_buffer(note_path, bufnr, function(result)
 		if result.code ~= 0 then
 			local err = (result.stderr and result.stderr ~= "") and result.stderr
 				or "decryption failed with no error given"
@@ -142,7 +142,7 @@ function M.on_write(args)
 	local crypto = require("memo.crypto")
 	local message = require("memo.message")
 
-	-- Normalize to an absolute path so `file ~= gpg_path` and the buffer rename
+	-- Normalize to an absolute path so `file ~= note_path` and the buffer rename
 	-- behave the same whether the buffer was opened relative or absolute.
 	local file = vim.fn.fnamemodify(args.file, ":p")
 
@@ -155,7 +155,9 @@ function M.on_write(args)
 		return
 	end
 
-	local gpg_path = utils.get_gpg_path(file)
+	-- A note written with the other extension keeps it, so an existing note is
+	-- never split in two.
+	local note_path = utils.resolve_note_file(file)
 	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
 	local current_hash = vim.fn.sha256(table.concat(lines, "\n"))
@@ -167,7 +169,7 @@ function M.on_write(args)
 	end
 	vim.api.nvim_exec_autocmds("BufWritePre", { buffer = bufnr, modeline = false })
 
-	local result = crypto.encrypt_from_stdin(gpg_path, lines, bufnr)
+	local result = crypto.encrypt_from_stdin(note_path, lines, bufnr)
 
 	if result.code ~= 0 then
 		-- Defer: an ERROR-level vim.notify raises inside an autocmd, which
@@ -177,12 +179,12 @@ function M.on_write(args)
 		return
 	end
 
-	if file ~= gpg_path then
-		-- If saving a plain text file for the first time, delete the unencrypted original and change the buffer to the new .gpg path.
+	if file ~= note_path then
+		-- If saving a plain text file for the first time, delete the unencrypted original and change the buffer to the encrypted path.
 		if utils.file_exists(file) then
 			vim.fn.delete(file)
 		end
-		vim.api.nvim_buf_set_name(bufnr, gpg_path)
+		vim.api.nvim_buf_set_name(bufnr, note_path)
 	end
 
 	prepare_buffer_for_edit(bufnr)
