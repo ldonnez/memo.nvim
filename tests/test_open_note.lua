@@ -23,7 +23,6 @@ describe("open_note", function()
 
 		teardown(function()
 			helpers.cleanup_test_env()
-			helpers.kill_gpg_agent()
 		end)
 
 		it("opens an existing note", function()

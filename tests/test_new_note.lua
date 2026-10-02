@@ -33,7 +33,6 @@ describe("new_note", function()
 
 	teardown(function()
 		helpers.cleanup_test_env()
-		helpers.kill_gpg_agent()
 	end)
 
 	before_each(function()

@@ -174,11 +174,14 @@ function M.cache_gpg_password(password)
 	return vim.system(cmd):wait()
 end
 
+--- Stops the daemons gpg started for the test homedir, keyboxd included. It has
+--- to happen before the homedir goes away: gpgconf finds a running agent through
+--- its socket, which lives in there.
 function M.kill_gpg_agent()
 	local cmd = {
 		"gpgconf",
 		"--kill",
-		"gpg-agent",
+		"all",
 	}
 
 	return vim.system(cmd):wait()
@@ -202,6 +205,7 @@ function M.setup_test_env()
 end
 
 function M.cleanup_test_env()
+	M.kill_gpg_agent()
 	vim.fn.delete(vim.env.HOME, "rf")
 end
 
