@@ -1,9 +1,11 @@
 local gpg = require("memo.gpg")
 local message = require("memo.message")
+local utils = require("memo.utils")
 
 local M = {}
 
 local NO_PASSPHRASE = "the passphrase was not given"
+local DECRYPT_FAILED = "Decryption failed: %s"
 
 ---@param path string
 ---@param input string[]
@@ -74,19 +76,6 @@ local function append_to_buffer(bufnr, lines, state)
 	vim.bo[bufnr].modified = false
 end
 
---- Reports that decryption never started and drops the buffer. Leaving it in
---- place would freeze it: `modifiable` stays false and nothing would reset it.
---- @param bufnr integer
---- @param reason string
-local function report_no_passphrase(bufnr, reason)
-	message.defer_error("Decryption failed: %s", reason)
-	vim.schedule(function()
-		if vim.api.nvim_buf_is_valid(bufnr) then
-			vim.api.nvim_buf_delete(bufnr, { force = true })
-		end
-	end)
-end
-
 --- Streams a decrypt command into a buffer as its output arrives.
 --- @param bufnr integer the buffer handle to write into
 --- @param on_exit fun(result: vim.SystemCompleted)
@@ -144,7 +133,7 @@ function M.decrypt_to_buffer(path, bufnr, on_exit)
 		local passphrase = gpg.get_symmetric_passphrase(path, bufnr)
 
 		if not passphrase then
-			report_no_passphrase(bufnr, NO_PASSPHRASE)
+			utils.drop_buffer_with_error(bufnr, DECRYPT_FAILED:format(NO_PASSPHRASE))
 			return nil
 		end
 
@@ -163,7 +152,7 @@ function M.decrypt_to_buffer(path, bufnr, on_exit)
 	end)
 
 	if not obj then
-		report_no_passphrase(bufnr, "could not authenticate")
+		utils.drop_buffer_with_error(bufnr, DECRYPT_FAILED:format("could not authenticate"))
 	end
 
 	return obj

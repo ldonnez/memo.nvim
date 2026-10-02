@@ -170,4 +170,18 @@ function M.load_plugin(import_name, plugin_name)
 	return mod
 end
 
+--- Reports why something failed and throws the buffer away. Leaving a buffer in
+--- place after a failure tends to freeze it: `modifiable` stays false and
+--- nothing would reset it.
+--- @param bufnr integer
+--- @param message string
+function M.drop_buffer_with_error(bufnr, message)
+	require("memo.message").defer_error("%s", message)
+	vim.schedule(function()
+		if vim.api.nvim_buf_is_valid(bufnr) then
+			vim.api.nvim_buf_delete(bufnr, { force = true })
+		end
+	end)
+end
+
 return M

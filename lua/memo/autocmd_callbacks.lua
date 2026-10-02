@@ -82,7 +82,6 @@ function M.on_read(args)
 	local bufnr = args.buf
 	local utils = require("memo.utils")
 	local crypto = require("memo.crypto")
-	local message = require("memo.message")
 
 	-- Normalize to an absolute path: `args.file` can be relative and padding it
 	-- with `:p` keeps every downstream path comparison consistent.
@@ -121,9 +120,10 @@ function M.on_read(args)
 
 	crypto.decrypt_to_buffer(gpg_path, bufnr, function(result)
 		if result.code ~= 0 then
-			vim.api.nvim_buf_delete(bufnr, { force = true })
-			local err = (result.stderr and result.stderr ~= "") and result.stderr or "Decryption failed"
-			message.error("%s", err)
+			local err = (result.stderr and result.stderr ~= "") and result.stderr
+				or "decryption failed with no error given"
+			utils.drop_buffer_with_error(bufnr, err)
+
 			return
 		end
 
