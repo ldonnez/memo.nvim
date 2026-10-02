@@ -1,6 +1,6 @@
 # memo.nvim
 
-Seamless Neovim interface for [memo](https://github.com/ldonnez/memo), a CLI-based notes system with transparent GPG encryption. Create, read, and update encrypted files without leaving your editor, and keep your notes in sync with git.
+Seamless Neovim interface for [memo](https://github.com/ldonnez/memo), a CLI-based notes system with transparent GPG encryption. Create, read, and update encrypted files without leaving your editor.
 
 - Transparent encryption: `.gpg` files in your notes directory are decrypted into the buffer and re-encrypted on write; plaintext never touches disk.
 - Encrypted scratch buffers for throwaway, sensitive content.
@@ -31,15 +31,30 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
   init = function()
     vim.g.memo_notes_dir = "~/my-notes-dir" -- default: ~/notes
     vim.g.memo_scratch_dir = "~/.local/state/memo-scratch" -- default: stdpath("data")/memo-scratch
+    vim.g.memo_default_capture_file = "journal.md.gpg" -- default: inbox.md.gpg
   end,
   keys = {
     {
       mode = { "n", "v" },
       "<leader>mc",
       function()
-        require("memo").capture({ capture_file = "inbox.md.gpg" })
+        require("memo").capture({
+          target_header = "# " .. os.date("%Y-%m-%d"),
+          header_padding = 1,
+        })
       end,
       desc = "Memo: Capture to braindump",
+    },
+    {
+      "<leader>mo",
+      function()
+        require("memo").open({
+          window = {
+            split = "vsplit",
+          },
+        })
+      end,
+      desc = "Memo: Open default capture file",
     },
     {
       "<leader>ms",
@@ -47,13 +62,6 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
         require("memo").scratch("horizontal")
       end,
       desc = "Memo: Scratch horizontal",
-    },
-    {
-      "<leader>mS",
-      function()
-        require("memo").save_as_note()
-      end,
-      desc = "Memo: Save as note",
     },
     {
       "<leader>mv",
@@ -70,6 +78,28 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
       desc = "Memo: Scratch tab",
     },
     {
+      "<leader>mp",
+      function()
+        require("memo.pickers.fzf_lua").scratch_files_picker()
+      end,
+      desc = "Memo: Scratch files",
+    },
+    {
+      "<leader>mw",
+      function()
+        require("memo.pickers.fzf_lua").cwd_scratch_files_picker()
+      end,
+      desc = "Memo: Cwd Scratch files",
+    },
+    {
+      mode = { "n", "v" },
+      "<leader>mS",
+      function()
+        require("memo").save_as_note()
+      end,
+      desc = "Memo: Save as note",
+    },
+    {
       "<leader>mf",
       function()
         require("memo.pickers.fzf_lua").files_picker()
@@ -77,15 +107,24 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
       desc = "Memo: Files",
     },
     {
-      "<leader>mp",
+      mode = { "n", "v" },
+      "<leader>mn",
       function()
-        require("memo.pickers.fzf_lua").scratch_files_picker()
+        require("memo").new_note({
+          window = { split = "split" },
+        })
       end,
-      desc = "Memo: Scratch files",
+      desc = "Memo: New note",
     },
   },
 }
 ```
+
+Every mapping is optional, drop the ones you do not want.
+`g:memo_default_capture_file` is what ties the two together: `<leader>mc`
+captures into that note, under a `target_header` for the day, and
+`<leader>mo` opens the very same note. The three pickers need
+[fzf-lua](https://github.com/ibhagwan/fzf-lua).
 
 ### vim.pack
 
@@ -94,22 +133,30 @@ Set configuration before loading the plugin.
 ```lua
 vim.g.memo_notes_dir = "~/my-notes-dir" -- default: ~/notes
 vim.g.memo_scratch_dir = "~/.local/state/memo-scratch" -- default: stdpath("data")/memo-scratch
+vim.g.memo_default_capture_file = "journal.md.gpg" -- default: inbox.md.gpg
 
 vim.pack.add({
   { src = "https://github.com/ldonnez/memo.nvim", version = vim.version.range("*") },
 })
 
 vim.keymap.set({ "n", "v" }, "<leader>mc", function()
-   require("memo").capture({ capture_file = "inbox.md.gpg" })
+  require("memo").capture({
+    target_header = "# " .. os.date("%Y-%m-%d"),
+    header_padding = 1,
+  })
 end, { desc = "Memo: Capture to braindump" })
+
+vim.keymap.set("n", "<leader>mo", function()
+  require("memo").open({
+    window = {
+      split = "vsplit",
+    },
+  })
+end, { desc = "Memo: Open default capture file" })
 
 vim.keymap.set("n", "<leader>ms", function()
   require("memo").scratch("horizontal")
 end, { desc = "Memo: Scratch horizontal" })
-
-vim.keymap.set("n", "<leader>mS", function()
-  require("memo").save_as_note()
-end, { desc = "Memo: Save as note" })
 
 vim.keymap.set("n", "<leader>mv", function()
   require("memo").scratch("vertical")
@@ -119,13 +166,27 @@ vim.keymap.set("n", "<leader>mt", function()
   require("memo").scratch("tab")
 end, { desc = "Memo: Scratch tab" })
 
+vim.keymap.set("n", "<leader>mp", function()
+  require("memo.pickers.fzf_lua").scratch_files_picker()
+end, { desc = "Memo: Scratch files" })
+
+vim.keymap.set("n", "<leader>mw", function()
+  require("memo.pickers.fzf_lua").cwd_scratch_files_picker()
+end, { desc = "Memo: Cwd Scratch files" })
+
+vim.keymap.set({ "n", "v" }, "<leader>mS", function()
+  require("memo").save_as_note()
+end, { desc = "Memo: Save as note" })
+
 vim.keymap.set("n", "<leader>mf", function()
   require("memo.pickers.fzf_lua").files_picker()
 end, { desc = "Memo: Files" })
 
-vim.keymap.set("n", "<leader>mp", function()
-  require("memo.pickers.fzf_lua").scratch_files_picker()
-end, { desc = "Memo: Scratch files" })
+vim.keymap.set({ "n", "v" }, "<leader>mn", function()
+  require("memo").new_note({
+    window = { split = "split" },
+  })
+end, { desc = "Memo: New note" })
 ```
 
 ## Configuration
@@ -159,9 +220,47 @@ the one `require("memo").capture()` writes to when no `capture_file` is
 given. A path relative to `<notes_dir>`, with or without the `.gpg`
 extension. Default: `inbox.md.gpg`.
 
+The default, a single inbox at the top of the notes directory:
+
+```lua
+vim.g.memo_default_capture_file = "inbox.gpg"
+```
+
+A subdirectory keeps captures out of the way, and the extension is optional:
+
 ```lua
 vim.g.memo_default_capture_file = "quick/inbox.gpg"
 ```
+
+The first capture creates the note and any missing parent directories;
+`:Memo` reports an error until then, since there is nothing to open yet.
+
+Read the default back with `:Memo` or `require("memo").open()`:
+
+```lua
+vim.keymap.set("n", "<leader>mo", function()
+  require("memo").open()
+end, { desc = "Memo: Open the default capture file" })
+```
+
+Pair it with `target_header` and one note becomes a dated journal, with
+`<leader>mc` writing to it and `:Memo` opening it:
+
+```lua
+vim.g.memo_default_capture_file = "journal.md.gpg"
+```
+
+```lua
+vim.keymap.set({ "n", "v" }, "<leader>mc", function()
+  require("memo").capture({
+    target_header = "# " .. os.date("%Y-%m-%d"),
+    header_padding = 1,
+  })
+end, { desc = "Memo: Capture to today" })
+```
+
+This is only the fallback: `require("memo").capture({ capture_file = ... })`
+and `:MemoNewNote <path>` still take an explicit path and ignore the default.
 
 ### `g:memo_ignore_patterns`
 
@@ -190,16 +289,16 @@ vim.g.memo_ignore_patterns = {
 
 ## Commands
 
-| Command             | Description                                        |
-| ------------------- | -------------------------------------------------- |
-| `:Memo`             | Open the default capture file.                     |
-| `:MemoScratch`      | Open a new encrypted scratch buffer.               |
-| `:MemoNewNote`      | Create a new encrypted note in the notes dir.      |
-| `:MemoScratchFiles` | Browse and open encrypted scratch files.           |
+| Command                | Description                                        |
+| ---------------------- | -------------------------------------------------- |
+| `:Memo`                | Open the default capture file.                     |
+| `:MemoScratch`         | Open a new encrypted scratch buffer.               |
+| `:MemoNewNote`         | Create a new encrypted note in the notes dir.      |
+| `:MemoScratchFiles`    | Browse and open encrypted scratch files.           |
 | `:MemoScratchFilesCwd` | Browse and open scratch files for the current dir. |
-| `:MemoSaveAsNote`   | Save the buffer or selection as an encrypted note. |
-| `:MemoFiles`        | Browse and open files in the notes directory.      |
-| `:MemoSync`         | Sync the git backend (`memo sync git`).            |
+| `:MemoSaveAsNote`      | Save the buffer or selection as an encrypted note. |
+| `:MemoFiles`           | Browse and open files in the notes directory.      |
+| `:MemoSync`            | Sync the git backend (`memo sync git`).            |
 
 ## Features
 
@@ -221,19 +320,14 @@ A note encrypted symmetrically, with `gpg --symmetric` instead of a key, opens
 without needing a key in the keyring:
 
 - Opening one asks for the passphrase of that file, e.g. `GPG Passphrase for
-  note inbox.md.gpg (symmetric):`.
+note inbox.md.gpg (symmetric):`.
 - Writing it back encrypts it with the same passphrase, so it stays
   symmetric instead of being re-encrypted to your key. The passphrase is kept
   in the buffer, so it is asked for once per buffer rather than once per write.
 - Reading and writing them goes through `memo encrypt --symmetric` and
   `memo decrypt`, so a note is exactly what the CLI writes. The passphrase is
-  handed over in the child process environment, not on the command line. This
-  needs a memo release with `--symmetric`; older versions cannot open these
-  notes here.
+  handed over in the child process environment, not on the command line.
 - A wrong passphrase reports a decryption failure and the buffer is dropped.
-- Dismissing the prompt does the same, and never falls back to your key: a
-  passphrase note is not rewritten as a key-encrypted one. Retry and answer
-  the prompt.
 - The passphrase lives in `b:memo_symmetric_passphrase` for the life of the
   buffer. Avoid `:mksession` with `sessionoptions` containing `globals`, which
   would write it out.
@@ -300,7 +394,7 @@ Turn any buffer into a note in your notes directory with `:MemoSaveAsNote` (or `
 - A visual selection is detected automatically and saves only the selected lines.
 
 ```lua
-vim.keymap.set({"n", "v"}, "<leader>msn", function()
+vim.keymap.set({"n", "v"}, "<leader>mS", function()
   require("memo").save_as_note()
 end, { desc = "Memo: Save buffer as note" })
 ```
@@ -329,8 +423,7 @@ require("memo").open()
 ```
 
 A path that is missing, outside `<notes_dir>` or does not exist reports an
-error instead of opening an empty buffer. `:MemoFiles` remains the way to
-browse for a path.
+error instead of opening an empty buffer.
 
 ### Create a new note
 
@@ -349,7 +442,6 @@ Start an empty encrypted note with `:MemoNewNote` (or
   has nowhere to insert, so the selection becomes the whole note.
 - Missing parent directories are created. An existing note is only replaced
   after you confirm the overwrite.
-- The note is written (and therefore encrypted) immediately, so it shows up in
   `:MemoFiles` right away.
 
 A template can be passed to prefill the note. Templates accept `os.date`
