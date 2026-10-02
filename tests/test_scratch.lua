@@ -23,18 +23,24 @@ describe("scratch", function()
 		local scratch_dir = "/tmp/memo-scratch"
 
 		it("matches a valid scratch file", function()
+			local path = scratch_dir .. "/_home_user_project-20260920T012345-a1b2c3.asc"
+
+			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), true)
+		end)
+
+		it("matches a scratch file written with the other extension", function()
 			local path = scratch_dir .. "/_home_user_project-20260920T012345-a1b2c3.gpg"
 
 			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), true)
 		end)
 
 		it("matches scratch files with percent characters in cwd key", function()
-			local path = scratch_dir .. "/%home%user%project-20260920T012345-a1b2c3.gpg"
+			local path = scratch_dir .. "/%home%user%project-20260920T012345-a1b2c3.asc"
 
 			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), true)
 		end)
 
-		it("rejects a regular gpg file", function()
+		it("rejects a regular note file", function()
 			local path = scratch_dir .. "/important.gpg"
 
 			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), false)
@@ -52,7 +58,7 @@ describe("scratch", function()
 			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), false)
 		end)
 
-		it("rejects a non-gpg file", function()
+		it("rejects a file without a note extension", function()
 			local path = scratch_dir .. "/_home_user_project-20260920T012345-a1b2c3.md"
 
 			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), false)
@@ -83,17 +89,17 @@ describe("scratch", function()
 		end
 
 		it("decodes the cwd key into a readable path", function()
-			local name = "%Users%dev%project-20260920T012345-a1b2c3.gpg"
+			local name = "%Users%dev%project-20260920T012345-a1b2c3.asc"
 
 			MiniTest.expect.equality(
 				require("memo.scratch").display_scratch(name),
-				"/Users/dev/project-20260920T012345-a1b2c3.gpg"
+				"/Users/dev/project-20260920T012345-a1b2c3.asc"
 			)
 		end)
 
 		it("round-trips to the real filename", function()
 			local names = {
-				"%Users%dev%project-20260920T012345-a1b2c3.gpg",
+				"%Users%dev%project-20260920T012345-a1b2c3.asc",
 				"my-project-20260920T012345-a1b2c3.gpg",
 				"%tmp%memo-scratch-20260920T023456-deadbe.gpg",
 			}
@@ -104,7 +110,7 @@ describe("scratch", function()
 		end)
 
 		it("passes through names that are not scratch files", function()
-			local name = "important.gpg"
+			local name = "important.asc"
 
 			MiniTest.expect.equality(require("memo.scratch").display_scratch(name), name)
 			MiniTest.expect.equality(require("memo.scratch").filename_from_display(name), name)
@@ -125,7 +131,7 @@ describe("scratch", function()
 
         local dir = '/tmp/memo-cwd-scratch'
         local prefix = require('memo.scratch').cwd_key() .. '-'
-        vim.fn.writefile({}, dir .. '/' .. prefix .. '20260920T012345-a1b2c3.gpg')
+        vim.fn.writefile({}, dir .. '/' .. prefix .. '20260920T012345-a1b2c3.asc')
         vim.fn.writefile({}, dir .. '/' .. prefix .. '20260920T023456-deadbe.gpg')
       ]])
 		end)
@@ -135,7 +141,7 @@ describe("scratch", function()
 			local files = child.lua_get("M.files_for_cwd()")
 
 			MiniTest.expect.equality(files, {
-				"/tmp/memo-cwd-scratch/" .. prefix .. "20260920T012345-a1b2c3.gpg",
+				"/tmp/memo-cwd-scratch/" .. prefix .. "20260920T012345-a1b2c3.asc",
 				"/tmp/memo-cwd-scratch/" .. prefix .. "20260920T023456-deadbe.gpg",
 			})
 		end)
@@ -144,16 +150,16 @@ describe("scratch", function()
 			child.lua([[
         local dir = '/tmp/memo-cwd-scratch'
         local prefix = require('memo.scratch').cwd_key() .. '-'
-        vim.fn.writefile({}, dir .. '/zzz-20260920T012345-a1b2c4.gpg')
-        vim.fn.writefile({}, dir .. '/' .. prefix .. '20260920T012345-xyz123.gpg')
-        vim.fn.mkdir(dir .. '/' .. prefix .. '20260920T012345-feedcd.gpg')
+        vim.fn.writefile({}, dir .. '/zzz-20260920T012345-a1b2c4.asc')
+        vim.fn.writefile({}, dir .. '/' .. prefix .. '20260920T012345-xyz123.asc')
+        vim.fn.mkdir(dir .. '/' .. prefix .. '20260920T012345-feedcd.asc')
       ]])
 
 			local prefix = child.lua_get("require('memo.scratch').cwd_key() .. '-'")
 			local files = child.lua_get("M.files_for_cwd()")
 
 			MiniTest.expect.equality(files, {
-				"/tmp/memo-cwd-scratch/" .. prefix .. "20260920T012345-a1b2c3.gpg",
+				"/tmp/memo-cwd-scratch/" .. prefix .. "20260920T012345-a1b2c3.asc",
 				"/tmp/memo-cwd-scratch/" .. prefix .. "20260920T023456-deadbe.gpg",
 			})
 		end)
@@ -176,7 +182,7 @@ describe("scratch", function()
 			local name = child.api.nvim_buf_get_name(buffer)
 
 			MiniTest.expect.equality(vim.startswith(name, vim.fn.stdpath("data") .. "/memo-scratch/"), true)
-			MiniTest.expect.equality(vim.fn.fnamemodify(name, ":e"), "gpg")
+			MiniTest.expect.equality(vim.fn.fnamemodify(name, ":e"), "asc")
 		end)
 
 		it("uses vim.g.memo_scratch_dir when set", function()
@@ -191,7 +197,7 @@ describe("scratch", function()
 			local name = child.api.nvim_buf_get_name(buffer)
 
 			MiniTest.expect.equality(vim.startswith(name, vim.env.HOME .. "/memo-custom-scratch/"), true)
-			MiniTest.expect.equality(vim.fn.fnamemodify(name, ":e"), "gpg")
+			MiniTest.expect.equality(vim.fn.fnamemodify(name, ":e"), "asc")
 		end)
 
 		it("names the scratch file with the cwd path and a timestamp", function()
@@ -200,7 +206,7 @@ describe("scratch", function()
 			local name = child.api.nvim_buf_get_name(0)
 
 			MiniTest.expect.equality(name:find(cwd_key() .. "-", 1, true) ~= nil, true)
-			MiniTest.expect.equality(name:match("T%d%d%d%d%d%d%-%x%x%x%x%x%x%.gpg$") ~= nil, true)
+			MiniTest.expect.equality(name:match("T%d%d%d%d%d%d%-%x%x%x%x%x%x%.asc$") ~= nil, true)
 		end)
 
 		it("opens in a new tab when direction is tab", function()
@@ -350,7 +356,7 @@ describe("scratch", function()
 			MiniTest.expect.equality(child.fn.filereadable(name), 0)
 		end)
 
-		it("does not delete unrelated gpg files in scratch dir", function()
+		it("does not delete unrelated note files in scratch dir", function()
 			local scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
 			local encrypted = vim.fs.joinpath(scratch_dir, "important.gpg")
 
@@ -388,7 +394,7 @@ describe("scratch", function()
 			child.lua("vim.fn.input = function() return 'ideas' end")
 			child.cmd("MemoSaveAsNote")
 
-			local note = vim.env.NOTES_DIR .. "/ideas.gpg"
+			local note = vim.env.NOTES_DIR .. "/ideas.asc"
 			MiniTest.expect.equality(child.fn.filereadable(note), 1)
 			MiniTest.expect.equality(child.api.nvim_buf_is_valid(scratch_buf), true)
 			MiniTest.expect.equality(child.fn.filereadable(scratch), 1)
@@ -399,13 +405,13 @@ describe("scratch", function()
 			MiniTest.expect.equality(result.stdout:find("Scratch to note") ~= nil, true)
 		end)
 
-		it("respects the typed extension and appends .gpg", function()
+		it("respects the typed name and appends the note extension", function()
 			child.cmd("MemoScratch")
 			child.type_keys("i", "content", "<Esc>")
 			child.lua("vim.fn.input = function() return 'ideas.md' end")
 			child.cmd("MemoSaveAsNote")
 
-			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/ideas.md.gpg"), 1)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/ideas.md.asc"), 1)
 		end)
 
 		it("saves a regular note buffer as a note and keeps it open", function()
@@ -415,7 +421,7 @@ describe("scratch", function()
 			child.lua("vim.fn.input = function() return 'cloned' end")
 			child.cmd("MemoSaveAsNote")
 
-			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/cloned.gpg"), 1)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/cloned.asc"), 1)
 			local buf = child.api.nvim_get_current_buf()
 			MiniTest.expect.equality(child.api.nvim_buf_is_valid(buf), true)
 		end)
@@ -460,7 +466,7 @@ describe("scratch", function()
 			child.lua("vim.fn.input = function() return 'password-note' end")
 			child.cmd("MemoSaveAsNote")
 
-			local note = vim.env.NOTES_DIR .. "/password-note.gpg"
+			local note = vim.env.NOTES_DIR .. "/password-note.asc"
 			MiniTest.expect.equality(child.fn.filereadable(note), 1)
 			MiniTest.expect.equality(child.api.nvim_buf_is_valid(scratch_buf), true)
 

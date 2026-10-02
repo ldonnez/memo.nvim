@@ -29,7 +29,7 @@ describe("open_note", function()
 			local note = vim.env.NOTES_DIR .. "/existing.md.gpg"
 			helpers.encrypt_file(note, "Decrypted content\n")
 
-			MiniTest.expect.equality(child.lua_get([[ M.open({ path = "existing.md" }) ]]), true)
+			MiniTest.expect.equality(child.lua_get([[ M.open({ path = "existing.md.gpg" }) ]]), true)
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), note)
 
 			-- Decryption is async, so the buffer is empty for a moment.
@@ -49,12 +49,28 @@ describe("open_note", function()
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), note)
 		end)
 
+		it("opens a note by its .asc path", function()
+			local note = vim.env.NOTES_DIR .. "/by-asc.asc"
+			helpers.encrypt_file(note, "By asc\n")
+
+			MiniTest.expect.equality(child.lua_get([[ M.open({ path = "by-asc.asc" }) ]]), true)
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), note)
+		end)
+
+		it("finds a note written with the other extension", function()
+			local note = vim.env.NOTES_DIR .. "/legacy.md.gpg"
+			helpers.encrypt_file(note, "Legacy\n")
+
+			MiniTest.expect.equality(child.lua_get([[ M.open({ path = "legacy.md.gpg" }) ]]), true)
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), note)
+		end)
+
 		it("opens a note nested in a subdirectory", function()
 			local note = vim.env.NOTES_DIR .. "/journals/2026-01-01.md.gpg"
 			vim.fn.mkdir(vim.env.NOTES_DIR .. "/journals", "p")
 			helpers.encrypt_file(note, "Journal entry\n")
 
-			MiniTest.expect.equality(child.lua_get([[ M.open({ path = "journals/2026-01-01.md" }) ]]), true)
+			MiniTest.expect.equality(child.lua_get([[ M.open({ path = "journals/2026-01-01.md.gpg" }) ]]), true)
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), note)
 		end)
 
@@ -64,7 +80,7 @@ describe("open_note", function()
 			local wins = #child.api.nvim_list_wins()
 
 			MiniTest.expect.equality(
-				child.lua_get([[ M.open({ path = "split.md", window = { split = "vsplit" } }) ]]),
+				child.lua_get([[ M.open({ path = "split.md.gpg", window = { split = "vsplit" } }) ]]),
 				true
 			)
 
@@ -77,17 +93,17 @@ describe("open_note", function()
 
 			local wins = #child.api.nvim_list_wins()
 
-			MiniTest.expect.equality(child.lua_get([[ M.open({ path = "current.md" }) ]]), true)
+			MiniTest.expect.equality(child.lua_get([[ M.open({ path = "current.md.gpg" }) ]]), true)
 			MiniTest.expect.equality(#child.api.nvim_list_wins(), wins)
 		end)
 
 		it("reuses the buffer when the note is already open", function()
 			helpers.encrypt_file(vim.env.NOTES_DIR .. "/reused.md.gpg", "Reused\n")
 
-			child.lua_get([[ M.open({ path = "reused.md" }) ]])
+			child.lua_get([[ M.open({ path = "reused.md.gpg" }) ]])
 			local bufnr = child.api.nvim_get_current_buf()
 
-			MiniTest.expect.equality(child.lua_get([[ M.open({ path = "reused.md" }) ]]), true)
+			MiniTest.expect.equality(child.lua_get([[ M.open({ path = "reused.md.gpg" }) ]]), true)
 			MiniTest.expect.equality(child.api.nvim_get_current_buf(), bufnr)
 		end)
 

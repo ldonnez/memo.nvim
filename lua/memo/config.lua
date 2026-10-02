@@ -2,6 +2,8 @@
 ---@field notes_dir string
 ---@field scratch_dir string
 ---@field capture_file string
+---@field extension string
+---@field supported_extensions string[]
 ---@field ignore_patterns string[]
 
 ---@class MemoConfigModule
@@ -9,6 +11,8 @@
 ---@field notes_dir string
 ---@field scratch_dir string
 ---@field capture_file string
+---@field extension string
+---@field supported_extensions string[]
 ---@field ignore_patterns string[]
 
 local M = {}
@@ -18,8 +22,13 @@ local options
 ---@type MemoConfig
 local DEFAULTS = {
 	notes_dir = vim.fn.expand("~/notes") --[[@as string]],
-	capture_file = "inbox.md.gpg",
+	capture_file = "inbox.md.asc",
 	scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch"),
+	-- Extensions a note can carry. New notes are written with `extension`, while
+	-- every entry here is read and written as it is, so notes written by older
+	-- versions of memo keep their name.
+	supported_extensions = { "asc", "gpg" },
+	extension = "asc",
 	ignore_patterns = {
 		"**/.git/**",
 		"**/.githooks/**",
@@ -43,6 +52,10 @@ function M.setup()
 
 	if vim.g.memo_default_capture_file ~= nil then
 		options.capture_file = vim.g.memo_default_capture_file
+	end
+
+	if vim.g.memo_extension ~= nil then
+		options.extension = vim.g.memo_extension
 	end
 
 	if vim.g.memo_ignore_patterns ~= nil then

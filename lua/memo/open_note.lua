@@ -23,22 +23,22 @@ function M.open(opts)
 		return false
 	end
 
-	local gpg_path = utils.resolve_note_path(path)
+	local note_path = utils.resolve_note_path(path)
 
-	if not gpg_path then
+	if not note_path then
 		message.error("MemoOpen: note path must be inside the notes directory (%s)", config.notes_dir)
 		return false
 	end
 
 	-- Checked here because `:edit` on a missing file succeeds and leaves an
 	-- empty buffer, which would look like an empty note.
-	if not utils.file_exists(gpg_path) then
-		message.error("MemoOpen: note not found (%s)", gpg_path)
+	if not utils.file_exists(note_path) then
+		message.error("MemoOpen: note not found (%s)", note_path)
 		return false
 	end
 
 	window.open(open_opts.window)
-	vim.cmd("silent edit " .. vim.fn.fnameescape(gpg_path))
+	vim.cmd("silent edit " .. vim.fn.fnameescape(note_path))
 
 	return true
 end

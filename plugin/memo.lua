@@ -19,7 +19,7 @@ end
 local abs_notes = vim.fn.fnamemodify(notes_dir, ":p"):gsub("/$", "")
 local abs_scratch = vim.fn.fnamemodify(scratch_dir, ":p"):gsub("/$", "")
 
--- Notes may live in subdirectories (e.g. `journals/2026-01-01.md.gpg`), so the
+-- Notes may live in subdirectories (e.g. `journals/2026-01-01.md.asc`), so the
 -- notes pattern has to match recursively.
 local patterns = { abs_notes .. "/**" }
 
@@ -49,7 +49,9 @@ vim.api.nvim_create_autocmd("BufWriteCmd", {
 
 vim.api.nvim_create_autocmd("BufDelete", {
 	group = GROUP,
-	pattern = abs_scratch .. "/*.gpg",
+	-- Scratch files carry the configured note extension, but a file written
+	-- before it changed must be cleaned up as well.
+	pattern = abs_scratch .. "/*",
 	callback = function(args)
 		local path = vim.api.nvim_buf_get_name(args.buf)
 		local scratch = require("memo.scratch")

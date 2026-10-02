@@ -4,7 +4,7 @@ local message = require("memo.message")
 local M = {}
 
 ---Saves the current buffer as a note in the notes dir.
----Prompts for the note path (defaulting to `<notes_dir>/<name>.gpg`) so it is
+---Prompts for the note path (defaulting to `<notes_dir>/<name>.asc`) so it is
 ---clear where the note will be stored, encrypts the buffer contents and writes
 ---it there. A relative path is resolved against `<notes_dir>`; the resolved
 ---path must stay inside `<notes_dir>`. The buffer is left open afterward.
@@ -19,7 +19,7 @@ function M.create(opts)
 	local notes_dir = config.notes_dir
 	local current = vim.api.nvim_buf_get_name(bufnr)
 
-	local default_name = vim.fn.fnamemodify(current, ":t"):gsub("%.gpg$", "")
+	local default_name = utils.strip_extension(vim.fn.fnamemodify(current, ":t"))
 	local default_path = utils.build_note_path(default_name)
 	local target = utils.prompt_note_path(default_path, "MemoSaveAsNote")
 
@@ -27,31 +27,31 @@ function M.create(opts)
 		return false
 	end
 
-	local gpg_path = utils.resolve_note_path(target)
+	local note_path = utils.resolve_note_path(target)
 
-	if not gpg_path then
+	if not note_path then
 		message.error("MemoSaveAsNote: note path must be inside the notes directory (%s)", notes_dir)
 		return false
 	end
 
-	if utils.file_exists(gpg_path) and not utils.confirm("Note already exists. Overwrite?", "MemoSaveAsNote") then
+	if utils.file_exists(note_path) and not utils.confirm("Note already exists. Overwrite?", "MemoSaveAsNote") then
 		return false
 	end
 
-	if not utils.ensure_directories(vim.fs.dirname(gpg_path)) then
+	if not utils.ensure_directories(vim.fs.dirname(note_path)) then
 		return false
 	end
 
 	local lines = utils.resolve_selection(bufnr, opts) or vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
-	local result = crypto.encrypt_from_stdin(gpg_path, lines)
+	local result = crypto.encrypt_from_stdin(note_path, lines)
 
 	if result.code ~= 0 then
 		message.error("MemoSaveAsNote: encryption failed")
 		return false
 	end
 
-	message.info("Saved note: %s", gpg_path)
+	message.info("Saved note: %s", note_path)
 	return true
 end
 

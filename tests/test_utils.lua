@@ -1,4 +1,5 @@
 local helpers = require("tests.helpers")
+local cleanup_test_env = require("tests.helpers").cleanup_test_env
 local child = helpers.new_child_neovim()
 
 describe("utils", function()
@@ -14,17 +15,35 @@ describe("utils", function()
 		child.stop()
 	end)
 
-	describe("get_gpg_path", function()
-		it("adds .gpg to given path", function()
-			local result = util.get_gpg_path("test.md")
-
-			MiniTest.expect.equality(result, "test.md.gpg")
+	describe("get_extension", function()
+		it("returns asc", function()
+			MiniTest.expect.equality(util.get_extension("test.md.asc"), "asc")
 		end)
 
-		it("does not add .gpg when path already is .gpg", function()
-			local result = util.get_gpg_path("test.md.gpg")
+		it("returns gpg", function()
+			MiniTest.expect.equality(util.get_extension("test.md.gpg"), "gpg")
+		end)
 
-			MiniTest.expect.equality(result, "test.md.gpg")
+		it("returns nil for another extension", function()
+			MiniTest.expect.equality(util.get_extension("test.md"), nil)
+		end)
+
+		it("returns nil for no extension", function()
+			MiniTest.expect.equality(util.get_extension("test"), nil)
+		end)
+	end)
+
+	describe("strip_extension", function()
+		it("strips .asc", function()
+			MiniTest.expect.equality(util.strip_extension("test.md.asc"), "test.md")
+		end)
+
+		it("strips .gpg", function()
+			MiniTest.expect.equality(util.strip_extension("test.md.gpg"), "test.md")
+		end)
+
+		it("keeps another extension", function()
+			MiniTest.expect.equality(util.strip_extension("test.md"), "test.md")
 		end)
 	end)
 
@@ -113,7 +132,11 @@ describe("utils", function()
 		end)
 
 		it("builds a full path inside the notes dir", function()
-			MiniTest.expect.equality(util.build_note_path("note.md"), notes_dir .. "/note.md.gpg")
+			MiniTest.expect.equality(util.build_note_path("note.md"), notes_dir .. "/note.md.asc")
+		end)
+
+		it("keeps a name that already ends with .asc", function()
+			MiniTest.expect.equality(util.build_note_path("note.md.asc"), notes_dir .. "/note.md.asc")
 		end)
 
 		it("keeps a name that already ends with .gpg", function()
@@ -123,7 +146,7 @@ describe("utils", function()
 		it("builds a full path for a nested name", function()
 			MiniTest.expect.equality(
 				util.build_note_path("journals/2026-01-01.md"),
-				notes_dir .. "/journals/2026-01-01.md.gpg"
+				notes_dir .. "/journals/2026-01-01.md.asc"
 			)
 		end)
 	end)
@@ -133,6 +156,7 @@ describe("utils", function()
 		local original_notes_dir
 
 		before_each(function()
+			cleanup_test_env()
 			original_notes_dir = vim.g.memo_notes_dir
 			vim.g.memo_notes_dir = notes_dir
 			require("memo.config").setup()
@@ -144,7 +168,11 @@ describe("utils", function()
 		end)
 
 		it("resolves a relative path against the notes dir", function()
-			MiniTest.expect.equality(util.resolve_note_path("note.md"), notes_dir .. "/note.md.gpg")
+			MiniTest.expect.equality(util.resolve_note_path("note.md"), notes_dir .. "/note.md.asc")
+		end)
+
+		it("keeps a relative path that already ends with .asc", function()
+			MiniTest.expect.equality(util.resolve_note_path("note.md.asc"), notes_dir .. "/note.md.asc")
 		end)
 
 		it("keeps a relative path that already ends with .gpg", function()
@@ -154,12 +182,12 @@ describe("utils", function()
 		it("resolves a nested relative path", function()
 			MiniTest.expect.equality(
 				util.resolve_note_path("journals/2026-01-01.md"),
-				notes_dir .. "/journals/2026-01-01.md.gpg"
+				notes_dir .. "/journals/2026-01-01.md.asc"
 			)
 		end)
 
 		it("keeps an absolute path inside the notes dir", function()
-			MiniTest.expect.equality(util.resolve_note_path(notes_dir .. "/abs.md"), notes_dir .. "/abs.md.gpg")
+			MiniTest.expect.equality(util.resolve_note_path(notes_dir .. "/abs.md"), notes_dir .. "/abs.md.asc")
 		end)
 
 		it("expands a leading tilde", function()
@@ -167,7 +195,7 @@ describe("utils", function()
 			vim.g.memo_notes_dir = home_notes
 			require("memo.config").setup()
 
-			MiniTest.expect.equality(util.resolve_note_path("~/memo_test_notes/t.md"), home_notes .. "/t.md.gpg")
+			MiniTest.expect.equality(util.resolve_note_path("~/memo_test_notes/t.md"), home_notes .. "/t.md.asc")
 		end)
 
 		it("returns nil for a relative path escaping the notes dir", function()
@@ -189,6 +217,16 @@ describe("utils", function()
 		it("returns nil for an empty path", function()
 			MiniTest.expect.equality(util.resolve_note_path(""), nil)
 		end)
+
+		it("uses default extension when no extension provided and no legacy file", function()
+			MiniTest.expect.equality(util.resolve_note_path("legacy.md"), notes_dir .. "/legacy.md.asc")
+		end)
+
+		it("does not fall back when user provides non-existent extension", function()
+			helpers.write_file(notes_dir .. "/note.md.gpg", "secret")
+			-- User provides .asc but only .gpg exists - no fallback, returns .asc path
+			MiniTest.expect.equality(util.resolve_note_path("note.md.asc"), notes_dir .. "/note.md.asc")
+		end)
 	end)
 
 	describe("prompt_note_path", function()
@@ -198,7 +236,7 @@ describe("utils", function()
 				return "typed.md"
 			end
 
-			MiniTest.expect.equality(util.prompt_note_path("/tmp/notes/default.md.gpg", "MemoTest"), "typed.md")
+			MiniTest.expect.equality(util.prompt_note_path("/tmp/notes/default.md.asc", "MemoTest"), "typed.md")
 
 			vim.fn.input = original_input
 		end)
@@ -210,8 +248,8 @@ describe("utils", function()
 			end
 
 			MiniTest.expect.equality(
-				util.prompt_note_path("/tmp/notes/default.md.gpg", "MemoTest"),
-				"/tmp/notes/default.md.gpg"
+				util.prompt_note_path("/tmp/notes/default.md.asc", "MemoTest"),
+				"/tmp/notes/default.md.asc"
 			)
 
 			vim.fn.input = original_input
@@ -223,7 +261,7 @@ describe("utils", function()
 				return ""
 			end
 
-			MiniTest.expect.equality(util.prompt_note_path("/tmp/notes/default.md.gpg", "MemoTest"), nil)
+			MiniTest.expect.equality(util.prompt_note_path("/tmp/notes/default.md.asc", "MemoTest"), nil)
 
 			vim.fn.input = original_input
 		end)

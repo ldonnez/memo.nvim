@@ -34,7 +34,7 @@ describe("save_as_note", function()
 			child.lua("vim.fn.input = function() return 'plain' end")
 			child.cmd("MemoSaveAsNote")
 
-			local note = vim.env.NOTES_DIR .. "/plain.gpg"
+			local note = vim.env.NOTES_DIR .. "/plain.asc"
 			MiniTest.expect.equality(child.fn.filereadable(note), 1)
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), source)
 
@@ -52,12 +52,12 @@ describe("save_as_note", function()
 			child.lua("vim.fn.input = function() return 'imported' end")
 			child.cmd("MemoSaveAsNote")
 
-			local note = vim.env.NOTES_DIR .. "/imported.gpg"
+			local note = vim.env.NOTES_DIR .. "/imported.asc"
 			MiniTest.expect.equality(child.fn.filereadable(note), 1)
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), source)
 		end)
 
-		it("defaults to the notes dir path with .gpg", function()
+		it("defaults to the notes dir path with the note extension", function()
 			local note = vim.env.NOTES_DIR .. "/my-note.md.gpg"
 			child.cmd("edit " .. vim.fn.fnameescape(note))
 			child.type_keys("i", "content", "<Esc>")
@@ -71,8 +71,8 @@ describe("save_as_note", function()
       ]])
 			child.cmd("MemoSaveAsNote")
 
-			local saved = vim.env.NOTES_DIR .. "/my-note.md.gpg"
-			MiniTest.expect.equality(child.g.input_default, vim.env.NOTES_DIR .. "/my-note.md.gpg")
+			local saved = vim.env.NOTES_DIR .. "/my-note.md.asc"
+			MiniTest.expect.equality(child.g.input_default, vim.env.NOTES_DIR .. "/my-note.md.asc")
 			MiniTest.expect.equality(child.fn.filereadable(saved), 1)
 
 			local result = helpers.decrypt_file(saved)
@@ -81,7 +81,7 @@ describe("save_as_note", function()
 			MiniTest.expect.equality(result.stdout:find("content") ~= nil, true)
 		end)
 
-		it("defaults to the notes dir path for non-gpg buffers", function()
+		it("defaults to the notes dir path for buffers outside the notes dir", function()
 			local path = vim.env.HOME .. "/todo.txt"
 			child.cmd("edit " .. vim.fn.fnameescape(path))
 
@@ -94,8 +94,8 @@ describe("save_as_note", function()
       ]])
 			child.cmd("MemoSaveAsNote")
 
-			MiniTest.expect.equality(child.g.input_default, vim.env.NOTES_DIR .. "/todo.txt.gpg")
-			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/todo.txt.gpg"), 1)
+			MiniTest.expect.equality(child.g.input_default, vim.env.NOTES_DIR .. "/todo.txt.asc")
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/todo.txt.asc"), 1)
 		end)
 
 		it("creates subdirectories for nested note names", function()
@@ -106,7 +106,7 @@ describe("save_as_note", function()
 			child.lua("vim.fn.input = function() return 'projects/idea' end")
 			child.cmd("MemoSaveAsNote")
 
-			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/projects/idea.gpg"), 1)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/projects/idea.asc"), 1)
 		end)
 
 		it("aborts when the note name is empty", function()
@@ -127,7 +127,7 @@ describe("save_as_note", function()
 			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
 			child.type_keys("i", "new content", "<Esc>")
 
-			child.lua("vim.fn.input = function() return 'occupied' end")
+			child.lua("vim.fn.input = function() return 'occupied.gpg' end")
 			child.lua("vim.fn.confirm = function() return 2 end")
 			local result = child.lua_get("{ pcall(function() return M.create() end) }")
 
@@ -147,12 +147,15 @@ describe("save_as_note", function()
 			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
 			child.type_keys("i", "new content", "<Esc>")
 
-			child.lua("vim.fn.input = function() return 'occupied' end")
+			child.lua("vim.fn.input = function() return 'occupied.gpg' end")
 			child.lua("vim.fn.confirm = function() return 1 end")
 			local result = child.lua_get("{ pcall(function() return M.create() end) }")
 
 			MiniTest.expect.equality(result[1], true)
 			MiniTest.expect.equality(result[2], true)
+
+			-- The note is written where it already is, not next to it.
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/occupied.asc"), 0)
 
 			local decrypted = helpers.decrypt_file(existing)
 			MiniTest.expect.equality(decrypted.code, 0)
@@ -198,7 +201,7 @@ describe("save_as_note", function()
 			child.lua("vim.fn.input = function() return 'visual' end")
 			child.type_keys(":", "MemoSaveAsNote", "<CR>")
 
-			local note = vim.env.NOTES_DIR .. "/visual.gpg"
+			local note = vim.env.NOTES_DIR .. "/visual.asc"
 			MiniTest.expect.equality(child.fn.filereadable(note), 1)
 
 			local result = helpers.decrypt_file(note)
@@ -227,7 +230,7 @@ describe("save_as_note", function()
 			MiniTest.expect.equality(result[1], true)
 			MiniTest.expect.equality(result[2], true)
 
-			local note = vim.env.NOTES_DIR .. "/direct.gpg"
+			local note = vim.env.NOTES_DIR .. "/direct.asc"
 			MiniTest.expect.equality(child.fn.filereadable(note), 1)
 
 			local decrypted = helpers.decrypt_file(note)
@@ -255,7 +258,7 @@ describe("save_as_note", function()
 			child.lua("vim.fn.input = function() return 'visual-lines' end")
 			child.type_keys(":", "MemoSaveAsNote", "<CR>")
 
-			local note = vim.env.NOTES_DIR .. "/visual-lines.gpg"
+			local note = vim.env.NOTES_DIR .. "/visual-lines.asc"
 			MiniTest.expect.equality(child.fn.filereadable(note), 1)
 
 			local result = helpers.decrypt_file(note)
@@ -293,7 +296,7 @@ describe("save_as_note", function()
 			child.lua("vim.fn.input = function() return 'pw-plain' end")
 			child.cmd("MemoSaveAsNote")
 
-			local note = vim.env.NOTES_DIR .. "/pw-plain.gpg"
+			local note = vim.env.NOTES_DIR .. "/pw-plain.asc"
 			MiniTest.expect.equality(child.fn.filereadable(note), 1)
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), vim.env.NOTES_DIR .. "/random.txt")
 
