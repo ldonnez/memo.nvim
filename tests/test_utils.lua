@@ -398,4 +398,37 @@ describe("utils", function()
 			MiniTest.expect.equality(lines, { "delta epsilon" })
 		end)
 	end)
+
+	describe("drop_buffer_with_error", function()
+		it("shows the message and throws the buffer away", function()
+			local bufnr = child.lua([[
+				local bufnr = vim.api.nvim_create_buf(true, false)
+				vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "content" })
+
+				M.drop_buffer_with_error(bufnr, "Decryption failed: nope")
+
+				return bufnr
+			]])
+
+			child.wait_until(function()
+				return not child.api.nvim_buf_is_valid(bufnr)
+			end)
+
+			MiniTest.expect.equality(child.api.nvim_buf_is_valid(bufnr), false)
+			MiniTest.expect.equality(child.cmd_capture("messages"), "Decryption failed: nope")
+		end)
+
+		it("shows the message even when the buffer is already gone", function()
+			local result = child.lua([[
+				local bufnr = vim.api.nvim_create_buf(true, false)
+				vim.api.nvim_buf_delete(bufnr, { force = true })
+
+				M.drop_buffer_with_error(bufnr, "Decryption failed: nope")
+
+				return "survived"
+			]])
+
+			MiniTest.expect.equality(result, "survived")
+		end)
+	end)
 end)
