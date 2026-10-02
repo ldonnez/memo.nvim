@@ -33,7 +33,6 @@ describe("capture", function()
 
 		teardown(function()
 			helpers.cleanup_test_env()
-			helpers.kill_gpg_agent()
 		end)
 
 		it("uses the default capture file when none is given", function()
@@ -516,7 +515,6 @@ describe("capture", function()
 
 		teardown(function()
 			helpers.cleanup_test_env()
-			helpers.kill_gpg_agent()
 		end)
 
 		it("captures text when capture file does not exists and gpg key has password", function()

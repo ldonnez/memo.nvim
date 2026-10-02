@@ -24,7 +24,6 @@ describe("save_as_note", function()
 
 		teardown(function()
 			helpers.cleanup_test_env()
-			helpers.kill_gpg_agent()
 		end)
 
 		it("saves a plain buffer in the notes dir and keeps it open", function()

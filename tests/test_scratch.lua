@@ -167,7 +167,6 @@ describe("scratch", function()
 
 		teardown(function()
 			helpers.cleanup_test_env()
-			helpers.kill_gpg_agent()
 		end)
 
 		it("opens a scratch buffer named as a real file in the nvim data dir", function()
@@ -432,7 +431,6 @@ describe("scratch", function()
 
 		teardown(function()
 			helpers.cleanup_test_env()
-			helpers.kill_gpg_agent()
 		end)
 
 		it("encrypts scratch content when gpg key has password", function()

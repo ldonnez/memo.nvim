@@ -24,7 +24,6 @@ describe("crypto", function()
 
 		teardown(function()
 			helpers.cleanup_test_env()
-			helpers.kill_gpg_agent()
 		end)
 
 		it("correctly encrypts from stdin", function()
@@ -335,7 +334,6 @@ describe("crypto", function()
 
 		teardown(function()
 			helpers.cleanup_test_env()
-			helpers.kill_gpg_agent()
 		end)
 
 		it("decrypts a symmetric file into a buffer and keeps the passphrase", function()
