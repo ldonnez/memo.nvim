@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.14.0](https://github.com/ldonnez/memo.nvim/compare/v0.13.0...v0.14.0) (2026-10-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* write to .asc extension instead of .gpg
+
+### Features
+
+* add memo version check ([aad54c7](https://github.com/ldonnez/memo.nvim/commit/aad54c73ef96b7f89d0e7bb494814297d0615907))
+* open notes that are encrypted with a passphrase ([14cd61d](https://github.com/ldonnez/memo.nvim/commit/14cd61d87689252c46dc9c3cf14b515db89b3759))
+
+
+### Bug Fixes
+
+* do not allow empty or directory paths ([5bfa8d5](https://github.com/ldonnez/memo.nvim/commit/5bfa8d5620b96a607eb60e834b13a3e21a2bf476))
+* silently returns "" for invalid paths (empty, absolute, traversal) ([3d2343c](https://github.com/ldonnez/memo.nvim/commit/3d2343c67572ea460c495b088bb85aa276a8418a))
+
+
+### Code Refactoring
+
+* write to .asc extension instead of .gpg ([3725cac](https://github.com/ldonnez/memo.nvim/commit/3725cac0650c2f928659ed862c3c2aec901b2792))
+
 ## [0.13.0](https://github.com/ldonnez/memo.nvim/compare/v0.12.3...v0.13.0) (2026-09-29)
 
 
