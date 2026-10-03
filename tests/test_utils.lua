@@ -166,6 +166,25 @@ describe("utils", function()
 			MiniTest.expect.equality(util.build_note_path(""), "")
 		end)
 	end)
+
+	describe("resolve_note_file", function()
+		it("returns empty string for empty path", function()
+			MiniTest.expect.equality(util.resolve_note_file(""), "")
+		end)
+
+		it("returns empty string for directory path (ends with /)", function()
+			MiniTest.expect.equality(util.resolve_note_file("notes/"), "")
+			MiniTest.expect.equality(util.resolve_note_file("/home/user/notes/"), "")
+		end)
+
+		it("returns path with extension when supported extension provided", function()
+			MiniTest.expect.equality(util.resolve_note_file("note.md.asc"), "note.md.asc")
+			MiniTest.expect.equality(util.resolve_note_file("note.md.gpg"), "note.md.gpg")
+		end)
+
+		it("appends default extension when no extension provided", function()
+			MiniTest.expect.equality(util.resolve_note_file("note.md"), "note.md.asc")
+		end)
 	end)
 
 	describe("resolve_note_path", function()
