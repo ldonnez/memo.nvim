@@ -576,14 +576,15 @@ Scratch files are stored under the obfuscated name `<encoded-cwd>-<timestamp>-<h
 ## Development
 
 - `make dev` — install dev dependencies (mini.nvim, memo, emmylua_check) and symlink the plugin into `~/.local/share/nvim/site/pack/local/opt`.
-- `make test` — run the test suite (mini.test). Requires `make deps/memo` and `~/.local/bin` on `PATH`.
-- `make test_file FILE=tests/test_gpg.lua` — run a single test file.
+- `make test` — run the test suite locally (requires `make deps/memo` and `~/.local/bin` on `PATH`).
+- `make test_file FILE=tests/test_gpg.lua` — run a single test file locally.
 - `make emmylua_check` — Lua type check.
 
 ### Docker workflow (recommended)
 
 - `make docker/build-image` — build the CI-like image.
 - `make docker/shell` — drop into a shell with the project mounted at `/opt` and your local `memo` binary available.
+- `make docker/test` / `make docker/test_file` — run tests inside the Docker image directly.
 
 ## License
 
