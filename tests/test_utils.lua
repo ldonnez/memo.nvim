@@ -149,6 +149,23 @@ describe("utils", function()
 				notes_dir .. "/journals/2026-01-01.md.asc"
 			)
 		end)
+
+		it("blocks path traversal with ..", function()
+			MiniTest.expect.equality(util.build_note_path("../escape.md"), "")
+		end)
+
+		it("blocks absolute paths", function()
+			MiniTest.expect.equality(util.build_note_path("/etc/passwd"), "")
+		end)
+
+		it("blocks path traversal with nested ..", function()
+			MiniTest.expect.equality(util.build_note_path("subdir/../../escape.md"), "")
+		end)
+
+		it("returns empty string for empty name", function()
+			MiniTest.expect.equality(util.build_note_path(""), "")
+		end)
+	end)
 	end)
 
 	describe("resolve_note_path", function()
