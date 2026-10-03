@@ -24,13 +24,21 @@ end
 ---@param path string
 ---@return string
 function M.resolve_note_file(path)
-	local had_extension = path ~= "" and M.get_extension(path) ~= nil
+	if path == "" then
+		require("memo.message").error("resolve_note_file: empty path")
+		return ""
+	end
+
+	if path:sub(-1) == "/" then
+		require("memo.message").error("resolve_note_file: path is a directory")
+		return ""
+	end
+
+	local had_extension = M.get_extension(path) ~= nil
 	if had_extension then
-		-- Provided a supported extension, respect it
 		return path
 	end
 
-	-- No supported extension: add default
 	return path .. "." .. require("memo.config").extension
 end
 
