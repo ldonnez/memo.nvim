@@ -5,6 +5,7 @@
 ---@field extension string
 ---@field supported_extensions string[]
 ---@field ignore_patterns string[]
+---@field minimum_memo_version string
 
 ---@class MemoConfigModule
 ---@field setup fun()
@@ -14,6 +15,7 @@
 ---@field extension string
 ---@field supported_extensions string[]
 ---@field ignore_patterns string[]
+---@field minimum_memo_version string
 
 local M = {}
 
@@ -37,6 +39,7 @@ local DEFAULTS = {
 		"**/.gitmodules",
 		"**/.ignore",
 	},
+	minimum_memo_version = "0.11.0",
 }
 
 function M.setup()
