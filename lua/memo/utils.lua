@@ -80,8 +80,25 @@ end
 ---@param name string note name, with or without an note extension
 ---@return string
 function M.build_note_path(name)
-	local path = require("memo.config").notes_dir .. "/" .. name
-	return M.resolve_note_file(path)
+	local notes_dir = require("memo.config").notes_dir
+
+	if name == "" then
+		return ""
+	end
+
+	if name:sub(1, 1) == "/" then
+		return ""
+	end
+
+	local path = notes_dir .. "/" .. name
+
+	local resolved = M.resolve_note_file(path)
+
+	if not M.is_in_dir(resolved, notes_dir) then
+		return ""
+	end
+
+	return resolved
 end
 
 ---Resolves a supplied note path to an absolute note path inside the notes
