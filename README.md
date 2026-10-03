@@ -16,7 +16,7 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo), a CLI-bas
 ## Requirements
 
 - Neovim >= 0.11
-- [memo](https://github.com/ldonnez/memo) CLI on your `PATH`, configured with a GPG key
+- [memo](https://github.com/ldonnez/memo) CLI >= 0.11.0 on your `PATH`, configured with a GPG key
 - Optional: [fzf-lua](https://github.com/ibhagwan/fzf-lua) for the pickers
 
 Check with `:checkhealth memo` to verify everything is set up correctly.
