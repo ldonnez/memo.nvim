@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.14.1](https://github.com/ldonnez/memo.nvim/compare/v0.14.0...v0.14.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* drop a trailing slash from the notes dir ([509a7a4](https://github.com/ldonnez/memo.nvim/commit/509a7a4b790cd6c36bfd35c27be5272bda88e641))
+* leaves directory in the notes dir to the directory handler ([91315a6](https://github.com/ldonnez/memo.nvim/commit/91315a678710151c70bcc4ef1c0c0fb7a433a465))
+* read back the configured note extension ([9ac483c](https://github.com/ldonnez/memo.nvim/commit/9ac483c92e54aa738137d0439bf870f033e5aa84))
+* reject an empty capture file ([74606a9](https://github.com/ldonnez/memo.nvim/commit/74606a9dd04f2ebef39d67698076faccc624d4b6))
+
 ## [0.14.0](https://github.com/ldonnez/memo.nvim/compare/v0.13.0...v0.14.0) (2026-10-03)
 
 
