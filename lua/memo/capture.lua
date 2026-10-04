@@ -118,8 +118,6 @@ local function append_capture(lines, config, bufnr)
 	local notes_dir = memo_config.notes_dir
 
 	local expanded = vim.fn.expand(notes_dir .. "/" .. config.capture_file) --[[@as string]]
-	-- The capture file may only exist with the other extension, e.g. an inbox
-	-- written by an older version of memo.
 	local file = utils.resolve_note_file(expanded)
 
 	if not utils.file_exists(file) then
@@ -158,8 +156,15 @@ function M.create(opts)
 	local config = vim.tbl_deep_extend("force", DEFAULTS, cfg) --[[@as CaptureConfig]]
 
 	-- Owned by the config module, so it is resolved here and `DEFAULTS` stays
-	-- a partial.
+	-- a partial. An empty value is rejected rather than resolved: `""` is
+	-- truthy in Lua, and it resolves to a path that only fails on write, with
+	-- the capture window already open.
 	config.capture_file = config.capture_file or memo_config.capture_file
+
+	if config.capture_file == "" then
+		message.error("MemoCapture: a capture file is required, or set g:memo_default_capture_file")
+		return
+	end
 
 	local capture_template = Template.new({ template = config.template })
 

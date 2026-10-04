@@ -41,6 +41,18 @@ describe("capture", function()
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), "capture://inbox.md.asc")
 		end)
 
+		it("refuses an empty capture file", function()
+			local before = child.api.nvim_list_bufs()
+
+			child.lua([[ M.create({ capture_file = "" }) ]])
+
+			MiniTest.expect.equality(child.api.nvim_list_bufs(), before)
+			MiniTest.expect.equality(
+				child.cmd_capture("messages"),
+				"MemoCapture: a capture file is required, or set g:memo_default_capture_file"
+			)
+		end)
+
 		it("appends to an inbox written with the other extension", function()
 			helpers.encrypt_file(vim.env.NOTES_DIR .. "/inbox.md.gpg", "Inbox\n")
 
