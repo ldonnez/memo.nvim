@@ -26,9 +26,9 @@ local DEFAULTS = {
 	notes_dir = vim.fn.expand("~/notes") --[[@as string]],
 	capture_file = "inbox.md.asc",
 	scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch"),
-	-- Extensions a note can carry. New notes are written with `extension`, while
-	-- every entry here is read and written as it is, so notes written by older
-	-- versions of memo keep their name.
+	-- Supported note extensions. New notes are written with `extension`, while
+	-- every entry here is read and written as it is.
+	-- The `extension` field joins this list in `setup`.
 	supported_extensions = { "asc", "gpg" },
 	extension = "asc",
 	ignore_patterns = {
@@ -59,6 +59,10 @@ function M.setup()
 
 	if vim.g.memo_extension ~= nil then
 		options.extension = vim.g.memo_extension
+	end
+
+	if not vim.tbl_contains(options.supported_extensions, options.extension) then
+		table.insert(options.supported_extensions, options.extension)
 	end
 
 	if vim.g.memo_ignore_patterns ~= nil then

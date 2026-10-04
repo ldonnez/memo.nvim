@@ -265,7 +265,8 @@ and `:MemoNewNote <path>` still take an explicit path and ignore the default.
 
 Extension used for new notes, new scratch buffers, and notes saved from a
 buffer whose path has no note extension yet. `.asc` (armored ASCII) and
-`.gpg` are both supported.
+`.gpg` are both read, and any other value is read as well, so the extension
+you pick is always recognized on the way back in.
 
 - Default: `asc`
 
@@ -275,9 +276,8 @@ vim.g.memo_extension = "gpg"
 
 An existing note always keeps its own extension, so notes created by an
 older version keep working: a `note.md.gpg` note opens, decrypts, and is
-written back to `note.md.gpg` even with the `asc` default. If the requested
-extension does not exist but the other one does, memo.nvim opens the one
-that is there.
+written back to `note.md.gpg` even with the `asc` default. The extension is
+appended once, so a note is never named `note.md.pgp.pgp`.
 
 Paths in `g:memo_default_capture_file` and note paths passed to
 `require("memo")` may include a note extension or omit it; when omitted,

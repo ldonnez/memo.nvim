@@ -186,6 +186,29 @@ describe("utils", function()
 		end)
 	end)
 
+	describe("resolve_note_file with a custom extension", function()
+		local original_extension
+
+		before_each(function()
+			original_extension = vim.g.memo_extension
+			vim.g.memo_extension = "pgp"
+			require("memo.config").setup()
+		end)
+
+		after_each(function()
+			vim.g.memo_extension = original_extension
+			require("memo.config").setup()
+		end)
+
+		it("appends the configured extension exactly once", function()
+			local once = util.resolve_note_file("note.md")
+
+			MiniTest.expect.equality(once, "note.md.pgp")
+			MiniTest.expect.equality(util.resolve_note_file(once), once)
+			MiniTest.expect.equality(util.get_extension(once), "pgp")
+		end)
+	end)
+
 	describe("resolve_note_path", function()
 		local notes_dir = "/tmp/memo_test_notes"
 		local original_notes_dir

@@ -112,6 +112,28 @@ describe("config", function()
 
 			MiniTest.expect.equality(result, { "asc", "gpg" })
 		end)
+
+		it("reads the extension new notes are written with", function()
+			child.lua([[
+        vim.g.memo_extension = "pgp"
+        M.setup()
+      ]])
+
+			local result = child.lua_get("M.supported_extensions")
+
+			MiniTest.expect.equality(result, { "asc", "gpg", "pgp" })
+		end)
+
+		it("does not repeat an extension it already reads", function()
+			child.lua([[
+        vim.g.memo_extension = "gpg"
+        M.setup()
+      ]])
+
+			local result = child.lua_get("M.supported_extensions")
+
+			MiniTest.expect.equality(result, { "asc", "gpg" })
+		end)
 	end)
 
 	describe("ignore_patterns", function()
