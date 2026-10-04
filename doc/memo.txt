@@ -1,5 +1,5 @@
 *memo.txt* Seamless Neovim interface for memo, a CLI-based encrypted notes system
-                              For NVIM v0.11.5    Last change: 2026 October 03
+                              For NVIM v0.11.5    Last change: 2026 October 04
 
 ==============================================================================
 Table of Contents                                     *memo-table-of-contents*
@@ -242,19 +242,18 @@ G:MEMO_DEFAULT_CAPTURE_FILE ~
 
 The note `:Memo` and `require("memo").open()` open when no path is given, and
 the one `require("memo").capture()` writes to when no `capture_file` is given.
-A path relative to `<notes_dir>`, with or without a note extension. Default:
-`inbox.md.asc`.
+A path relative to `<notes_dir>`, with or without a note extension.
 
-The default, a single inbox at the top of the notes directory:
+- Default: `inbox.md.asc`.
 
 >lua
-    vim.g.memo_default_capture_file = "inbox.asc"
+    vim.g.memo_default_capture_file = "inbox.md.asc"
 <
 
 A subdirectory keeps captures out of the way, and the extension is optional:
 
 >lua
-    vim.g.memo_default_capture_file = "quick/inbox.asc"
+    vim.g.memo_default_capture_file = "quick/inbox.md.asc"
 <
 
 The first capture creates the note and any missing parent directories; `:Memo`
@@ -292,7 +291,8 @@ G:MEMO_EXTENSION ~
 
 Extension used for new notes, new scratch buffers, and notes saved from a
 buffer whose path has no note extension yet. `.asc` (armored ASCII) and `.gpg`
-are both supported.
+are both read, and any other value is read as well, so the extension you pick
+is always recognized on the way back in.
 
 - Default: `asc`
 
@@ -302,8 +302,8 @@ are both supported.
 
 An existing note always keeps its own extension, so notes created by an older
 version keep working: a `note.md.gpg` note opens, decrypts, and is written back
-to `note.md.gpg` even with the `asc` default. If the requested extension does
-not exist but the other one does, memo.nvim opens the one that is there.
+to `note.md.gpg` even with the `asc` default. The extension is appended once,
+so a note is never named `note.md.pgp.pgp`.
 
 Paths in `g:memo_default_capture_file` and note paths passed to
 `require("memo")` may include a note extension or omit it; when omitted,
