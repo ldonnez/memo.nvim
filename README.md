@@ -274,10 +274,8 @@ you pick is always recognized on the way back in.
 vim.g.memo_extension = "gpg"
 ```
 
-An existing note always keeps its own extension, so notes created by an
-older version keep working: a `note.md.gpg` note opens, decrypts, and is
-written back to `note.md.gpg` even with the `asc` default. The extension is
-appended once, so a note is never named `note.md.pgp.pgp`.
+An existing note always keeps its own extension. A `note.md.gpg` note opens, decrypts, and is
+written back to `note.md.gpg` even with the `asc` default.
 
 Paths in `g:memo_default_capture_file` and note paths passed to
 `require("memo")` may include a note extension or omit it; when omitted,
@@ -581,9 +579,9 @@ Scratch files are stored under the obfuscated name `<encoded-cwd>-<timestamp>-<h
 
 ### Docker workflow (recommended)
 
-- `make docker/build-image` — build the CI-like image.
+- `make docker/build-image` — build the image.
 - `make docker/shell` — drop into a shell with the project mounted at `/opt` and your local `memo` binary available.
-- `make docker/test` / `make docker/test_file` — run tests inside the Docker image directly.
+- `make docker/test` / `make docker/test_file FILE=tests/test_gpg.lua` — run tests inside the Docker image directly.
 
 ## License
 
