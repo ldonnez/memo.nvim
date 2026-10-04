@@ -19,6 +19,15 @@ local function is_ignored(path)
 	return false
 end
 
+---A directory is not a note: opening one asks for a listing, and resolving it
+---as a note would notify at ERROR level, which raises inside an autocmd and
+---aborts the read.
+---@param path string
+---@return boolean
+local function is_directory(path)
+	return vim.fn.isdirectory(path) == 1
+end
+
 --- @param bufnr integer
 local function prepare_buffer_for_edit(bufnr)
 	if not vim.api.nvim_buf_is_valid(bufnr) then
@@ -86,6 +95,11 @@ function M.on_read(args)
 	-- Normalize to an absolute path: `args.file` can be relative and padding it
 	-- with `:p` keeps every downstream path comparison consistent.
 	local file = vim.fn.fnamemodify(args.file, ":p")
+
+	if is_directory(file) then
+		return
+	end
+
 	local note_path = utils.resolve_note_file(file)
 
 	-- Force filetype detection based on the name without the note extension
@@ -145,6 +159,10 @@ function M.on_write(args)
 	-- Normalize to an absolute path so `file ~= note_path` and the buffer rename
 	-- behave the same whether the buffer was opened relative or absolute.
 	local file = vim.fn.fnamemodify(args.file, ":p")
+
+	if is_directory(file) then
+		return
+	end
 
 	if is_ignored(file) then
 		write_regular_file(bufnr)

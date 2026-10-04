@@ -312,6 +312,18 @@ describe("autocmd", function()
 		MiniTest.expect.equality(result.is_gpg, false)
 	end)
 
+	it("leaves a directory in the notes dir to the directory handler", function()
+		local dir = vim.env.NOTES_DIR .. "/journals"
+		vim.fn.mkdir(dir, "p")
+
+		-- `:edit` on a directory is a listing request, and resolving it as a note
+		-- notifies at ERROR level, which raises inside the autocmd.
+		local ok = pcall(child.cmd, "edit " .. dir)
+
+		MiniTest.expect.equality(ok, true)
+		MiniTest.expect.equality(child.cmd_capture("messages"):find("resolve_note_file", 1, true), nil)
+	end)
+
 	it("triggers decryption when opening a scratch .gpg file", function()
 		local scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
 		local encrypted = vim.fs.joinpath(scratch_dir, "test.gpg")
