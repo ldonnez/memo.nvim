@@ -49,6 +49,9 @@ function M.setup()
 		options.notes_dir = vim.g.memo_notes_dir
 	end
 
+	-- A trailing slash would double up in every path built from the notes dir.
+	options.notes_dir = options.notes_dir:gsub("/+$", "")
+
 	if vim.g.memo_scratch_dir ~= nil then
 		options.scratch_dir = vim.g.memo_scratch_dir
 	end

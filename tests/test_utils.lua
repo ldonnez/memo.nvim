@@ -285,6 +285,12 @@ describe("utils", function()
 			-- User provides .asc but only .gpg exists - no fallback, returns .asc path
 			MiniTest.expect.equality(util.resolve_note_path("note.md.asc"), notes_dir .. "/note.md.asc")
 		end)
+		it("drops a trailing slash from the notes dir", function()
+			vim.g.memo_notes_dir = notes_dir .. "/"
+			require("memo.config").setup()
+
+			MiniTest.expect.equality(util.resolve_note_path("note.md"), notes_dir .. "/note.md.asc")
+		end)
 	end)
 
 	describe("prompt_note_path", function()
