@@ -217,19 +217,18 @@ vim.g.memo_scratch_dir = "~/.local/state/memo-scratch"
 
 The note `:Memo` and `require("memo").open()` open when no path is given, and
 the one `require("memo").capture()` writes to when no `capture_file` is
-given. A path relative to `<notes_dir>`, with or without a note
-extension. Default: `inbox.md.asc`.
+given. A path relative to `<notes_dir>`, with or without a note extension.
 
-The default, a single inbox at the top of the notes directory:
+- Default: `inbox.md.asc`.
 
 ```lua
-vim.g.memo_default_capture_file = "inbox.asc"
+vim.g.memo_default_capture_file = "inbox.md.asc"
 ```
 
 A subdirectory keeps captures out of the way, and the extension is optional:
 
 ```lua
-vim.g.memo_default_capture_file = "quick/inbox.asc"
+vim.g.memo_default_capture_file = "quick/inbox.md.asc"
 ```
 
 The first capture creates the note and any missing parent directories;
