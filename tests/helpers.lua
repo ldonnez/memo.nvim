@@ -187,14 +187,22 @@ function M.kill_gpg_agent()
 	return vim.system(cmd):wait()
 end
 
+--- Directory the test env is rooted at. Never the developer's real `$HOME`.
+local TEST_HOME = "/tmp/memo.nvim"
+
+--- @return string
+local function test_home()
+	return vim.fn.resolve(TEST_HOME)
+end
+
 function M.setup_test_env()
-	local home = vim.fn.resolve("/tmp/memo.nvim")
+	local home = test_home()
 	local notes_dir = home .. "/notes"
 	local scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
 
 	vim.env.HOME = home
 	vim.env.GNUPGHOME = home .. "/.gnupg"
-	vim.env.NOTES_DIR = home .. "/notes"
+	vim.env.NOTES_DIR = notes_dir
 	vim.env.SCRATCH_DIR = scratch_dir
 
 	vim.fn.mkdir(home, "p")
@@ -206,7 +214,7 @@ end
 
 function M.cleanup_test_env()
 	M.kill_gpg_agent()
-	vim.fn.delete(vim.env.HOME, "rf")
+	vim.fn.delete(test_home(), "rf")
 end
 
 --- @param notes_dir string

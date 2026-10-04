@@ -1,5 +1,4 @@
 local helpers = require("tests.helpers")
-local cleanup_test_env = require("tests.helpers").cleanup_test_env
 local child = helpers.new_child_neovim()
 
 describe("utils", function()
@@ -192,14 +191,14 @@ describe("utils", function()
 		local original_notes_dir
 
 		before_each(function()
-			cleanup_test_env()
+			helpers.setup_test_env()
 			original_notes_dir = vim.g.memo_notes_dir
 			vim.g.memo_notes_dir = notes_dir
 			require("memo.config").setup()
 		end)
 
 		after_each(function()
-			vim.g.memo_notes_dir = original_notes_dir
+			helpers.cleanup_test_env()
 			require("memo.config").setup()
 		end)
 
