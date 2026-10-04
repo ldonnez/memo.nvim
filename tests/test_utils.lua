@@ -276,15 +276,16 @@ describe("utils", function()
 			MiniTest.expect.equality(util.resolve_note_path(""), nil)
 		end)
 
-		it("uses default extension when no extension provided and no legacy file", function()
-			MiniTest.expect.equality(util.resolve_note_path("legacy.md"), notes_dir .. "/legacy.md.asc")
+		it("uses the default extension when none is provided", function()
+			MiniTest.expect.equality(util.resolve_note_path("note.md"), notes_dir .. "/note.md.asc")
 		end)
 
-		it("does not fall back when user provides non-existent extension", function()
+		it("keeps the extension that was provided", function()
 			helpers.write_file(notes_dir .. "/note.md.gpg", "secret")
-			-- User provides .asc but only .gpg exists - no fallback, returns .asc path
+			-- The given extension wins, even when only the other one is on disk.
 			MiniTest.expect.equality(util.resolve_note_path("note.md.asc"), notes_dir .. "/note.md.asc")
 		end)
+
 		it("drops a trailing slash from the notes dir", function()
 			vim.g.memo_notes_dir = notes_dir .. "/"
 			require("memo.config").setup()

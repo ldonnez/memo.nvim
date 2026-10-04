@@ -173,8 +173,8 @@ function M.on_write(args)
 		return
 	end
 
-	-- A note written with the other extension keeps it, so an existing note is
-	-- never split in two.
+	-- A note that already carries a supported extension keeps it, so it is
+	-- written back to the file it was opened from.
 	local note_path = utils.resolve_note_file(file)
 	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 

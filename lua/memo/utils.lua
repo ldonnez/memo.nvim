@@ -111,9 +111,8 @@ end
 
 ---Resolves a supplied note path to an absolute note path inside the notes
 ---directory. Relative paths are resolved against the notes dir and `~` is
----expanded. An extension that is already there is kept, and a note that only
----exists with the other supported extension is found, so `note.md` reaches both
----`note.md.asc` and a legacy `note.md.gpg`.
+---expanded. A supported extension that is already there is kept, otherwise the
+---configured one is appended.
 ---@param path string
 ---@return string? note_path nil when the path is empty or escapes the notes dir
 function M.resolve_note_path(path)
