@@ -141,7 +141,7 @@ describe("gpg", function()
 		local result = child.lua([[
        M.unlock_key = function() return false end
 
-       return M.exec_with_gpg_auth({ "ls", "dummy.gpg" })
+       return M.run_with_key({ "ls", "dummy.gpg" })
         ]])
 
 		MiniTest.expect.equality(result, vim.NIL)
@@ -151,7 +151,7 @@ describe("gpg", function()
 		local result = child.lua([[
        M.unlock_key = function() return true end
 
-       return M.exec_with_gpg_auth({ "echo", "success_test" })
+       return M.run_with_key({ "echo", "success_test" }):wait()
         ]])
 
 		MiniTest.expect.equality(result.code, 0)
@@ -162,7 +162,7 @@ describe("gpg", function()
         M.unlock_key = function() return true end
 
         local cmd = { "sh", "-c", "echo 'forced error' >&2; exit 1" }
-        return M.exec_with_gpg_auth(cmd)
+        return M.run_with_key(cmd):wait()
     ]])
 
 		MiniTest.expect.equality(result.code, 1)
@@ -179,7 +179,7 @@ describe("gpg", function()
         local passphrase = ...
         local cmd = { "sh", "-c", 'printf %s "$' .. M.PASSPHRASE_ENV .. '"' }
 
-        return M.exec_with_passphrase(cmd, passphrase, { text = true }):wait()
+        return M.run_with_passphrase(cmd, passphrase, { text = true }):wait()
     ]],
 			{ passphrase }
 		)
@@ -196,7 +196,7 @@ describe("gpg", function()
 
 	it("keeps the caller's options when it adds the passphrase", function()
 		local result = child.lua([[
-        return M.exec_with_passphrase({ "cat" }, "any-pass", { stdin = { "payload" }, text = true }):wait()
+        return M.run_with_passphrase({ "cat" }, "any-pass", { stdin = { "payload" }, text = true }):wait()
     ]])
 
 		MiniTest.expect.equality(result.code, 0)
@@ -208,7 +208,7 @@ describe("gpg", function()
 		child.lua([[
         _G.called_with = nil
 
-        M.exec_with_passphrase({ "sh", "-c", "echo done" }, "pass", {}, function(obj)
+        M.run_with_passphrase({ "sh", "-c", "echo done" }, "pass", {}, function(obj)
           _G.called_with = obj.code
         end)
     ]])

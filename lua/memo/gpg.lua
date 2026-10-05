@@ -1,6 +1,6 @@
 local M = {}
 
---- Name of the environment variable exec_with_passphrase hands the passphrase over
+--- Name of the environment variable run_with_passphrase hands the passphrase over
 --- in, for a command that knows to read it from there.
 M.PASSPHRASE_ENV = "MEMO_NOTE_PASSPHRASE"
 local message = require("memo.message")
@@ -237,37 +237,31 @@ function M.get_file_key_ids(path)
 	return read_packets(path).key_ids
 end
 
---- Executes a GPG-related command after ensuring the session is authenticated.
+--- Runs a command for a note protected by a gpg key, unlocking the key first.
 --- We assume the last argument of a memo/gpg command is the file path.
 --- @param cmd string[] The command to run (e.g., {'memo', 'decrypt', 'path/to/file'})
 --- @param opts? vim.SystemOpts
 --- @param on_exit? fun(obj: vim.SystemCompleted) Optional callback for async execution
---- @overload fun(cmd: string[], opts?: vim.SystemOpts, on_exit: fun(obj: vim.SystemCompleted)): vim.SystemObj?
---- @overload fun(cmd: string[], opts?: vim.SystemOpts): vim.SystemCompleted?
---- @return vim.SystemObj|vim.SystemCompleted|nil
-function M.exec_with_gpg_auth(cmd, opts, on_exit)
+--- @return vim.SystemObj? nil when the user dismissed the prompt for a passphrase
+function M.run_with_key(cmd, opts, on_exit)
 	local target_path = cmd[#cmd] -- Assume last command param from cmd is file to be encrypted/decrypted
 
 	if not M.unlock_key(target_path) then
 		return nil
 	end
 
-	if on_exit then
-		return vim.system(cmd, opts, on_exit)
-	end
-
-	return vim.system(cmd, opts):wait()
+	return vim.system(cmd, opts, on_exit)
 end
 
---- Runs a command with the passphrase.
---- It passes it with PASSPHRASE_ENV, which keeps it out of the process list and off disk.
+--- Runs a command for a note protected by a passphrase, which it hands over with
+--- PASSPHRASE_ENV so the passphrase stays out of the process list and off disk.
 --- This works for memo and for a plain gpg call.
 --- @param cmd string[] The command to run.
 --- @param passphrase string
 --- @param opts? vim.SystemOpts
 --- @param on_exit? fun(obj: vim.SystemCompleted) Optional callback for async execution
 --- @return vim.SystemObj
-function M.exec_with_passphrase(cmd, passphrase, opts, on_exit)
+function M.run_with_passphrase(cmd, passphrase, opts, on_exit)
 	local all = vim.tbl_extend("force", opts or {}, { env = { [M.PASSPHRASE_ENV] = passphrase } })
 
 	return vim.system(cmd, all, on_exit)

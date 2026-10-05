@@ -141,7 +141,7 @@ describe("crypto", function()
         vim.api.nvim_win_set_buf(0, bufnr)
 
         -- We mock gpg call to return chunks
-        gpg.exec_with_gpg_auth = function(cmd, opts, on_exit)
+        gpg.run_with_key = function(cmd, opts, on_exit)
           opts.stdout(nil, "Line 1\nLi")
           opts.stdout(nil, "ne 2\nLine 3")
           opts.stdout(nil, "\n\n")
@@ -177,8 +177,8 @@ describe("crypto", function()
 			local gpg = require("memo.gpg")
 
 			-- Simulate an auth failure (e.g. the user aborted the prompt):
-			-- exec_with_gpg_auth returns nil without ever calling on_exit.
-			gpg.exec_with_gpg_auth = function()
+			-- run_with_key returns nil without ever calling on_exit.
+			gpg.run_with_key = function()
 				return nil
 			end
 
@@ -203,7 +203,7 @@ describe("crypto", function()
 			MiniTest.expect.equality(child.g.auth_cb_called, false)
 
 			child.wait_until(function()
-				return child.cmd_capture("messages") == "Decryption failed: could not authenticate"
+				return child.cmd_capture("messages") == "Decryption failed: the passphrase was not given"
 			end)
 		end)
 
@@ -218,7 +218,7 @@ describe("crypto", function()
 			-- Simulate the buffer being closed while the async decrypt is in
 			-- flight. The `settled` sentinel is scheduled after on_exit's inner
 			-- callback, so once it is set the guard has had its chance to run.
-			gpg.exec_with_gpg_auth = function(_, _, on_exit)
+			gpg.run_with_key = function(_, _, on_exit)
 				vim.g.exit_cb_called = false
 				vim.g.settled = false
 				vim.api.nvim_buf_delete(bufnr, { force = true })
