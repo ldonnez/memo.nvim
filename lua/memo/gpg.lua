@@ -17,25 +17,8 @@ local function is_key_unlocked(id)
 	return vim.system(cmd):wait().code == 0
 end
 
---- Check if a specific key ID exists in the local secret keyring
---- @param id string
---- @return boolean
-local function has_secret_key(id)
-	if not id or id == "" then
-		return false
-	end
-	-- We append a ! to the ID in GPG to force it to look for that exact ID
-	local obj = vim.system({
-		"gpg",
-		"--batch",
-		"--with-colons",
-		"--list-secret-keys",
-		id .. "!",
-	}):wait()
-	return obj.code == 0
-end
-
---- Get the user info for a specific key ID
+--- Get the user info for a key ID, so we know the local secret keyring holds it
+--- and how to call it.
 --- @param id string
 --- @return { uid: string, name?: string, email?: string }?
 local function get_key_info(id)
@@ -138,31 +121,22 @@ function M.unlock_key(target_path)
 	end
 
 	local target_id = nil
-	if #keyids > 0 then
-		for _, id in ipairs(keyids) do
-			if has_secret_key(id) then
-				target_id = id
-				break
-			end
-		end
-	end
+	local prompt_label = "default"
 
-	local prompt_label
-
-	if target_id then
-		local info = get_key_info(target_id)
+	for _, id in ipairs(keyids) do
+		local info = get_key_info(id)
 
 		if info then
+			target_id = id
+
 			if info.name and info.email then
-				prompt_label = string.format("%s <%s> (%s)", info.name, info.email, target_id)
+				prompt_label = string.format("%s <%s> (%s)", info.name, info.email, id)
 			else
-				prompt_label = string.format("%s (%s)", info.uid, target_id)
+				prompt_label = string.format("%s (%s)", info.uid, id)
 			end
-		else
-			prompt_label = "key " .. target_id
+
+			break
 		end
-	else
-		prompt_label = "default"
 	end
 
 	local pass = M.prompt_passphrase(prompt_label)
