@@ -183,19 +183,39 @@ local function cached_passphrase(bufnr)
 	return vim.b[bufnr].memo_symmetric_passphrase
 end
 
---- Whether a file is encrypted with a passphrase instead of a key. The agent
---- only caches key passphrases, so `memo decrypt` is told where the passphrase
---- is. A buffer that holds one counts as symmetric.
+--- Reads the packets of an encrypted note, from one `gpg --list-packets` run:
+--- whether it is encrypted with a passphrase instead of a key, and the keys it is
+--- encrypted to.
 --- @param path string
---- @return boolean
-function M.is_symmetric(path)
+--- @return { symmetric: boolean, key_ids: string[] }
+local function read_packets(path)
 	local obj = vim.system(
 		{ "gpg", "--batch", "--list-packets", "--pinentry-mode=loopback", "--no-tty", path },
 		{ text = true }
 	)
 		:wait()
 
-	return ((obj.stdout or "") .. (obj.stderr or "")):find("symkey enc packet", 1, true) ~= nil
+	-- The packets go to stdout, the recipient key IDs to stderr.
+	local stderr = obj.stderr or ""
+	local file = {
+		symmetric = ((obj.stdout or "") .. stderr):find("symkey enc packet", 1, true) ~= nil,
+		key_ids = {},
+	}
+
+	for id in stderr:gmatch("ID ([%w%d]+)") do
+		table.insert(file.key_ids, id:upper())
+	end
+
+	return file
+end
+
+--- Whether a file is encrypted with a passphrase instead of a key. The agent
+--- only caches key passphrases, so `memo decrypt` is told where the passphrase
+--- is. A buffer that holds one counts as symmetric.
+--- @param path string
+--- @return boolean
+function M.is_symmetric(path)
+	return read_packets(path).symmetric
 end
 
 --- The passphrase of a symmetrically encrypted file: the one the buffer already
@@ -228,17 +248,7 @@ end
 --- @param path string
 --- @return string[]
 function M.get_file_key_ids(path)
-	local cmd = { "gpg", "--batch", "--list-packets", "--no-tty", path }
-	local obj = vim.system(cmd, { text = true }):wait()
-
-	local ids = {}
-
-	-- gpg output for this often goes to stderr
-	for id in (obj.stderr or ""):gmatch("ID ([%w%d]+)") do
-		table.insert(ids, id:upper())
-	end
-
-	return ids
+	return read_packets(path).key_ids
 end
 
 --- Executes a GPG-related command after ensuring the session is authenticated.
