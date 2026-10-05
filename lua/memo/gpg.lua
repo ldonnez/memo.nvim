@@ -113,9 +113,11 @@ function M.prompt_passphrase(label)
 	return vim.fn.inputsecret("GPG Passphrase for " .. label .. ": ")
 end
 
+--- Makes sure gpg-agent holds a key the note can be read with, asking for a
+--- passphrase and caching it in gpg-agent when it does not.
 --- @param target_path string?
 --- @return boolean
-function M.get_gpg_passphrase(target_path)
+function M.unlock_key(target_path)
 	local keyids = {}
 
 	if target_path and require("memo.utils").file_exists(target_path) then
@@ -262,7 +264,7 @@ end
 function M.exec_with_gpg_auth(cmd, opts, on_exit)
 	local target_path = cmd[#cmd] -- Assume last command param from cmd is file to be encrypted/decrypted
 
-	if not M.get_gpg_passphrase(target_path) then
+	if not M.unlock_key(target_path) then
 		return nil
 	end
 

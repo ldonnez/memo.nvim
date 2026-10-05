@@ -34,7 +34,7 @@ describe("gpg", function()
           return password
         end
 
-        return M.get_gpg_passphrase()
+        return M.unlock_key()
     ]],
 			{ password }
 		)
@@ -56,7 +56,7 @@ describe("gpg", function()
           return password
         end
 
-        return M.get_gpg_passphrase()
+        return M.unlock_key()
     ]],
 			{ "wrong-password" }
 		)
@@ -128,7 +128,7 @@ describe("gpg", function()
             return password
         end
 
-        M.get_gpg_passphrase(encrypted)
+        M.unlock_key(encrypted)
         return captured_prompt
        ]],
 			{ password, encrypted }
@@ -139,7 +139,7 @@ describe("gpg", function()
 
 	it("aborts execution when passphrase authentication fails", function()
 		local result = child.lua([[
-       M.get_gpg_passphrase = function() return false end
+       M.unlock_key = function() return false end
 
        return M.exec_with_gpg_auth({ "ls", "dummy.gpg" })
         ]])
@@ -149,7 +149,7 @@ describe("gpg", function()
 
 	it("returns command output on successful auth and execution", function()
 		local result = child.lua([[
-       M.get_gpg_passphrase = function() return true end
+       M.unlock_key = function() return true end
 
        return M.exec_with_gpg_auth({ "echo", "success_test" })
         ]])
@@ -159,7 +159,7 @@ describe("gpg", function()
 
 	it("returns the failing result without notifying; callers own error reporting", function()
 		local result = child.lua([[
-        M.get_gpg_passphrase = function() return true end
+        M.unlock_key = function() return true end
 
         local cmd = { "sh", "-c", "echo 'forced error' >&2; exit 1" }
         return M.exec_with_gpg_auth(cmd)

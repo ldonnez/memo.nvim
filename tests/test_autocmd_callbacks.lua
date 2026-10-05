@@ -500,7 +500,7 @@ describe("autocmd", function()
 
 		child.lua([[
 			local gpg = require("memo.gpg")
-			gpg.get_gpg_passphrase = function()
+			gpg.unlock_key = function()
 				return false
 			end
 		]])
