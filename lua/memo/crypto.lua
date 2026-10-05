@@ -13,55 +13,7 @@ local DECRYPT_FAILED = "Decryption failed: %s"
 ---is written back the way it was encrypted
 ---@return vim.SystemCompleted
 function M.encrypt_from_stdin(path, input, bufnr)
-	if gpg.is_symmetric(path) then
-		local passphrase = gpg.get_symmetric_passphrase(path, bufnr)
-
-		if not passphrase then
-			-- A result the caller can still read .code from, for a command that
-			-- never ran.
-			return { code = 1, signal = 0, stdout = "", stderr = ("Not writing %s: %s"):format(path, NO_PASSPHRASE) }
-		end
-
-		-- `memo` owns the encryption, so a passphrase note is byte for byte what
-		-- the CLI writes.
-		return gpg.run_with_passphrase(
-			{ "memo", "encrypt", "--symmetric", path, "--passphrase-env", gpg.PASSPHRASE_ENV },
-			passphrase,
-			{ stdin = input }
-		):wait()
-	end
-
-	return vim.system({ "memo", "encrypt", path }, {
-		stdin = input,
-	}):wait()
-end
-
---- Decrypts a note, with whatever gpg needs to read it: the passphrase of a
---- passphrase note, which `memo` reads from the environment, or an unlocked key
---- for a key note.
---- Returns nil when the passphrase prompt was dismissed, so no command runs.
---- @param path string the note to decrypt
---- @param bufnr? integer buffer that keeps the passphrase of a passphrase note
---- @param opts? vim.SystemOpts
---- @param on_exit? fun(obj: vim.SystemCompleted)
---- @return vim.SystemObj?
-local function decrypt(path, bufnr, opts, on_exit)
-	if gpg.is_symmetric(path) then
-		local passphrase = gpg.get_symmetric_passphrase(path, bufnr)
-
-		if not passphrase then
-			return nil
-		end
-
-		return gpg.run_with_passphrase(
-			{ "memo", "decrypt", path, "--passphrase-env", gpg.PASSPHRASE_ENV },
-			passphrase,
-			opts,
-			on_exit
-		)
-	end
-
-	return gpg.run_with_key({ "memo", "decrypt", path }, opts, on_exit)
+	return gpg.encrypt(path, input, bufnr)
 end
 
 --- Decrypts a file and returns the content
@@ -69,7 +21,7 @@ end
 --- @param bufnr? integer buffer to remember a symmetric passphrase in.
 --- @return vim.SystemCompleted?
 function M.decrypt_to_stdout(path, bufnr)
-	local obj = decrypt(path, bufnr)
+	local obj = gpg.decrypt(path, bufnr)
 
 	if not obj then
 		message.error("Could not read %s: %s", path, NO_PASSPHRASE)
@@ -102,12 +54,12 @@ end
 --- Streams a decrypt command into a buffer as its output arrives.
 --- @param bufnr integer the buffer handle to write into
 --- @param on_exit fun(result: vim.SystemCompleted)
---- @return vim.SystemObj? nil when the passphrase could not be obtained
+--- @return vim.SystemObj? nil when a passphrase prompt was dismissed
 local function stream_into_buffer(path, bufnr, on_exit)
 	local accumulator = ""
 	local state = { first_write = true }
 
-	local obj = decrypt(path, bufnr, {
+	local obj = gpg.decrypt(path, bufnr, {
 		stdout = function(_, data)
 			if not data or data == "" then
 				return

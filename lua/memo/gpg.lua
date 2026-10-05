@@ -1,9 +1,12 @@
 local M = {}
 
---- Name of the environment variable run_with_passphrase hands the passphrase over
---- in, for a command that knows to read it from there.
-M.PASSPHRASE_ENV = "MEMO_NOTE_PASSPHRASE"
 local message = require("memo.message")
+
+--- Name of the environment variable the passphrase of a passphrase note is
+--- handed to `memo` in, which keeps it out of the process list and off disk.
+local PASSPHRASE_ENV = "MEMO_NOTE_PASSPHRASE"
+
+local NO_PASSPHRASE = "the passphrase was not given"
 
 --- Check if a specific key (or default) is unlocked in gpg-agent
 --- @param id string?
@@ -88,6 +91,101 @@ local function cache_passphrase(pass, id)
 	return true
 end
 
+--- The passphrase a buffer already holds for a note.
+--- @param bufnr? integer
+--- @return string?
+local function cached_passphrase(bufnr)
+	if not bufnr then
+		return nil
+	end
+
+	return vim.b[bufnr].memo_symmetric_passphrase
+end
+
+--- The passphrase of a symmetrically encrypted file: the one the buffer already
+--- holds, or a prompt for it. A new passphrase is kept in the buffer, so writing the
+--- note back wil keep it cached and wil not ask for it again.
+--- @param path string
+--- @param bufnr? integer buffer to keep the passphrase in
+--- @return string? nil when the prompt was dismissed
+local function get_symmetric_passphrase(path, bufnr)
+	local cached = cached_passphrase(bufnr)
+
+	if cached then
+		return cached
+	end
+
+	local pass = M.prompt_passphrase(("note %s (symmetric)"):format(vim.fn.fnamemodify(path, ":t")))
+
+	if pass == "" then
+		return nil
+	end
+
+	if bufnr then
+		vim.b[bufnr].memo_symmetric_passphrase = pass
+
+		-- The buffer holds the passphrase for as long as it is open, so drop it as
+		-- soon as the buffer goes away instead of leaving it behind.
+		vim.api.nvim_create_autocmd("BufWipeout", {
+			buffer = bufnr,
+			once = true,
+			callback = function()
+				pcall(vim.api.nvim_buf_del_var, bufnr, "memo_symmetric_passphrase")
+			end,
+		})
+	end
+
+	return pass
+end
+
+--- Reads the packets of an encrypted note, from one `gpg --list-packets` run:
+--- whether it is encrypted with a passphrase instead of a key, and the keys it is
+--- encrypted to.
+--- @param path string
+--- @return { symmetric: boolean, key_ids: string[] }
+local function read_packets(path)
+	local obj = vim.system(
+		{ "gpg", "--batch", "--list-packets", "--pinentry-mode=loopback", "--no-tty", path },
+		{ text = true }
+	)
+		:wait()
+
+	-- The packets go to stdout, the recipient key IDs to stderr.
+	local stderr = obj.stderr or ""
+	local file = {
+		symmetric = ((obj.stdout or "") .. stderr):find("symkey enc packet", 1, true) ~= nil,
+		key_ids = {},
+	}
+
+	for id in stderr:gmatch("ID ([%w%d]+)") do
+		table.insert(file.key_ids, id:upper())
+	end
+
+	return file
+end
+
+--- Whether a note is encrypted with a passphrase instead of a key. The agent
+--- only caches key passphrases, so `memo` is told where the passphrase is
+--- instead. A buffer that holds one counts as symmetric.
+--- @param path string
+--- @return boolean
+local function is_symmetric(path)
+	return read_packets(path).symmetric
+end
+
+--- Runs a command for a passphrase note, handing the passphrase to it in the
+--- environment.
+--- @param cmd string[]
+--- @param passphrase string
+--- @param opts? vim.SystemOpts
+--- @param on_exit? fun(obj: vim.SystemCompleted)
+--- @return vim.SystemObj
+local function run_with_passphrase(cmd, passphrase, opts, on_exit)
+	local all = vim.tbl_extend("force", opts or {}, { env = { [PASSPHRASE_ENV] = passphrase } })
+
+	return vim.system(cmd, all, on_exit)
+end
+
 --- Prompt user for passphrase
 --- Important to be importable for overriding in tests!
 ---@param label string
@@ -98,6 +196,7 @@ end
 
 --- Makes sure gpg-agent holds a key the note can be read with, asking for a
 --- passphrase and caching it in gpg-agent when it does not.
+--- Important to be importable for overriding in tests!
 --- @param target_path string?
 --- @return boolean
 function M.unlock_key(target_path)
@@ -148,123 +247,74 @@ function M.unlock_key(target_path)
 	return cache_passphrase(pass, target_id)
 end
 
---- The passphrase a buffer already holds for a note.
---- @param bufnr? integer
---- @return string?
-local function cached_passphrase(bufnr)
-	if not bufnr then
-		return nil
-	end
-
-	return vim.b[bufnr].memo_symmetric_passphrase
-end
-
---- Reads the packets of an encrypted note, from one `gpg --list-packets` run:
---- whether it is encrypted with a passphrase instead of a key, and the keys it is
---- encrypted to.
---- @param path string
---- @return { symmetric: boolean, key_ids: string[] }
-local function read_packets(path)
-	local obj = vim.system(
-		{ "gpg", "--batch", "--list-packets", "--pinentry-mode=loopback", "--no-tty", path },
-		{ text = true }
-	)
-		:wait()
-
-	-- The packets go to stdout, the recipient key IDs to stderr.
-	local stderr = obj.stderr or ""
-	local file = {
-		symmetric = ((obj.stdout or "") .. stderr):find("symkey enc packet", 1, true) ~= nil,
-		key_ids = {},
-	}
-
-	for id in stderr:gmatch("ID ([%w%d]+)") do
-		table.insert(file.key_ids, id:upper())
-	end
-
-	return file
-end
-
---- Whether a file is encrypted with a passphrase instead of a key. The agent
---- only caches key passphrases, so `memo decrypt` is told where the passphrase
---- is. A buffer that holds one counts as symmetric.
---- @param path string
---- @return boolean
-function M.is_symmetric(path)
-	return read_packets(path).symmetric
-end
-
---- The passphrase of a symmetrically encrypted file: the one the buffer already
---- holds, or a prompt for it. A new passphrase is kept in the buffer, so writing the
---- note back wil keep it cached and wil not ask for it again.
---- @param path string
---- @param bufnr? integer buffer to keep the passphrase in
---- @return string? nil when the prompt was dismissed
-function M.get_symmetric_passphrase(path, bufnr)
-	local cached = cached_passphrase(bufnr)
-
-	if cached then
-		return cached
-	end
-
-	local pass = M.prompt_passphrase(("note %s (symmetric)"):format(vim.fn.fnamemodify(path, ":t")))
-
-	if pass == "" then
-		return nil
-	end
-
-	if bufnr then
-		vim.b[bufnr].memo_symmetric_passphrase = pass
-
-		-- The buffer holds the passphrase for as long as it is open, so drop it as
-		-- soon as the buffer goes away instead of leaving it behind.
-		vim.api.nvim_create_autocmd("BufWipeout", {
-			buffer = bufnr,
-			once = true,
-			callback = function()
-				pcall(vim.api.nvim_buf_del_var, bufnr, "memo_symmetric_passphrase")
-			end,
-		})
-	end
-
-	return pass
-end
-
 --- Get the Key IDs used for a specific file
+--- Important to be importable for overriding in tests!
 --- @param path string
 --- @return string[]
 function M.get_file_key_ids(path)
 	return read_packets(path).key_ids
 end
 
---- Runs a command for a note protected by a gpg key, unlocking the key first.
---- We assume the last argument of a memo/gpg command is the file path.
---- @param cmd string[] The command to run (e.g., {'memo', 'decrypt', 'path/to/file'})
---- @param opts? vim.SystemOpts
---- @param on_exit? fun(obj: vim.SystemCompleted) Optional callback for async execution
---- @return vim.SystemObj? nil when the user dismissed the prompt for a passphrase
-function M.run_with_key(cmd, opts, on_exit)
-	local target_path = cmd[#cmd] -- Assume last command param from cmd is file to be encrypted/decrypted
+--- Encrypts content into a note, keeping a passphrase note encrypted with a
+--- passphrase.
+--- @param path string the note to write to
+--- @param input string[] the content to encrypt
+--- @param bufnr? integer buffer the note was decrypted into, so a passphrase
+--- note is written back the way it was encrypted
+--- @return vim.SystemCompleted
+function M.encrypt(path, input, bufnr)
+	if is_symmetric(path) then
+		local passphrase = get_symmetric_passphrase(path, bufnr)
 
-	if not M.unlock_key(target_path) then
+		if not passphrase then
+			-- A result the caller can still read .code from, for a command that
+			-- never ran.
+			return { code = 1, signal = 0, stdout = "", stderr = ("Not writing %s: %s"):format(path, NO_PASSPHRASE) }
+		end
+
+		-- `memo` owns the encryption, so a passphrase note is byte for byte what
+		-- the CLI writes.
+		return run_with_passphrase(
+			{ "memo", "encrypt", "--symmetric", path, "--passphrase-env", PASSPHRASE_ENV },
+			passphrase,
+			{ stdin = input }
+		):wait()
+	end
+
+	return vim.system({ "memo", "encrypt", path }, {
+		stdin = input,
+	}):wait()
+end
+
+--- Decrypts a note with whatever gpg needs to read it: the passphrase of a
+--- passphrase note, which `memo` reads from the environment, or an unlocked key
+--- for a key note.
+--- @param path string the note to decrypt
+--- @param bufnr? integer buffer that keeps the passphrase of a passphrase note
+--- @param opts? vim.SystemOpts
+--- @param on_exit? fun(obj: vim.SystemCompleted)
+--- @return vim.SystemObj? nil when a passphrase prompt was dismissed
+function M.decrypt(path, bufnr, opts, on_exit)
+	if is_symmetric(path) then
+		local passphrase = get_symmetric_passphrase(path, bufnr)
+
+		if not passphrase then
+			return nil
+		end
+
+		return run_with_passphrase(
+			{ "memo", "decrypt", path, "--passphrase-env", PASSPHRASE_ENV },
+			passphrase,
+			opts,
+			on_exit
+		)
+	end
+
+	if not M.unlock_key(path) then
 		return nil
 	end
 
-	return vim.system(cmd, opts, on_exit)
-end
-
---- Runs a command for a note protected by a passphrase, which it hands over with
---- PASSPHRASE_ENV so the passphrase stays out of the process list and off disk.
---- This works for memo and for a plain gpg call.
---- @param cmd string[] The command to run.
---- @param passphrase string
---- @param opts? vim.SystemOpts
---- @param on_exit? fun(obj: vim.SystemCompleted) Optional callback for async execution
---- @return vim.SystemObj
-function M.run_with_passphrase(cmd, passphrase, opts, on_exit)
-	local all = vim.tbl_extend("force", opts or {}, { env = { [M.PASSPHRASE_ENV] = passphrase } })
-
-	return vim.system(cmd, all, on_exit)
+	return vim.system({ "memo", "decrypt", path }, opts, on_exit)
 end
 
 return M

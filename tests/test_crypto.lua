@@ -141,7 +141,7 @@ describe("crypto", function()
         vim.api.nvim_win_set_buf(0, bufnr)
 
         -- We mock gpg call to return chunks
-        gpg.run_with_key = function(cmd, opts, on_exit)
+        gpg.decrypt = function(path, bufnr, opts, on_exit)
           opts.stdout(nil, "Line 1\nLi")
           opts.stdout(nil, "ne 2\nLine 3")
           opts.stdout(nil, "\n\n")
@@ -177,8 +177,8 @@ describe("crypto", function()
 			local gpg = require("memo.gpg")
 
 			-- Simulate an auth failure (e.g. the user aborted the prompt):
-			-- run_with_key returns nil without ever calling on_exit.
-			gpg.run_with_key = function()
+			-- decrypt returns nil without ever calling on_exit.
+			gpg.decrypt = function()
 				return nil
 			end
 
@@ -218,7 +218,7 @@ describe("crypto", function()
 			-- Simulate the buffer being closed while the async decrypt is in
 			-- flight. The `settled` sentinel is scheduled after on_exit's inner
 			-- callback, so once it is set the guard has had its chance to run.
-			gpg.run_with_key = function(_, _, on_exit)
+			gpg.decrypt = function(_, _, _, on_exit)
 				vim.g.exit_cb_called = false
 				vim.g.settled = false
 				vim.api.nvim_buf_delete(bufnr, { force = true })
@@ -325,6 +325,7 @@ describe("crypto", function()
 			MiniTest.expect.equality(vim.split(result.stdout, "\n"), { "Line 1", "Line 2", "Line 3" })
 		end)
 	end)
+
 	describe("with a symmetric passphrase", function()
 		local passphrase = "sym-pass"
 
@@ -368,27 +369,6 @@ describe("crypto", function()
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 
 			MiniTest.expect.equality(lines, { "Line 1", "Line 2" })
-			MiniTest.expect.equality(child.b.memo_symmetric_passphrase, passphrase)
-		end)
-
-		it("asks for the passphrase by file name", function()
-			local path = vim.env.NOTES_DIR .. "/sym.md.gpg"
-
-			helpers.encrypt_symmetric_file(path, "Line 1\n", passphrase)
-
-			local label = child.lua(
-				[[
-      local path = ...
-      require("memo.gpg").prompt_passphrase = function(l)
-        return l
-      end
-
-      return require("memo.gpg").get_symmetric_passphrase(path)
-    ]],
-				{ path }
-			)
-
-			MiniTest.expect.equality(label, "note sym.md.gpg (symmetric)")
 		end)
 
 		it("decrypts a symmetric file to stdout", function()
@@ -447,8 +427,7 @@ describe("crypto", function()
 
 			MiniTest.expect.equality(child.b.prompts, 1)
 
-			local is_symmetric = child.lua_get([[ require("memo.gpg").is_symmetric(...) ]], { path })
-			MiniTest.expect.equality(is_symmetric, true)
+			MiniTest.expect.equality(helpers.is_symmetric_file(path), true)
 
 			local decrypted = helpers.decrypt_symmetric_file(path, passphrase)
 			MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Rewritten")
@@ -522,7 +501,7 @@ describe("crypto", function()
 			MiniTest.expect.equality(child.api.nvim_buf_is_valid(child.g.sym_bufnr), false)
 		end)
 
-		it("asks once and returns nothing when the prompt is dismissed", function()
+		it("asks once, returns nothing and says why when the prompt is dismissed", function()
 			local path = vim.env.NOTES_DIR .. "/sym.md.gpg"
 
 			helpers.encrypt_symmetric_file(path, "Line 1\n", passphrase)
@@ -550,55 +529,10 @@ describe("crypto", function()
 
 			MiniTest.expect.equality(child.g.sym_stdout, "nil")
 			MiniTest.expect.equality(child.g.sym_prompts, 1)
-		end)
 
-		it("hands the passphrase to memo through the environment", function()
-			local path = vim.env.NOTES_DIR .. "/sym.md.gpg"
-
-			helpers.encrypt_symmetric_file(path, "Line 1\n", passphrase)
-
-			child.lua(
-				[[
-      local path, passphrase = ...
-      require("memo.gpg").prompt_passphrase = function()
-        return passphrase
-      end
-
-      local seen = {}
-      local system = vim.system
-      vim.system = function(cmd, opts, on_exit)
-        table.insert(seen, { cmd = cmd, env = opts and opts.env })
-        return system(cmd, opts, on_exit)
-      end
-
-      local result = M.encrypt_from_stdin(path, { "Rewritten" })
-
-      -- The first call is gpg detecting the symmetric note, so pick the one that
-      -- asks for --symmetric.
-      local encrypt_call
-      for _, call in ipairs(seen) do
-        if vim.tbl_contains(call.cmd, "--symmetric") then
-          encrypt_call = call
-        end
-      end
-
-      vim.g.cmd = encrypt_call and encrypt_call.cmd or {}
-      vim.g.leaked = encrypt_call and vim.inspect(encrypt_call.env) or ""
-      vim.g.code = result.code
-    ]],
-				{ path, passphrase }
-			)
-
-			MiniTest.expect.equality(child.g.code, 0)
-			MiniTest.expect.equality(child.g.cmd[1], "memo")
-			MiniTest.expect.equality(child.g.cmd[2], "encrypt")
-			MiniTest.expect.equality(child.g.cmd[3], "--symmetric")
-			MiniTest.expect.equality(child.g.cmd[4], path)
-			MiniTest.expect.equality(child.g.cmd[5], "--passphrase-env")
-			MiniTest.expect.equality(child.g.cmd[6], "MEMO_NOTE_PASSPHRASE")
-			-- The passphrase must not appear in the arguments themselves.
-			MiniTest.expect.equality(vim.tbl_contains(child.g.cmd, passphrase), false)
-			MiniTest.expect.equality(child.g.leaked:find("MEMO_NOTE_PASSPHRASE", 1, true) ~= nil, true)
+			child.wait_until(function()
+				return child.cmd_capture("messages") == ("Could not read %s: the passphrase was not given"):format(path)
+			end)
 		end)
 
 		it("does not re-encrypt a symmetric note when the passphrase is dismissed", function()
