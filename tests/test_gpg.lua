@@ -260,4 +260,25 @@ describe("gpg", function()
 
 		MiniTest.expect.equality(result, { is_nil = true, cached = false })
 	end)
+
+	it("forgets the passphrase when the buffer holding it is wiped", function()
+		local result = child.lua([[
+        M.prompt_passphrase = function() return "sym-pass" end
+
+        local bufnr = vim.api.nvim_create_buf(true, false)
+        M.get_symmetric_passphrase("/tmp/memo-test-note.md.gpg", bufnr)
+        local wipes = vim.api.nvim_get_autocmds({ event = "BufWipeout", buffer = bufnr })
+
+        -- Wiping frees the buffer variables anyway, so what clears a passphrase
+        -- early is the callback: running it shows what it clears.
+        vim.api.nvim_exec_autocmds("BufWipeout", { buffer = bufnr })
+
+        return {
+          is_nil = vim.b[bufnr].memo_symmetric_passphrase == nil,
+          wipes = #wipes,
+        }
+    ]])
+
+		MiniTest.expect.equality(result, { is_nil = true, wipes = 1 })
+	end)
 end)

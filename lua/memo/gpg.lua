@@ -215,6 +215,16 @@ function M.get_symmetric_passphrase(path, bufnr)
 
 	if bufnr then
 		vim.b[bufnr].memo_symmetric_passphrase = pass
+
+		-- The buffer holds the passphrase for as long as it is open, so drop it as
+		-- soon as the buffer goes away instead of leaving it behind.
+		vim.api.nvim_create_autocmd("BufWipeout", {
+			buffer = bufnr,
+			once = true,
+			callback = function()
+				pcall(vim.api.nvim_buf_del_var, bufnr, "memo_symmetric_passphrase")
+			end,
+		})
 	end
 
 	return pass
