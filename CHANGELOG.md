@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.2](https://github.com/ldonnez/memo.nvim/compare/v0.14.1...v0.14.2) (2026-10-05)
+
+
+### Bug Fixes
+
+* drop a cached note passphrase when its buffer is wiped ([575d542](https://github.com/ldonnez/memo.nvim/commit/575d5426c91bd2ea8701a9550f05d1c684c84f6e))
+* ensure pinentry is not called twice when decrypting symmetric files ([92d721b](https://github.com/ldonnez/memo.nvim/commit/92d721bcefc98cc0abb80ea7421d4b371449872a))
+
 ## [0.14.1](https://github.com/ldonnez/memo.nvim/compare/v0.14.0...v0.14.1) (2026-10-04)
 
 
