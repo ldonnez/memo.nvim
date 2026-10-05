@@ -220,18 +220,6 @@ describe("gpg", function()
 		MiniTest.expect.equality(child.lua_get("_G.called_with"), 0)
 	end)
 
-	it("counts a buffer that holds a passphrase as symmetric without reading the file", function()
-		local result = child.lua([[
-        local bufnr = vim.api.nvim_create_buf(true, false)
-        vim.b[bufnr].memo_symmetric_passphrase = "pass"
-
-        -- A plain file, so only the buffer can be telling us it is symmetric.
-        return M.is_symmetric("/tmp/memo-test-not-a-note.gpg", bufnr)
-    ]])
-
-		MiniTest.expect.equality(result, true)
-	end)
-
 	it("asks once for a passphrase and keeps it in the buffer", function()
 		local passphrase = "sym-pass"
 

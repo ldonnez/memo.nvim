@@ -187,14 +187,13 @@ end
 --- only caches key passphrases, so `memo decrypt` is told where the passphrase
 --- is. A buffer that holds one counts as symmetric.
 --- @param path string
---- @param bufnr? integer buffer the note was decrypted into
 --- @return boolean
-function M.is_symmetric(path, bufnr)
-	if cached_passphrase(bufnr) then
-		return true
-	end
-
-	local obj = vim.system({ "gpg", "--batch", "--list-packets", "--no-tty", path }, { text = true }):wait()
+function M.is_symmetric(path)
+	local obj = vim.system(
+		{ "gpg", "--batch", "--list-packets", "--pinentry-mode=loopback", "--no-tty", path },
+		{ text = true }
+	)
+		:wait()
 
 	return ((obj.stdout or "") .. (obj.stderr or "")):find("symkey enc packet", 1, true) ~= nil
 end

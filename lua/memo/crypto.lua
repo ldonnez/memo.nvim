@@ -13,7 +13,7 @@ local DECRYPT_FAILED = "Decryption failed: %s"
 ---is written back the way it was encrypted
 ---@return vim.SystemCompleted
 function M.encrypt_from_stdin(path, input, bufnr)
-	if gpg.is_symmetric(path, bufnr) then
+	if gpg.is_symmetric(path) then
 		local passphrase = gpg.get_symmetric_passphrase(path, bufnr)
 
 		if not passphrase then
@@ -41,7 +41,7 @@ end
 --- @param bufnr? integer buffer to remember a symmetric passphrase in.
 --- @return vim.SystemCompleted?
 function M.decrypt_to_stdout(path, bufnr)
-	if gpg.is_symmetric(path, bufnr) then
+	if gpg.is_symmetric(path) then
 		local passphrase = gpg.get_symmetric_passphrase(path, bufnr)
 
 		if not passphrase then
@@ -129,7 +129,7 @@ end
 --- @param on_exit fun(result: vim.SystemCompleted)
 --- @return vim.SystemObj?
 function M.decrypt_to_buffer(path, bufnr, on_exit)
-	if gpg.is_symmetric(path, bufnr) then
+	if gpg.is_symmetric(path) then
 		local passphrase = gpg.get_symmetric_passphrase(path, bufnr)
 
 		if not passphrase then
