@@ -66,6 +66,37 @@ vim.api.nvim_create_autocmd("BufDelete", {
 	end,
 })
 
+--- Splits the arguments of `:MemoNewNote` into an encryption mode and a path.
+--- `passphrase` and `key` are reserved as the mode, so they come first:
+--- `:MemoNewNote passphrase journals/2026-01-01.md`.
+--- @param fargs string[] the command arguments, split on whitespace
+--- @return "passphrase"|"key"? mode nil when none was given
+--- @return string? path everything after the mode, joined back up
+local function split_mode(fargs)
+	if fargs[1] == "passphrase" or fargs[1] == "key" then
+		return fargs[1], table.concat(vim.list_slice(fargs, 2), " ")
+	end
+
+	return nil, table.concat(fargs, " ")
+end
+
+--- Completes the mode, which only has a place while it is still the first
+--- argument.
+--- @param arglead string the argument being completed
+--- @param cmdline string the whole command line
+--- @return string[]
+local function complete_mode(arglead, cmdline)
+	local rest = cmdline:match("^%S+%s*(.*)$") or ""
+
+	if (rest:gsub("%S*$", ""):match("^%s*(.-)%s*$") or "") ~= "" then
+		return {}
+	end
+
+	return vim.tbl_filter(function(candidate)
+		return vim.startswith(candidate, arglead)
+	end, { "passphrase", "key" })
+end
+
 vim.api.nvim_create_user_command("MemoScratch", function(opts)
 	require("memo.scratch").create(opts.args)
 end, {
@@ -98,24 +129,43 @@ end, {
 })
 
 vim.api.nvim_create_user_command("MemoSaveAsNote", function(opts)
-	require("memo.save_as_note").create({ range = opts.range, line1 = opts.line1, line2 = opts.line2 })
-end, {
-	nargs = 0,
-	range = true,
-	desc = "Save the current buffer or selection as an encrypted note in the notes dir",
-})
+	local message = require("memo.message")
+	-- The buffer is the path, so anything but a mode here is a mistake.
+	local mode, path = split_mode(opts.fargs)
 
-vim.api.nvim_create_user_command("MemoNewNote", function(opts)
-	-- An empty `args` makes `create` prompt for the path.
-	require("memo.new_note").create({
-		path = opts.args,
+	if path ~= "" then
+		message.error("MemoSaveAsNote: expected passphrase or key, got %q", path)
+		return
+	end
+
+	require("memo.save_as_note").create({
 		range = opts.range,
 		line1 = opts.line1,
 		line2 = opts.line2,
+		encryption = { mode = mode },
 	})
 end, {
 	nargs = "?",
 	range = true,
+	complete = complete_mode,
+	desc = "Save the current buffer or selection as an encrypted note in the notes dir",
+})
+
+vim.api.nvim_create_user_command("MemoNewNote", function(opts)
+	-- An empty path makes `create` prompt for it.
+	local mode, path = split_mode(opts.fargs)
+
+	require("memo.new_note").create({
+		path = path,
+		range = opts.range,
+		line1 = opts.line1,
+		line2 = opts.line2,
+		encryption = { mode = mode },
+	})
+end, {
+	nargs = "*",
+	range = true,
+	complete = complete_mode,
 	desc = "Create a new encrypted note in the notes dir",
 })
 

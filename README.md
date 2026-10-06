@@ -355,6 +355,44 @@ The [memo CLI](https://github.com/ldonnez/memo) creates these notes with
 `memo encrypt --symmetric`, and keeps them symmetric when you open them with
 `memo FILE`, so both tools can work on the same notes.
 
+A new note encrypts with your key unless you ask for a passphrase. You are
+asked to confirm your passphrase when creating or saving a new note. Close
+either prompt, or type two different passphrases, and nothing is saved.
+
+Both commands take it as an argument and complete to `passphrase` and
+`key`, which is the default:
+
+```vim
+:MemoNewNote passphrase journals/2026-01-01.md
+:MemoSaveAsNote passphrase
+```
+
+```lua
+require("memo").new_note({
+  path = "journals/2026-01-01.md",
+  encryption = { mode = "passphrase" },
+})
+
+require("memo").save_as_note({
+  encryption = { mode = "passphrase" },
+})
+```
+
+Or map them:
+
+```lua
+vim.keymap.set("n", "<leader>mp", function()
+  require("memo").new_note({ encryption = { mode = "passphrase" } })
+end, { desc = "Memo: New passphrase note" })
+
+vim.keymap.set({ "n", "v" }, "<leader>mP", function()
+  require("memo").save_as_note({ encryption = { mode = "passphrase" } })
+end, { desc = "Memo: Save buffer as passphrase note" })
+```
+
+An existing note keeps its encryption: writing it or capturing into it does
+not switch a passphrase note to be encrypted your key, or the other way around.
+
 ### Formatting with conform.nvim
 
 `prettier` cannot infer a parser from `.asc` filenames. If you use [conform.nvim](https://github.com/stevearc/conform.nvim) to format notes, map each filetype to its parser:

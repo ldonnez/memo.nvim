@@ -9,11 +9,12 @@ local DECRYPT_FAILED = "Decryption failed: %s"
 
 ---@param path string
 ---@param input string[]
----@param bufnr? integer buffer the note was decrypted into, so a symmetric note
+---@param bufnr? integer buffer the note was decrypted into, so a passphrase note
 ---is written back the way it was encrypted
+---@param opts? GpgEncryptOpts
 ---@return vim.SystemCompleted
-function M.encrypt_from_stdin(path, input, bufnr)
-	return gpg.encrypt(path, input, bufnr)
+function M.encrypt_from_stdin(path, input, bufnr, opts)
+	return gpg.encrypt(path, input, vim.tbl_extend("force", opts or {}, { bufnr = bufnr }))
 end
 
 --- Decrypts a file and returns the content

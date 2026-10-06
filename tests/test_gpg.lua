@@ -279,6 +279,73 @@ describe("gpg", function()
 		MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Hello world!")
 	end)
 
+	it("encrypts to the passphrase of a note that does not exist yet when asked", function()
+		local note = "/tmp/gpg_encrypt_new_symmetric.txt.gpg"
+		local passphrase = "sym-pass"
+
+		local result = child.lua(
+			[[
+        local passphrase, note = ...
+        M.prompt_passphrase = function() return passphrase end
+
+        return { code = M.encrypt(note, { "Hello world!" }, { mode = "passphrase" }).code }
+    ]],
+			{ passphrase, note }
+		)
+
+		MiniTest.expect.equality(result.code, 0)
+		MiniTest.expect.equality(helpers.is_symmetric_file(note), true)
+
+		local decrypted = helpers.decrypt_symmetric_file(note, passphrase)
+		MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Hello world!")
+	end)
+
+	it("encrypts to the key of a note that does not exist yet by default", function()
+		local note = "/tmp/gpg_encrypt_new_key.txt.gpg"
+		helpers.create_gpg_key("mock@example.com")
+
+		local result = child.lua(
+			[[
+        local note = ...
+        local prompts = 0
+
+        M.prompt_passphrase = function()
+          prompts = prompts + 1
+          return ""
+        end
+
+        return { prompts = prompts, code = M.encrypt(note, { "Hello world!" }).code }
+    ]],
+			{ note }
+		)
+
+		MiniTest.expect.equality(result, { prompts = 0, code = 0 })
+		MiniTest.expect.equality(helpers.is_symmetric_file(note), false)
+
+		local decrypted = helpers.decrypt_file(note)
+		MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Hello world!")
+	end)
+
+	it("writes nothing when the passphrase of a new passphrase note is dismissed", function()
+		local note = "/tmp/gpg_encrypt_new_dismissed.txt.gpg"
+
+		local result = child.lua(
+			[[
+        local note = ...
+        M.prompt_passphrase = function() return "" end
+
+        local written = M.encrypt(note, { "Hello world!" }, { mode = "passphrase" })
+
+        return { code = written.code, stderr = written.stderr }
+    ]],
+			{ note }
+		)
+
+		MiniTest.expect.equality(result.code ~= 0, true)
+		MiniTest.expect.equality(result.stderr:find("passphrase was not given", 1, true) ~= nil, true)
+		MiniTest.expect.equality(vim.fn.filereadable(note), 0)
+	end)
+
 	it("writes nothing when the passphrase of a passphrase note is dismissed", function()
 		local note = "/tmp/gpg_encrypt_dismissed.txt.gpg"
 		local passphrase = "sym-pass"
@@ -303,6 +370,33 @@ describe("gpg", function()
 		-- The note keeps what it held instead of becoming an empty or broken one.
 		local kept = helpers.decrypt_symmetric_file(note, passphrase)
 		MiniTest.expect.equality(vim.trim(kept.stdout or ""), "Line 1")
+	end)
+
+	it("writes nothing when the confirmation of a new passphrase note does not match", function()
+		local note = "/tmp/gpg_encrypt_new_mismatch.txt.gpg"
+
+		local result = child.lua(
+			[[
+        local note = ...
+        local answers = { "first answer", "second answer" }
+        local prompts = 0
+
+        M.prompt_passphrase = function()
+          prompts = prompts + 1
+          return answers[prompts]
+        end
+
+        local written = M.encrypt(note, { "Hello world!" }, { mode = "passphrase" })
+
+        return { prompts = prompts, code = written.code, stderr = written.stderr }
+    ]],
+			{ note }
+		)
+
+		MiniTest.expect.equality(result.prompts, 2)
+		MiniTest.expect.equality(result.code ~= 0, true)
+		MiniTest.expect.equality(result.stderr:find("passphrases do not match", 1, true) ~= nil, true)
+		MiniTest.expect.equality(vim.fn.filereadable(note), 0)
 	end)
 
 	it("keeps the passphrase out of the command it hands it over in", function()

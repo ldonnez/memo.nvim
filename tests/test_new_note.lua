@@ -67,6 +67,104 @@ describe("new_note", function()
 			MiniTest.expect.equality(decrypted.code, 0)
 		end)
 
+		it("creates a passphrase note when symmetric is asked for", function()
+			child.lua([[
+      require("memo.gpg").prompt_passphrase = function() return "new-sym" end
+    ]])
+
+			local created =
+				child.lua_get([[ new_note.create({ path = "sym.md", encryption = { mode = "passphrase" } }) ]])
+
+			MiniTest.expect.equality(created, true)
+
+			local note = vim.env.NOTES_DIR .. "/sym.md.asc"
+			MiniTest.expect.equality(child.fn.filereadable(note), 1)
+			MiniTest.expect.equality(helpers.is_symmetric_file(note), true)
+		end)
+
+		it("takes the mode as a command argument", function()
+			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "cmd-sym" end ]])
+			child.cmd([[MemoNewNote passphrase cmd-flag.md]])
+
+			local note = vim.env.NOTES_DIR .. "/cmd-flag.md.asc"
+			MiniTest.expect.equality(child.fn.filereadable(note), 1)
+			MiniTest.expect.equality(helpers.is_symmetric_file(note), true)
+		end)
+
+		it("encrypts to the key when the command is given no mode", function()
+			child.cmd([[MemoNewNote cmd-default.md]])
+
+			local note = vim.env.NOTES_DIR .. "/cmd-default.md.asc"
+			MiniTest.expect.equality(child.fn.filereadable(note), 1)
+			MiniTest.expect.equality(helpers.is_symmetric_file(note), false)
+		end)
+
+		it("asks for the passphrase twice when it creates a passphrase note", function()
+			child.lua([[
+      local prompts = 0
+      local gpg = require("memo.gpg")
+
+      gpg.prompt_passphrase = function()
+        prompts = prompts + 1
+        return "new-sym"
+      end
+
+      function _G.memo_passphrase_prompts()
+        return prompts
+      end
+    ]])
+
+			child.lua_get([[ new_note.create({ path = "twice.md", encryption = { mode = "passphrase" } }) ]])
+
+			MiniTest.expect.equality(child.lua_get([[ memo_passphrase_prompts() ]]), 2)
+			MiniTest.expect.equality(helpers.is_symmetric_file(vim.env.NOTES_DIR .. "/twice.md.asc"), true)
+		end)
+
+		it("does not create the note when the confirmation does not match", function()
+			child.lua([[
+      local answers = { "first answer", "second answer" }
+      local prompts = 0
+      local gpg = require("memo.gpg")
+
+      gpg.prompt_passphrase = function()
+        prompts = prompts + 1
+        return answers[prompts]
+      end
+    ]])
+
+			child.lua_get([[ new_note.create({ path = "mismatch.md", encryption = { mode = "passphrase" } }) ]])
+
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/mismatch.md.asc"), 0)
+			MiniTest.expect.equality(child.cmd_capture("messages"):find("the passphrases do not match") ~= nil, true)
+		end)
+
+		it("keeps the passphrase note encrypted when the buffer is written again", function()
+			child.lua([[
+      require("memo.gpg").prompt_passphrase = function() return "new-sym" end
+    ]])
+
+			child.lua_get([[ new_note.create({ path = "sym-again.md", encryption = { mode = "passphrase" } }) ]])
+			child.api.nvim_buf_set_lines(0, 0, -1, false, { "changed body" })
+			child.cmd("silent write")
+
+			local note = vim.env.NOTES_DIR .. "/sym-again.md.asc"
+			MiniTest.expect.equality(helpers.is_symmetric_file(note), true)
+
+			local result = helpers.decrypt_symmetric_file(note, "new-sym")
+			MiniTest.expect.equality(vim.trim(result.stdout or ""), "changed body")
+		end)
+
+		it("does not create the note when the passphrase prompt is dismissed", function()
+			child.lua([[
+      require("memo.gpg").prompt_passphrase = function() return "" end
+    ]])
+
+			child.lua_get([[ new_note.create({ path = "no-sym.md", encryption = { mode = "passphrase" } }) ]])
+
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/no-sym.md.asc"), 0)
+			MiniTest.expect.equality(child.cmd_capture("messages"):find("the passphrase was not given") ~= nil, true)
+		end)
+
 		it("prompts for the path and uses the default when the prompt is accepted", function()
 			child.lua([[ vim.fn.input = function(_, default) return default end ]])
 
