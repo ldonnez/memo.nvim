@@ -4,18 +4,16 @@ local message = require("memo.message")
 local M = {}
 
 ---Saves the current buffer as a note in the notes dir.
----Prompts for the note path (defaulting to `<notes_dir>/<name>.asc`) so it is
----clear where the note will be stored, encrypts the buffer contents and writes
----it there. A relative path is resolved against `<notes_dir>`; the resolved
----path must stay inside `<notes_dir>`. The buffer is left open afterward.
----When a visual selection is active (or the command is invoked with a range,
----e.g. `:'<,'>MemoSaveAsNote`), only the selected lines are saved.
+---Prompts for the note path (defaulting to `<notes_dir>/<name>.asc`), encrypts
+---the buffer contents and writes it there. A relative path is resolved against
+---`<notes_dir>` and must stay inside it. The buffer is left open afterward.
+---A range or visual selection saves only the selected lines.
 ---@class MemoSaveAsNoteOpts
 ---@field range? integer
 ---@field line1? integer
 ---@field line2? integer
 ---@field encryption? GpgEncryptOpts how to encrypt a new note, "key" when
----omitted. A note that already exists is left the way it was encrypted
+---omitted; an existing note keeps the way it was encrypted
 
 ---@param opts? MemoSaveAsNoteOpts
 ---@return boolean success
@@ -51,8 +49,7 @@ function M.create(opts)
 
 	local lines = utils.resolve_selection(bufnr, opts) or vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
-	-- No buffer: the one being saved is not the note's, and a passphrase kept
-	-- there would be reused for the next note saved from it.
+	-- No buffer: a passphrase kept here would be reused for the next note.
 	local mode = opts and opts.encryption and opts.encryption.mode
 	local result = crypto.encrypt_from_stdin(note_path, lines, nil, { mode = mode })
 

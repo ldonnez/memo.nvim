@@ -1,29 +1,25 @@
 local M = {}
 
 ---@class MemoNewNoteOpts
----@field path? string note path, relative to the notes dir or absolute inside
----it. Prompts for one, defaulting to today's date, when omitted.
----@field template? string body template, supports `os.date` formats and a `|`
----cursor marker. A range or visual selection is inserted at that marker, and
----becomes the whole note when the template has none.
+---@field path? string note path inside the notes dir, prompts for one when
+---omitted
+---@field template? string body template with a `|` cursor marker; a range or
+---visual selection is inserted there, or becomes the whole note
 ---@field range? integer
 ---@field line1? integer
 ---@field line2? integer
 ---@field encryption? GpgEncryptOpts how to encrypt, "key" when omitted
----@field window? MemoWindowConfig opens the note in a split, the current
----window is kept when omitted
+---@field window? MemoWindowConfig opens the note in a split, current window
+---when omitted
 
----Default note path used when no path is given. Like `save_as_note` this is a
----full path, so the prompt makes it obvious where the note will be created.
+---Default note path used when no path is given.
 ---@return string
 local function default_path()
 	return require("memo.utils").build_note_path(os.date("%Y-%m-%d.md"))
 end
 
 ---Creates a new encrypted note and opens it in the current window.
----When a visual selection is active (or the command is given a range, e.g.
----`:'<,'>MemoNewNote`), the selected lines are inserted at the template's `|`
----marker instead of replacing the template.
+---A range or visual selection is inserted at the template's `|` marker.
 ---@param opts? MemoNewNoteOpts
 ---@return boolean success
 function M.create(opts)
@@ -37,8 +33,7 @@ function M.create(opts)
 	local path = new_opts.path
 
 	if not path or path == "" then
-		-- Prompted here rather than in the command, so the Lua API behaves the
-		-- same way.
+		-- Prompted here so the Lua API behaves like the command.
 		path = utils.prompt_note_path(default_path(), "MemoNewNote")
 
 		if not path then
@@ -63,16 +58,14 @@ function M.create(opts)
 		return false
 	end
 
-	-- The existing note is discarded instead of opened: a note opened from disk
-	-- comes back decrypted and read-only, and its async decrypt would race with
-	-- writing the template into the buffer.
+	-- Discarded rather than opened: a note read from disk comes back decrypted
+	-- and read-only, and its decrypt would race with writing the template.
 	if overwriting and vim.fn.delete(note_path) ~= 0 then
 		message.error("MemoNewNote: could not remove existing note (%s)", note_path)
 		return false
 	end
 
-	-- Resolved before editing, because the selection belongs to the buffer the
-	-- command was invoked from.
+	-- Resolved before editing: the selection belongs to the source buffer.
 	local source_bufnr = vim.api.nvim_get_current_buf()
 	local selected = utils.resolve_selection(source_bufnr, new_opts)
 
@@ -88,18 +81,16 @@ function M.create(opts)
 		if has_cursor_marker then
 			initial_lines, cursor_pos = note_template:insert_at_cursor(selected)
 		else
-			-- Without a marker there is nowhere to insert into, so the
-			-- selection becomes the whole note.
+			-- Without a marker the selection becomes the whole note.
 			initial_lines, cursor_pos = selected, { #selected, 0 }
 		end
 	end
 
-	-- After the selection is resolved: it belongs to the window the call was
-	-- made from, and a split would replace that window.
+	-- Opened after the selection is resolved: a split would replace the source
+	-- window.
 	local win = window.open(new_opts.window)
 
-	-- Opening a note that does not exist yet yields an empty buffer, which the
-	-- BufWriteCmd handler encrypts on the first write below.
+	-- A new note opens as an empty buffer, encrypted by the first write below.
 	vim.cmd("silent edit " .. vim.fn.fnameescape(note_path))
 
 	local bufnr = vim.api.nvim_get_current_buf()
@@ -108,8 +99,8 @@ function M.create(opts)
 		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
 	end
 
-	-- A new note has no file to read the mode from, so the intent rides along on
-	-- the buffer until the first write has encrypted it.
+	-- A new note has no file to read the mode from, so it rides on the buffer
+	-- until the first write.
 	local enc_mode = new_opts.encryption and new_opts.encryption.mode
 	if enc_mode then
 		vim.b[bufnr].memo_encryption_mode = enc_mode

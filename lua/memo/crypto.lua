@@ -9,8 +9,7 @@ local DECRYPT_FAILED = "Decryption failed: %s"
 
 ---@param path string
 ---@param input string[]
----@param bufnr? integer buffer the note was decrypted into, so a passphrase note
----is written back the way it was encrypted
+---@param bufnr? integer buffer holding the passphrase of a passphrase note
 ---@param opts? GpgEncryptOpts
 ---@return vim.SystemCompleted
 function M.encrypt_from_stdin(path, input, bufnr, opts)
@@ -94,11 +93,8 @@ local function stream_into_buffer(path, bufnr, on_exit)
 	return obj
 end
 
---- Decrypts a file and handles all buffer insertions.
---- A note encrypted with a passphrase is decrypted by `memo` with the passphrase
---- kept in the buffer, so writing it back stays symmetric. If the
---- passphrase cannot be obtained the `on_exit` callback is NOT invoked, the
---- buffer is wiped and an error message is shown.
+--- Decrypts a file into a buffer. When no passphrase can be obtained, `on_exit`
+--- is not invoked and the buffer is wiped.
 --- @param path string The path to the encrypted file.
 --- @param bufnr integer The buffer handle to write into.
 --- @param on_exit fun(result: vim.SystemCompleted)

@@ -19,8 +19,7 @@ end
 local abs_notes = vim.fn.fnamemodify(notes_dir, ":p"):gsub("/$", "")
 local abs_scratch = vim.fn.fnamemodify(scratch_dir, ":p"):gsub("/$", "")
 
--- Notes may live in subdirectories (e.g. `journals/2026-01-01.md.asc`), so the
--- notes pattern has to match recursively.
+-- Notes may live in subdirectories, so the pattern matches recursively.
 local patterns = { abs_notes .. "/**" }
 
 if not is_same_or_child(abs_scratch, abs_notes) then
@@ -49,8 +48,7 @@ vim.api.nvim_create_autocmd("BufWriteCmd", {
 
 vim.api.nvim_create_autocmd("BufDelete", {
 	group = GROUP,
-	-- Scratch files carry the configured note extension, but a file written
-	-- before it changed must be cleaned up as well.
+	-- Scratch files written before the note extension changed are cleaned up too.
 	pattern = abs_scratch .. "/*",
 	callback = function(args)
 		local path = vim.api.nvim_buf_get_name(args.buf)
@@ -67,8 +65,7 @@ vim.api.nvim_create_autocmd("BufDelete", {
 })
 
 --- Splits the arguments of `:MemoNewNote` into an encryption mode and a path.
---- `passphrase` and `key` are reserved as the mode, so they come first:
---- `:MemoNewNote passphrase journals/2026-01-01.md`.
+--- `passphrase` and `key` are reserved as the mode and come first.
 --- @param fargs string[] the command arguments, split on whitespace
 --- @return "passphrase"|"key"? mode nil when none was given
 --- @return string? path everything after the mode, joined back up
@@ -80,8 +77,7 @@ local function split_mode(fargs)
 	return nil, table.concat(fargs, " ")
 end
 
---- Completes the mode, which only has a place while it is still the first
---- argument.
+--- Completes the mode while it is still the first argument.
 --- @param arglead string the argument being completed
 --- @param cmdline string the whole command line
 --- @return string[]
@@ -130,7 +126,7 @@ end, {
 
 vim.api.nvim_create_user_command("MemoSaveAsNote", function(opts)
 	local message = require("memo.message")
-	-- The buffer is the path, so anything but a mode here is a mistake.
+	-- No path argument here: anything left over is a mistake.
 	local mode, path = split_mode(opts.fargs)
 
 	if path ~= "" then

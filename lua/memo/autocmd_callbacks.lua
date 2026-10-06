@@ -3,9 +3,8 @@ local M = {}
 ---@param path string
 ---@return boolean
 local function is_ignored(path)
-	-- `glob2regpat` turns a leading `**` into a regex anchored on a path
-	-- separator (`/\.gitignore`), so the subject must be absolute for the
-	-- pattern to match a bare basename (e.g. `args.file == ".gitignore"`).
+	-- `glob2regpat` anchors a leading `**` on a path separator, so the subject
+	-- must be absolute to match a bare basename.
 	local absolute = vim.fn.fnamemodify(path, ":p")
 	local config = require("memo.config")
 	local ignore_patterns = config.ignore_patterns
@@ -19,9 +18,8 @@ local function is_ignored(path)
 	return false
 end
 
----A directory is not a note: opening one asks for a listing, and resolving it
----as a note would notify at ERROR level, which raises inside an autocmd and
----aborts the read.
+---A directory is not a note: resolving one notifies at ERROR level, which
+---raises inside an autocmd.
 ---@param path string
 ---@return boolean
 local function is_directory(path)
@@ -92,8 +90,7 @@ function M.on_read(args)
 	local utils = require("memo.utils")
 	local crypto = require("memo.crypto")
 
-	-- Normalize to an absolute path: `args.file` can be relative and padding it
-	-- with `:p` keeps every downstream path comparison consistent.
+	-- Absolute, so path comparisons hold whether `args.file` is relative or not.
 	local file = vim.fn.fnamemodify(args.file, ":p")
 
 	if is_directory(file) then
@@ -111,9 +108,9 @@ function M.on_read(args)
 		return
 	end
 
-	-- If the encrypted note doesn't exist, it's new, just open it
+	-- A new note: open it the regular way.
 	if not utils.file_has_content(note_path) then
-		-- Read file - the regular way - into buffer
+		-- Read it the regular way.
 		vim.cmd("silent edit " .. vim.fn.fnameescape(file))
 		vim.bo[bufnr].modifiable = true
 		vim.b[bufnr].decrypting = false
@@ -156,8 +153,7 @@ function M.on_write(args)
 	local crypto = require("memo.crypto")
 	local message = require("memo.message")
 
-	-- Normalize to an absolute path so `file ~= note_path` and the buffer rename
-	-- behave the same whether the buffer was opened relative or absolute.
+	-- Absolute, so `file ~= note_path` and the buffer rename hold either way.
 	local file = vim.fn.fnamemodify(args.file, ":p")
 
 	if is_directory(file) then
@@ -173,8 +169,7 @@ function M.on_write(args)
 		return
 	end
 
-	-- A note that already carries a supported extension keeps it, so it is
-	-- written back to the file it was opened from.
+	-- A note that carries a supported extension keeps it.
 	local note_path = utils.resolve_note_file(file)
 	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
@@ -190,15 +185,14 @@ function M.on_write(args)
 	local result = crypto.encrypt_from_stdin(note_path, lines, bufnr)
 
 	if result.code ~= 0 then
-		-- Defer: an ERROR-level vim.notify raises inside an autocmd, which
-		-- would abort the write command outright.
+		-- Deferred: an ERROR-level vim.notify raises inside an autocmd.
 		local err = (result.stderr and result.stderr ~= "") and result.stderr or "Unknown encryption error"
 		message.defer_error("%s", err)
 		return
 	end
 
 	if file ~= note_path then
-		-- If saving a plain text file for the first time, delete the unencrypted original and change the buffer to the encrypted path.
+		-- First save of a plain text file: delete it and rename to the note.
 		if utils.file_exists(file) then
 			vim.fn.delete(file)
 		end
