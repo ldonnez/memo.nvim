@@ -272,6 +272,169 @@ describe("save_as_note", function()
 		end)
 	end)
 
+	describe("with a symmetric passphrase", function()
+		local passphrase = "sym-pass"
+
+		setup(function()
+			helpers.setup_test_env()
+			helpers.create_gpg_key("mock@example.com")
+		end)
+
+		teardown(function()
+			helpers.cleanup_test_env()
+		end)
+
+		it("saves a buffer as a passphrase note when asked", function()
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.type_keys("i", "Symmetric content", "<Esc>")
+
+			child.lua(
+				[[
+      local passphrase = ...
+      vim.fn.input = function() return "sym" end
+      require("memo.gpg").prompt_passphrase = function() return passphrase end
+
+      M.create({ encryption = { mode = "passphrase" } })
+    ]],
+				{ passphrase }
+			)
+
+			local note = vim.env.NOTES_DIR .. "/sym.asc"
+			MiniTest.expect.equality(child.fn.filereadable(note), 1)
+			MiniTest.expect.equality(helpers.is_symmetric_file(note), true)
+
+			local result = helpers.decrypt_symmetric_file(note, passphrase)
+			MiniTest.expect.equality(vim.trim(result.stdout or ""), "Symmetric content")
+		end)
+
+		it("asks for the passphrase twice when it creates a passphrase note", function()
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.type_keys("i", "Symmetric content", "<Esc>")
+
+			child.lua([[
+      local prompts = 0
+      local gpg = require("memo.gpg")
+
+      gpg.prompt_passphrase = function()
+        prompts = prompts + 1
+        return "sym-pass"
+      end
+
+      vim.fn.input = function() return "sym" end
+
+      function _G.memo_passphrase_prompts()
+        return prompts
+      end
+    ]])
+
+			child.lua([[
+      vim.fn.input = function() return "sym-twice" end
+    ]])
+
+			child.lua_get([[ M.create({ encryption = { mode = "passphrase" } }) ]])
+
+			MiniTest.expect.equality(child.lua_get([[ memo_passphrase_prompts() ]]), 2)
+			MiniTest.expect.equality(helpers.is_symmetric_file(vim.env.NOTES_DIR .. "/sym-twice.asc"), true)
+		end)
+
+		it("does not create the note when the confirmation does not match", function()
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.type_keys("i", "Never written", "<Esc>")
+
+			child.lua([[
+      local answers = { "first answer", "second answer" }
+      local prompts = 0
+      local gpg = require("memo.gpg")
+
+      gpg.prompt_passphrase = function()
+        prompts = prompts + 1
+        return answers[prompts]
+      end
+
+      vim.fn.input = function() return "mismatch" end
+    ]])
+
+			child.lua_get([[ M.create({ encryption = { mode = "passphrase" } }) ]])
+
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/mismatch.asc"), 0)
+			MiniTest.expect.equality(child.cmd_capture("messages"):find("the passphrases do not match") ~= nil, true)
+		end)
+
+		it("takes the mode as a command argument", function()
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.type_keys("i", "Symmetric content", "<Esc>")
+
+			child.lua([[
+      vim.fn.input = function() return "cmd-sym" end
+      require("memo.gpg").prompt_passphrase = function() return "sym-pass" end
+    ]])
+			child.cmd([[MemoSaveAsNote passphrase]])
+
+			local note = vim.env.NOTES_DIR .. "/cmd-sym.asc"
+			MiniTest.expect.equality(child.fn.filereadable(note), 1)
+			MiniTest.expect.equality(helpers.is_symmetric_file(note), true)
+		end)
+
+		it("encrypts to the key when the command is given no mode", function()
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.type_keys("i", "Key content", "<Esc>")
+
+			child.lua([[ vim.fn.input = function() return "cmd-key" end ]])
+			child.cmd([[MemoSaveAsNote]])
+
+			local note = vim.env.NOTES_DIR .. "/cmd-key.asc"
+			MiniTest.expect.equality(child.fn.filereadable(note), 1)
+			MiniTest.expect.equality(helpers.is_symmetric_file(note), false)
+		end)
+
+		it("rejects anything that is not a mode", function()
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.type_keys("i", "Never written", "<Esc>")
+
+			child.lua([[pcall(vim.cmd, "MemoSaveAsNote bogus")]])
+
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/bogus.asc"), 0)
+			MiniTest.expect.equality(
+				child.cmd_capture("messages"):find([[expected passphrase or key, got "bogus"]]) ~= nil,
+				true
+			)
+		end)
+
+		it("encrypts to the key when symmetric is not asked for", function()
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.type_keys("i", "Key content", "<Esc>")
+
+			child.lua("vim.fn.input = function() return 'keyed' end")
+			child.cmd("MemoSaveAsNote")
+
+			local note = vim.env.NOTES_DIR .. "/keyed.asc"
+			MiniTest.expect.equality(helpers.is_symmetric_file(note), false)
+		end)
+
+		it("saves nothing when the passphrase prompt is dismissed", function()
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.type_keys("i", "Never written", "<Esc>")
+
+			child.lua([[
+      vim.fn.input = function() return "dismissed" end
+      require("memo.gpg").prompt_passphrase = function() return "" end
+    ]])
+
+			local saved = child.lua_get([[ M.create({ encryption = { mode = "passphrase" } }) ]])
+
+			MiniTest.expect.equality(saved, false)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/dismissed.asc"), 0)
+		end)
+	end)
+
 	describe("with gpg key with password", function()
 		local gpg_key_password = "test"
 

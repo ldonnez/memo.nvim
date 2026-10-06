@@ -10,7 +10,14 @@ local M = {}
 ---path must stay inside `<notes_dir>`. The buffer is left open afterward.
 ---When a visual selection is active (or the command is invoked with a range,
 ---e.g. `:'<,'>MemoSaveAsNote`), only the selected lines are saved.
----@param opts? { range?: integer, line1?: integer, line2?: integer }
+---@class MemoSaveAsNoteOpts
+---@field range? integer
+---@field line1? integer
+---@field line2? integer
+---@field encryption? GpgEncryptOpts how to encrypt a new note, "key" when
+---omitted. A note that already exists is left the way it was encrypted
+
+---@param opts? MemoSaveAsNoteOpts
 ---@return boolean success
 function M.create(opts)
 	local utils = require("memo.utils")
@@ -44,10 +51,14 @@ function M.create(opts)
 
 	local lines = utils.resolve_selection(bufnr, opts) or vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
-	local result = crypto.encrypt_from_stdin(note_path, lines)
+	-- No buffer: the one being saved is not the note's, and a passphrase kept
+	-- there would be reused for the next note saved from it.
+	local mode = opts and opts.encryption and opts.encryption.mode
+	local result = crypto.encrypt_from_stdin(note_path, lines, nil, { mode = mode })
 
 	if result.code ~= 0 then
-		message.error("MemoSaveAsNote: encryption failed")
+		local err = (result.stderr and result.stderr ~= "") and result.stderr or "encryption failed"
+		message.error("MemoSaveAsNote: %s", err)
 		return false
 	end
 

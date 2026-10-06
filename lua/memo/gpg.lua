@@ -8,6 +8,8 @@ local PASSPHRASE_ENV = "MEMO_NOTE_PASSPHRASE"
 
 local NO_PASSPHRASE = "the passphrase was not given"
 
+local NO_MATCH = "the passphrases do not match"
+
 --- Check if a specific key (or default) is unlocked in gpg-agent
 --- @param id string?
 --- @return boolean
@@ -102,23 +104,48 @@ local function cached_passphrase(bufnr)
 	return vim.b[bufnr].memo_symmetric_passphrase
 end
 
---- The passphrase of a symmetrically encrypted file: the one the buffer already
---- holds, or a prompt for it. A new passphrase is kept in the buffer, so writing the
---- note back wil keep it cached and wil not ask for it again.
+--- The mode a buffer asked for when it created its note. It only says anything
+--- until that note has been written once: from then on the note's own packets
+--- say it. Set by `new_note`, dropped by `M.encrypt`.
+--- @param bufnr? integer
+--- @return "passphrase"|"key"?
+local function buffered_mode(bufnr)
+	if not bufnr then
+		return nil
+	end
+
+	return vim.b[bufnr].memo_encryption_mode
+end
+
+--- The passphrase of a passphrase note: the one the buffer already holds, or a
+--- prompt for it. A new passphrase is kept in the buffer, so writing the note
+--- back will keep it cached and will not ask for it again.
 --- @param path string
 --- @param bufnr? integer buffer to keep the passphrase in
---- @return string? nil when the prompt was dismissed
-local function get_symmetric_passphrase(path, bufnr)
+--- @param confirm boolean ask for the passphrase twice, for a note that does not
+--- exist yet and so has nothing to check it against
+--- @return string? pass nil when there is none
+--- @return string? fail why there is none
+local function get_symmetric_passphrase(path, bufnr, confirm)
 	local cached = cached_passphrase(bufnr)
 
 	if cached then
 		return cached
 	end
 
-	local pass = M.prompt_passphrase(("note %s (symmetric)"):format(vim.fn.fnamemodify(path, ":t")))
+	local name = vim.fn.fnamemodify(path, ":t")
+	local pass = M.prompt_passphrase(("note %s (symmetric)"):format(name))
 
 	if pass == "" then
-		return nil
+		return nil, NO_PASSPHRASE
+	end
+
+	if confirm then
+		local again = M.prompt_passphrase(("note %s (symmetric, confirmation)"):format(name))
+
+		if again ~= pass then
+			return nil, NO_MATCH
+		end
 	end
 
 	if bufnr then
@@ -255,35 +282,64 @@ function M.get_file_key_ids(path)
 	return read_packets(path).key_ids
 end
 
---- Encrypts content into a note, keeping a passphrase note encrypted with a
---- passphrase.
+--- Encrypts content into a note.
+---
+--- A note that exists is written back the way it was encrypted, which only the
+--- note's own packets can tell. A note that does not exist yet cannot be
+--- inspected, so the caller states the intent.
+---@class GpgEncryptOpts
+---@field mode? "passphrase"|"key" how to encrypt. A note that already exists
+---is read from its own packets instead, so it keeps the way it was encrypted;
+---one that does not exist yet defaults to "key"
+
+---@class GpgEncryptRequest: GpgEncryptOpts
+---@field bufnr? integer buffer holding the passphrase of a passphrase note
+
 --- @param path string the note to write to
 --- @param input string[] the content to encrypt
---- @param bufnr? integer buffer the note was decrypted into, so a passphrase
---- note is written back the way it was encrypted
+--- @param opts? GpgEncryptRequest
 --- @return vim.SystemCompleted
-function M.encrypt(path, input, bufnr)
-	if is_symmetric(path) then
-		local passphrase = get_symmetric_passphrase(path, bufnr)
+function M.encrypt(path, input, opts)
+	opts = opts or {}
+
+	local mode = opts.mode or buffered_mode(opts.bufnr)
+	local exists = require("memo.utils").file_exists(path)
+	local passphrase_mode = mode == "passphrase"
+	local result
+
+	if mode == nil and exists then
+		passphrase_mode = is_symmetric(path)
+	end
+
+	if passphrase_mode then
+		local passphrase, fail = get_symmetric_passphrase(path, opts.bufnr, not exists)
 
 		if not passphrase then
 			-- A result the caller can still read .code from, for a command that
 			-- never ran.
-			return { code = 1, signal = 0, stdout = "", stderr = ("Not writing %s: %s"):format(path, NO_PASSPHRASE) }
+			return { code = 1, signal = 0, stdout = "", stderr = ("Not writing %s: %s"):format(path, fail) }
 		end
 
 		-- `memo` owns the encryption, so a passphrase note is byte for byte what
 		-- the CLI writes.
-		return run_with_passphrase(
+		result = run_with_passphrase(
 			{ "memo", "encrypt", "--symmetric", path, "--passphrase-env", PASSPHRASE_ENV },
 			passphrase,
 			{ stdin = input }
 		):wait()
+	else
+		result = vim.system({ "memo", "encrypt", path }, {
+			stdin = input,
+		}):wait()
 	end
 
-	return vim.system({ "memo", "encrypt", path }, {
-		stdin = input,
-	}):wait()
+	if result.code == 0 and opts.bufnr and buffered_mode(opts.bufnr) then
+		-- The note is on disk now and speaks for itself, so the buffer stops
+		-- carrying the intent that was only needed for its first write.
+		vim.api.nvim_buf_del_var(opts.bufnr, "memo_encryption_mode")
+	end
+
+	return result
 end
 
 --- Decrypts a note with whatever gpg needs to read it: the passphrase of a
@@ -296,7 +352,7 @@ end
 --- @return vim.SystemObj? nil when a passphrase prompt was dismissed
 function M.decrypt(path, bufnr, opts, on_exit)
 	if is_symmetric(path) then
-		local passphrase = get_symmetric_passphrase(path, bufnr)
+		local passphrase = get_symmetric_passphrase(path, bufnr, false)
 
 		if not passphrase then
 			return nil

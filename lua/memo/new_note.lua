@@ -9,6 +9,7 @@ local M = {}
 ---@field range? integer
 ---@field line1? integer
 ---@field line2? integer
+---@field encryption? GpgEncryptOpts how to encrypt, "key" when omitted
 ---@field window? MemoWindowConfig opens the note in a split, the current
 ---window is kept when omitted
 
@@ -105,6 +106,13 @@ function M.create(opts)
 
 	if #initial_lines > 0 then
 		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
+	end
+
+	-- A new note has no file to read the mode from, so the intent rides along on
+	-- the buffer until the first write has encrypted it.
+	local enc_mode = new_opts.encryption and new_opts.encryption.mode
+	if enc_mode then
+		vim.b[bufnr].memo_encryption_mode = enc_mode
 	end
 
 	vim.bo[bufnr].modified = true

@@ -22,8 +22,9 @@ function M.sync_git()
 	return require("memo.sync").sync_git()
 end
 
-function M.save_as_note()
-	return require("memo.save_as_note").create()
+---@param opts? MemoSaveAsNoteOpts
+function M.save_as_note(opts)
+	return require("memo.save_as_note").create(opts)
 end
 
 --Opens a new encrypted scratch buffer.
