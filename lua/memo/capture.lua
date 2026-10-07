@@ -168,28 +168,16 @@ function M.create(opts)
 
 	local capture_template = Template.new({ template = config.template })
 
-	local template_lines, template_cursor, has_cursor_marker = capture_template:resolve_template()
+	-- Kept for the write handler: it compares the buffer against the template
+	-- to tell an edited capture from an untouched one.
+	local template_lines = capture_template:resolve_template()
 
 	local bufnr = vim.api.nvim_get_current_buf()
 	local range_lines = utils.resolve_selection(bufnr)
 
 	local win, buf = create_capture_window(config)
 
-	---@type string[], [integer, integer]
-	local initial_lines, cursor_pos
-	if range_lines and has_cursor_marker then
-		-- The selection goes where the template asked for it, so a captured
-		-- selection keeps the header the template provides.
-		initial_lines, cursor_pos = capture_template:insert_at_cursor(range_lines)
-	elseif range_lines then
-		-- Without a marker there is nowhere to insert, so the selection becomes
-		-- the whole capture.
-		initial_lines = range_lines
-		cursor_pos = { #initial_lines, 0 }
-	else
-		initial_lines = template_lines
-		cursor_pos = template_cursor
-	end
+	local initial_lines, cursor_pos = capture_template:initial_content(range_lines)
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, initial_lines)
 	vim.api.nvim_win_set_cursor(win, cursor_pos)

@@ -75,16 +75,7 @@ function M.create(opts)
 	end
 
 	local note_template = Template.new({ template = new_opts.template })
-	local initial_lines, cursor_pos, has_cursor_marker = note_template:resolve_template()
-
-	if selected then
-		if has_cursor_marker then
-			initial_lines, cursor_pos = note_template:insert_at_cursor(selected)
-		else
-			-- Without a marker the selection becomes the whole note.
-			initial_lines, cursor_pos = selected, { #selected, 0 }
-		end
-	end
+	local initial_lines, cursor_pos = note_template:initial_content(selected)
 
 	-- Opened after the selection is resolved: a split would replace the source
 	-- window.
