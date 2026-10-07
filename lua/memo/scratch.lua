@@ -1,5 +1,6 @@
 local M = {}
 local utils = require("memo.utils")
+local window = require("memo.window")
 
 ---@return string cwd key used to prefix scratch filenames of the current
 ---directory, e.g. "%Users%dev%project"
@@ -93,22 +94,28 @@ local function get_scratch_file()
 	return vim.fs.joinpath(dir, base .. "." .. require("memo.config").extension)
 end
 
----@param direction? string any direction other than "vertical"/"tab" opens a horizontal split
-function M.create(direction)
+---@class MemoScratchOpts
+---@field window? MemoWindowConfig opens the scratch in a split; a scratch
+---always splits by default
+---@field encryption? GpgEncryptOpts how to encrypt, "key" when omitted
+
+---@param opts? MemoScratchOpts
+function M.create(opts)
 	local file = get_scratch_file()
 	if not file then
 		return
 	end
 
-	if direction == "vertical" then
-		vim.cmd("belowright vsplit")
-	elseif direction == "tab" then
-		vim.cmd("tabnew")
-	else
-		vim.cmd("belowright split")
-	end
+	window.open(opts and opts.window)
 
 	vim.cmd("silent edit " .. vim.fn.fnameescape(file))
+
+	-- A scratch file is always new, so the mode rides on the buffer until the
+	-- first write; later writes read it back from the file.
+	local mode = opts and opts.encryption and opts.encryption.mode
+	if mode then
+		vim.b[vim.api.nvim_get_current_buf()].memo_encryption_mode = mode
+	end
 end
 
 function M.is_scratch_file(path)

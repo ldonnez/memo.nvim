@@ -28,9 +28,9 @@ function M.save_as_note(opts)
 end
 
 --Opens a new encrypted scratch buffer.
----@param direction? "horizontal"|"vertical"|"tab"
-function M.scratch(direction)
-	require("memo.scratch").create(direction)
+---@param opts? MemoScratchOpts
+function M.scratch(opts)
+	require("memo.scratch").create(opts)
 end
 
 return M

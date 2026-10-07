@@ -64,11 +64,11 @@ vim.api.nvim_create_autocmd("BufDelete", {
 	end,
 })
 
---- Splits the arguments of `:MemoNewNote` into an encryption mode and a path.
+--- Splits the arguments of a command into an encryption mode and the rest.
 --- `passphrase` and `key` are reserved as the mode and come first.
 --- @param fargs string[] the command arguments, split on whitespace
 --- @return "passphrase"|"key"? mode nil when none was given
---- @return string? path everything after the mode, joined back up
+--- @return string? rest everything after the mode, joined back up
 local function split_mode(fargs)
 	if fargs[1] == "passphrase" or fargs[1] == "key" then
 		return fargs[1], table.concat(vim.list_slice(fargs, 2), " ")
@@ -77,29 +77,64 @@ local function split_mode(fargs)
 	return nil, table.concat(fargs, " ")
 end
 
---- Completes the mode while it is still the first argument.
+--- Completes the mode argument of `:MemoNewNote` and `:MemoSaveAsNote`.
 --- @param arglead string the argument being completed
---- @param cmdline string the whole command line
 --- @return string[]
-local function complete_mode(arglead, cmdline)
-	local rest = cmdline:match("^%S+%s*(.*)$") or ""
-
-	if (rest:gsub("%S*$", ""):match("^%s*(.-)%s*$") or "") ~= "" then
-		return {}
-	end
-
+local function complete_mode(arglead)
 	return vim.tbl_filter(function(candidate)
 		return vim.startswith(candidate, arglead)
 	end, { "passphrase", "key" })
 end
 
+--- Completes `:MemoScratch`: a mode or a split may come first, and a
+--- split follows a mode. Only the finished arguments are parsed;
+--- the partially typed one is `arglead`.
+--- @param arglead string the argument being completed
+--- @param cmdline string the whole command line
+--- @return string[]
+local function complete_scratch(arglead, cmdline)
+	local rest = cmdline:match("^%S+%s*(.*)$") or ""
+	local args = vim.split(rest, "%s+", { trimempty = true })
+
+	if not rest:match("%s$") and #args > 0 then
+		table.remove(args)
+	end
+
+	if #args == 0 then
+		return vim.tbl_filter(function(candidate)
+			return vim.startswith(candidate, arglead)
+		end, { "passphrase", "key", "split", "vsplit", "tab" })
+	end
+
+	if #args == 1 and (args[1] == "passphrase" or args[1] == "key") then
+		return vim.tbl_filter(function(candidate)
+			return vim.startswith(candidate, arglead)
+		end, { "split", "vsplit", "tab" })
+	end
+
+	return {}
+end
+
 vim.api.nvim_create_user_command("MemoScratch", function(opts)
-	require("memo.scratch").create(opts.args)
+	local message = require("memo.message")
+	-- A leading mode selects the encryption, like `:MemoNewNote`; what is
+	-- left is the split to open.
+	local mode, split = split_mode(opts.fargs)
+
+	if split ~= "" and split ~= "split" and split ~= "vsplit" and split ~= "tab" then
+		message.error("MemoScratch: expected split, vsplit or tab, got %q", split)
+		return
+	end
+
+	require("memo.scratch").create({
+		window = split ~= "" and {
+			split = split --[[@as MemoWindowSplit]],
+		} or nil,
+		encryption = { mode = mode },
+	})
 end, {
-	nargs = "?",
-	complete = function()
-		return { "horizontal", "vertical", "tab" }
-	end,
+	nargs = "*",
+	complete = complete_scratch,
 	desc = "Open an encrypted scratch buffer",
 })
 
