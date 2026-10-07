@@ -102,4 +102,26 @@ function Template:insert_at_cursor(content)
 	return merged, { end_row, end_col }
 end
 
+---The initial content of a note: the selection where the template's `|`
+---marker is, the selection alone when there is no marker, or the template
+---itself when there is no selection.
+---@param selection? string[]
+---@return string[] lines
+---@return [integer, integer] cursor_pos row and column, 0-indexed
+function Template:initial_content(selection)
+	local lines, cursor_pos, has_cursor_marker = self:resolve_template()
+
+	if not selection then
+		return lines, cursor_pos
+	end
+
+	if has_cursor_marker then
+		return self:insert_at_cursor(selection)
+	end
+
+	-- Without a marker there is nowhere to insert, so the selection becomes
+	-- the whole content.
+	return selection, { #selection, 0 }
+end
+
 return M

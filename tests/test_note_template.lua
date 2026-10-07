@@ -105,4 +105,54 @@ describe("note_template", function()
 			MiniTest.expect.equality(cursor, { 2, 2 })
 		end)
 	end)
+
+	describe("initial_content", function()
+		it("returns the template when there is no selection", function()
+			local note_template = Template.new({ template = "## Title\n|" })
+			local lines, cursor = note_template:initial_content()
+
+			MiniTest.expect.equality(lines, { "## Title", "" })
+			MiniTest.expect.equality(cursor, { 2, 0 })
+		end)
+
+		it("inserts the selection at the marker", function()
+			local note_template = Template.new({ template = "## Notes\n- |" })
+			local lines, cursor = note_template:initial_content({ "todo item" })
+
+			MiniTest.expect.equality(lines, { "## Notes", "- todo item" })
+			MiniTest.expect.equality(cursor, { 2, 11 })
+		end)
+
+		it("returns the selection alone when the template has no marker", function()
+			local note_template = Template.new({ template = "## Notes" })
+			local lines, cursor = note_template:initial_content({ "first", "second" })
+
+			MiniTest.expect.equality(lines, { "first", "second" })
+			MiniTest.expect.equality(cursor, { 2, 0 })
+		end)
+
+		it("returns the template for an empty selection with a marker", function()
+			local note_template = Template.new({ template = "## Notes\n- |" })
+			local lines, cursor = note_template:initial_content({})
+
+			MiniTest.expect.equality(lines, { "## Notes", "- " })
+			MiniTest.expect.equality(cursor, { 2, 2 })
+		end)
+
+		it("returns the empty selection alone when there is no marker", function()
+			local note_template = Template.new({ template = "## Notes" })
+			local lines, cursor = note_template:initial_content({})
+
+			MiniTest.expect.equality(lines, {})
+			MiniTest.expect.equality(cursor, { 0, 0 })
+		end)
+
+		it("defaults to an empty line for an empty template", function()
+			local note_template = Template.new()
+			local lines, cursor = note_template:initial_content()
+
+			MiniTest.expect.equality(lines, { "" })
+			MiniTest.expect.equality(cursor, { 1, 0 })
+		end)
+	end)
 end)
