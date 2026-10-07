@@ -209,14 +209,22 @@ describe("scratch", function()
 			MiniTest.expect.equality(name:match("T%d%d%d%d%d%d%-%x%x%x%x%x%x%.asc$") ~= nil, true)
 		end)
 
-		it("opens in a new tab when direction is tab", function()
-			child.lua("M.create('tab')")
+		it("opens in a new tab when the window split is tab", function()
+			child.lua("M.create({ window = { split = 'tab' } })")
 
 			local buffer = child.api.nvim_get_current_buf()
 			local name = child.api.nvim_buf_get_name(buffer)
 
 			MiniTest.expect.equality(child.fn.tabpagenr("$"), 2)
 			MiniTest.expect.equality(vim.startswith(name, vim.fn.stdpath("data") .. "/memo-scratch/"), true)
+		end)
+
+		it("opens beside the current window when the window split is vsplit", function()
+			local wins_before = #child.api.nvim_list_wins()
+
+			child.lua("M.create({ window = { split = 'vsplit' } })")
+
+			MiniTest.expect.equality(#child.api.nvim_list_wins(), wins_before + 1)
 		end)
 
 		it("does not show the [Not edited] flag", function()
@@ -240,6 +248,75 @@ describe("scratch", function()
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(result.stdout:find("Secret scratch content") ~= nil, true)
+		end)
+
+		it("encrypts with a passphrase when the passphrase mode is configured", function()
+			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "scratch-sym" end ]])
+			child.lua("M.create({ encryption = { mode = 'passphrase' } })")
+			local name = child.api.nvim_buf_get_name(0)
+
+			child.type_keys("i", "secret scratch", "<Esc>")
+			child.cmd("write")
+
+			MiniTest.expect.equality(child.fn.filereadable(name), 1)
+			MiniTest.expect.equality(helpers.is_symmetric_file(name), true)
+
+			-- A later write keeps the passphrase, now read back from the file.
+			child.type_keys("A", " more", "<Esc>")
+			child.cmd("write")
+
+			MiniTest.expect.equality(helpers.is_symmetric_file(name), true)
+
+			local result = helpers.decrypt_symmetric_file(name, "scratch-sym")
+			MiniTest.expect.equality(result.code, 0)
+			MiniTest.expect.equality(vim.trim(result.stdout or ""), "secret scratch more")
+		end)
+
+		it("takes the mode as a command argument", function()
+			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "cmd-sym" end ]])
+			child.cmd("MemoScratch passphrase")
+
+			local name = child.api.nvim_buf_get_name(0)
+			child.type_keys("i", "cmd scratch", "<Esc>")
+			child.cmd("write")
+
+			MiniTest.expect.equality(helpers.is_symmetric_file(name), true)
+
+			local result = helpers.decrypt_symmetric_file(name, "cmd-sym")
+			MiniTest.expect.equality(result.code, 0)
+			MiniTest.expect.equality(vim.trim(result.stdout or ""), "cmd scratch")
+		end)
+
+		it("opens the split given after the mode", function()
+			local wins_before = #child.api.nvim_list_wins()
+
+			child.cmd("MemoScratch passphrase vsplit")
+
+			MiniTest.expect.equality(#child.api.nvim_list_wins(), wins_before + 1)
+		end)
+
+		it("encrypts to the key when the command is given key mode", function()
+			child.cmd("MemoScratch key")
+
+			local name = child.api.nvim_buf_get_name(0)
+			child.type_keys("i", "keyed scratch", "<Esc>")
+			child.cmd("write")
+
+			MiniTest.expect.equality(child.fn.filereadable(name), 1)
+			MiniTest.expect.equality(helpers.is_symmetric_file(name), false)
+		end)
+
+		it("rejects an unknown split argument", function()
+			local wins_before = #child.api.nvim_list_wins()
+
+			child.lua([[pcall(vim.cmd, "MemoScratch bogus")]])
+
+			MiniTest.expect.equality(
+				child.cmd_capture("messages"):find([[MemoScratch: expected split, vsplit or tab, got "bogus"]], 1, true)
+					~= nil,
+				true
+			)
+			MiniTest.expect.equality(#child.api.nvim_list_wins(), wins_before)
 		end)
 
 		it("keeps the buffer open after writing", function()
