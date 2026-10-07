@@ -16,6 +16,8 @@ local M = {}
 ---capture window when the template has none.
 ---@field window MemoWindowConfig opens the capture in a split, every option
 ---has a default
+---@field encryption? GpgEncryptOpts how to encrypt a new capture file, "key"
+---when omitted; an existing capture file always keeps the way it was encrypted
 
 ---@type table
 local DEFAULTS = {
@@ -112,10 +114,11 @@ end
 ---@param lines string[] The new lines from the capture window
 ---@param config CaptureConfig
 ---@param bufnr integer The capture buffer, which holds the passphrase of a
----symmetric capture file so it is not asked for twice
+---symmetric capture file so it is not prompted for twice
 ---@return boolean -- true when the content was saved successfully
 local function append_capture(lines, config, bufnr)
 	local notes_dir = memo_config.notes_dir
+	local mode = config.encryption and config.encryption.mode
 
 	local expanded = vim.fn.expand(notes_dir .. "/" .. config.capture_file) --[[@as string]]
 	local file = utils.resolve_note_file(expanded)
@@ -127,7 +130,7 @@ local function append_capture(lines, config, bufnr)
 		end
 
 		local merged = insert_lines({}, lines, config)
-		return crypto.encrypt_from_stdin(file, merged, bufnr).code == 0
+		return crypto.encrypt_from_stdin(file, merged, bufnr, { mode = mode }).code == 0
 	end
 
 	local read_result = crypto.decrypt_to_stdout(file, bufnr)
@@ -146,7 +149,7 @@ local function append_capture(lines, config, bufnr)
 
 	local merged = insert_lines(existing, lines, config)
 
-	return crypto.encrypt_from_stdin(file, merged, bufnr).code == 0
+	return crypto.encrypt_from_stdin(file, merged, bufnr, { mode = mode }).code == 0
 end
 
 ---Opens a capture buffer, prefilled with the target header and the template.
