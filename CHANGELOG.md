@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.15.0](https://github.com/ldonnez/memo.nvim/compare/v0.14.2...v0.15.0) (2026-10-07)
+
+
+### Features
+
+* **capture:** allow captures with a encryption mode ([c1a2269](https://github.com/ldonnez/memo.nvim/commit/c1a22699c776d45ee2ac508baab54b07a418a038))
+* create passphrase notes from new_note and save_as_note ([69bc967](https://github.com/ldonnez/memo.nvim/commit/69bc967295df87012968bb573d300e6f519db2fb))
+* **scratch:** accept window and encryption opts ([7500750](https://github.com/ldonnez/memo.nvim/commit/7500750adbe9f6a898454d6f974add7549ef3900))
+* **template:** extract initial content ([03e1990](https://github.com/ldonnez/memo.nvim/commit/03e1990e6253ef96efe2ed2f44e19a5047cc94e9))
+
 ## [0.14.2](https://github.com/ldonnez/memo.nvim/compare/v0.14.1...v0.14.2) (2026-10-05)
 
 
