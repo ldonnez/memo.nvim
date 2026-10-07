@@ -391,7 +391,7 @@ describe("crypto", function()
 			MiniTest.expect.equality(vim.split(result.stdout, "\n"), { "Line 1", "Line 2" })
 		end)
 
-		it("writes a symmetric note back symmetrically without asking again", function()
+		it("writes a symmetric note back symmetrically without prompting again", function()
 			local path = vim.env.NOTES_DIR .. "/sym.md.gpg"
 
 			helpers.encrypt_symmetric_file(path, "Line 1\n", passphrase)
@@ -501,7 +501,7 @@ describe("crypto", function()
 			MiniTest.expect.equality(child.api.nvim_buf_is_valid(child.g.sym_bufnr), false)
 		end)
 
-		it("asks once, returns nothing and says why when the prompt is dismissed", function()
+		it("prompts once, returns nothing and says why when the prompt is dismissed", function()
 			local path = vim.env.NOTES_DIR .. "/sym.md.gpg"
 
 			helpers.encrypt_symmetric_file(path, "Line 1\n", passphrase)

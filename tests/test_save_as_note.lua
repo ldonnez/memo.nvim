@@ -284,7 +284,7 @@ describe("save_as_note", function()
 			helpers.cleanup_test_env()
 		end)
 
-		it("saves a buffer as a passphrase note when asked", function()
+		it("saves a buffer as a passphrase note when the passphrase mode is configured", function()
 			local source = vim.env.NOTES_DIR .. "/random.txt"
 			child.cmd("edit " .. vim.fn.fnameescape(source))
 			child.type_keys("i", "Symmetric content", "<Esc>")
@@ -308,7 +308,7 @@ describe("save_as_note", function()
 			MiniTest.expect.equality(vim.trim(result.stdout or ""), "Symmetric content")
 		end)
 
-		it("asks for the passphrase twice when it creates a passphrase note", function()
+		it("prompts for the passphrase twice when it creates a passphrase note", function()
 			local source = vim.env.NOTES_DIR .. "/random.txt"
 			child.cmd("edit " .. vim.fn.fnameescape(source))
 			child.type_keys("i", "Symmetric content", "<Esc>")
@@ -406,7 +406,7 @@ describe("save_as_note", function()
 			)
 		end)
 
-		it("encrypts to the key when symmetric is not asked for", function()
+		it("encrypts to the key when the symmetric mode is not configured", function()
 			local source = vim.env.NOTES_DIR .. "/random.txt"
 			child.cmd("edit " .. vim.fn.fnameescape(source))
 			child.type_keys("i", "Key content", "<Esc>")
