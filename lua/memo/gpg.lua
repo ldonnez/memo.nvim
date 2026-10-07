@@ -102,7 +102,7 @@ local function cached_passphrase(bufnr)
 	return vim.b[bufnr].memo_symmetric_passphrase
 end
 
---- The mode a buffer asked for when it created its note.
+--- The mode configured when the buffer created its note.
 --- @param bufnr? integer
 --- @return "passphrase"|"key"?
 local function buffered_mode(bufnr)
@@ -117,7 +117,7 @@ end
 --- for it.
 --- @param path string
 --- @param bufnr? integer buffer to keep the passphrase in
---- @param confirm boolean ask for the passphrase twice
+--- @param confirm boolean prompt for the passphrase twice
 --- @return string? pass nil when there is none
 --- @return string? fail why there is none
 local function get_symmetric_passphrase(path, bufnr, confirm)
@@ -272,8 +272,8 @@ end
 
 --- Encrypts content into a note.
 ---@class GpgEncryptOpts
----@field mode? "passphrase"|"key" how to encrypt; an existing note keeps the
----way it was encrypted, a new one defaults to "key"
+---@field mode? "passphrase"|"key" how to encrypt a new note, "key" when
+---omitted; an existing note always keeps the way it was encrypted
 
 ---@class GpgEncryptRequest: GpgEncryptOpts
 ---@field bufnr? integer buffer holding the passphrase of a passphrase note
@@ -287,12 +287,20 @@ function M.encrypt(path, input, opts)
 
 	local mode = opts.mode or buffered_mode(opts.bufnr)
 	local exists = require("memo.utils").file_exists(path)
-	local passphrase_mode = mode == "passphrase"
-	local result
 
-	if mode == nil and exists then
+	-- The mode only picks the encryption of a new note. An existing note keeps
+	-- the way it was encrypted: a key note is never demoted to a passphrase,
+	-- and a passphrase note is not re-encrypted to the key.
+	local passphrase_mode
+	if exists then
 		passphrase_mode = is_symmetric(path)
+	elseif mode == "passphrase" then
+		passphrase_mode = true
+	else
+		passphrase_mode = false
 	end
+
+	local result
 
 	if passphrase_mode then
 		local passphrase, fail = get_symmetric_passphrase(path, opts.bufnr, not exists)

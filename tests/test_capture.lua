@@ -532,6 +532,76 @@ describe("capture", function()
 			MiniTest.expect.equality(child.api.nvim_buf_is_valid(buf), false)
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/fail.md.gpg"), 1)
 		end)
+
+		it("creates the capture file with passphrase encryption when the passphrase mode is configured", function()
+			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "cap-sym" end ]])
+			child.lua([[ M.create({ capture_file = "sym-capture.md", encryption = { mode = "passphrase" } }) ]])
+
+			child.type_keys("i", "symmetric capture", "<Esc>")
+			child.cmd("write")
+
+			local note = vim.env.NOTES_DIR .. "/sym-capture.md.asc"
+			MiniTest.expect.equality(child.fn.filereadable(note), 1)
+			MiniTest.expect.equality(helpers.is_symmetric_file(note), true)
+
+			local result = helpers.decrypt_symmetric_file(note, "cap-sym")
+			MiniTest.expect.equality(result.code, 0)
+			MiniTest.expect.equality(vim.trim(result.stdout or ""), "symmetric capture")
+		end)
+
+		it("keeps an existing capture file encrypted to the key even when the passphrase mode is configured", function()
+			local note = vim.env.NOTES_DIR .. "/switch-capture.md.asc"
+			helpers.encrypt_file(note, "existing\n")
+
+			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "switch-sym" end ]])
+			child.lua([[ M.create({ capture_file = "switch-capture.md", encryption = { mode = "passphrase" } }) ]])
+
+			child.type_keys("i", "new capture", "<Esc>")
+			child.cmd("write")
+
+			MiniTest.expect.equality(helpers.is_symmetric_file(note), false)
+
+			local result = helpers.decrypt_file(note)
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout:find("new capture") ~= nil, true)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(result.stdout:find("existing") ~= nil, true)
+		end)
+
+		it("keeps an existing passphrase capture file even when the key mode is configured", function()
+			local note = vim.env.NOTES_DIR .. "/keep-sym-key.md.asc"
+			helpers.encrypt_symmetric_file(note, "existing\n", "keep-key")
+
+			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "keep-key" end ]])
+			child.lua([[ M.create({ capture_file = "keep-sym-key.md", encryption = { mode = "key" } }) ]])
+
+			child.type_keys("i", "appended", "<Esc>")
+			child.cmd("write")
+
+			MiniTest.expect.equality(helpers.is_symmetric_file(note), true)
+
+			local result = helpers.decrypt_symmetric_file(note, "keep-key")
+			MiniTest.expect.equality(result.code, 0)
+			MiniTest.expect.equality(vim.trim(result.stdout or ""), "appended\nexisting")
+		end)
+
+		it("keeps an existing passphrase capture file without a mode", function()
+			local note = vim.env.NOTES_DIR .. "/keep-sym.md.asc"
+			helpers.encrypt_symmetric_file(note, "existing\n", "keep-sym")
+
+			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "keep-sym" end ]])
+			child.lua([[ M.create({ capture_file = "keep-sym.md" }) ]])
+
+			child.type_keys("i", "appended", "<Esc>")
+			child.cmd("write")
+
+			MiniTest.expect.equality(helpers.is_symmetric_file(note), true)
+
+			local result = helpers.decrypt_symmetric_file(note, "keep-sym")
+			MiniTest.expect.equality(result.code, 0)
+			MiniTest.expect.equality(vim.trim(result.stdout or ""), "appended\nexisting")
+		end)
 	end)
 
 	describe("with gpg key with password", function()
