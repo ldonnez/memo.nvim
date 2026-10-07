@@ -3,6 +3,7 @@
 Seamless Neovim interface for [memo](https://github.com/ldonnez/memo), a CLI-based notes system with transparent GPG encryption. Create, read, and update encrypted files without leaving your editor.
 
 - Transparent encryption: `.asc` files in your notes directory are decrypted into the buffer and re-encrypted on write; plaintext never touches disk.
+- Passphrase-mode encryption for notes, capture files, and scratch buffers.
 - Encrypted scratch buffers for throwaway, sensitive content.
 - Quick capture workflow that appends to a capture file (e.g. a journal).
 - fzf-lua pickers for browsing notes and scratch files.
@@ -59,23 +60,41 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
     {
       "<leader>ms",
       function()
-        require("memo").scratch("horizontal")
+        require("memo").scratch({ window = { split = "split" } })
       end,
       desc = "Memo: Scratch horizontal",
     },
     {
       "<leader>mv",
       function()
-        require("memo").scratch("vertical")
+        require("memo").scratch({ window = { split = "vsplit" } })
       end,
       desc = "Memo: Scratch vertical",
     },
     {
       "<leader>mt",
       function()
-        require("memo").scratch("tab")
+        require("memo").scratch({ window = { split = "tab" } })
       end,
       desc = "Memo: Scratch tab",
+    },
+    {
+      "<leader>mP",
+      function()
+        require("memo").scratch({ encryption = { mode = "passphrase" } })
+      end,
+      desc = "Memo: Scratch (passphrase)",
+    },
+    {
+      mode = { "n", "v" },
+      "<leader>mC",
+      function()
+        require("memo").capture({
+          target_header = "# " .. os.date("%Y-%m-%d"),
+          encryption = { mode = "passphrase" },
+        })
+      end,
+      desc = "Memo: Capture to braindump (passphrase)",
     },
     {
       "<leader>mp",
@@ -155,16 +174,27 @@ vim.keymap.set("n", "<leader>mo", function()
 end, { desc = "Memo: Open default capture file" })
 
 vim.keymap.set("n", "<leader>ms", function()
-  require("memo").scratch("horizontal")
+  require("memo").scratch({ window = { split = "split" } })
 end, { desc = "Memo: Scratch horizontal" })
 
 vim.keymap.set("n", "<leader>mv", function()
-  require("memo").scratch("vertical")
+  require("memo").scratch({ window = { split = "vsplit" } })
 end, { desc = "Memo: Scratch vertical" })
 
 vim.keymap.set("n", "<leader>mt", function()
-  require("memo").scratch("tab")
+  require("memo").scratch({ window = { split = "tab" } })
 end, { desc = "Memo: Scratch tab" })
+
+vim.keymap.set("n", "<leader>mP", function()
+  require("memo").scratch({ encryption = { mode = "passphrase" } })
+end, { desc = "Memo: Scratch (passphrase)" })
+
+vim.keymap.set({ "n", "v" }, "<leader>mC", function()
+  require("memo").capture({
+    target_header = "# " .. os.date("%Y-%m-%d"),
+    encryption = { mode = "passphrase" },
+  })
+end, { desc = "Memo: Capture to braindump (passphrase)" })
 
 vim.keymap.set("n", "<leader>mp", function()
   require("memo.pickers.fzf_lua").scratch_files_picker()
@@ -338,11 +368,11 @@ This means your usual workflows (search, LSP, macros) operate on plaintext while
 A note encrypted symmetrically, with `gpg --symmetric` instead of a key, opens
 without needing a key in the keyring:
 
-- Opening one asks for the passphrase of that file, e.g. `GPG Passphrase for
+- Opening one prompts for the passphrase of that file, e.g. `GPG Passphrase for
 note inbox.md.asc (symmetric):`.
 - Writing it back encrypts it with the same passphrase, so it stays
   symmetric instead of being re-encrypted to your key. The passphrase is kept
-  in the buffer, so it is asked for once per buffer rather than once per write.
+  in the buffer, so it is entered once per buffer rather than once per write.
 - Reading and writing them goes through `memo encrypt --symmetric` and
   `memo decrypt`, so a note is exactly what the CLI writes. The passphrase is
   handed over in the child process environment, not on the command line.
@@ -355,9 +385,9 @@ The [memo CLI](https://github.com/ldonnez/memo) creates these notes with
 `memo encrypt --symmetric`, and keeps them symmetric when you open them with
 `memo FILE`, so both tools can work on the same notes.
 
-A new note encrypts with your key unless you ask for a passphrase. You are
-asked to confirm your passphrase when creating or saving a new note. Close
-either prompt, or type two different passphrases, and nothing is saved.
+A new note, capture file, or scratch buffer encrypts with your key unless the
+passphrase mode is configured. The passphrase is confirmed when creating a new
+note or capture file; the note is only created once it is confirmed.
 
 Both commands take it as an argument and complete to `passphrase` and
 `key`, which is the default:
@@ -376,6 +406,15 @@ require("memo").new_note({
 require("memo").save_as_note({
   encryption = { mode = "passphrase" },
 })
+
+require("memo").capture({
+  capture_file = "captures/grocery.md",
+  encryption = { mode = "passphrase" },
+})
+
+require("memo").scratch({
+  encryption = { mode = "passphrase" },
+})
 ```
 
 Or map them:
@@ -388,10 +427,18 @@ end, { desc = "Memo: New passphrase note" })
 vim.keymap.set({ "n", "v" }, "<leader>mP", function()
   require("memo").save_as_note({ encryption = { mode = "passphrase" } })
 end, { desc = "Memo: Save buffer as passphrase note" })
+
+vim.keymap.set({ "n", "v" }, "<leader>mC", function()
+  require("memo").capture({
+    capture_file = "captures/grocery.md",
+    encryption = { mode = "passphrase" },
+  })
+end, { desc = "Memo: Capture passphrase note" })
 ```
 
 An existing note keeps its encryption: writing it or capturing into it does
-not switch a passphrase note to be encrypted your key, or the other way around.
+not switch a passphrase note to be encrypted your key, or the other way
+around. The mode option picks the encryption of a new note only.
 
 ### Formatting with conform.nvim
 
@@ -421,19 +468,35 @@ Create encrypted scratch buffers for throwaway, sensitive content:
 
 ```lua
 vim.keymap.set("n", "<leader>ms", function()
-  require("memo").scratch("horizontal")
+  require("memo").scratch({ window = { split = "split" } })
 end, { desc = "Memo: New scratch buffer (horizontal split)" })
 
 vim.keymap.set("n", "<leader>mv", function()
-  require("memo").scratch("vertical")
+  require("memo").scratch({ window = { split = "vsplit" } })
 end, { desc = "Memo: New scratch buffer (vertical split)" })
 
 vim.keymap.set("n", "<leader>mt", function()
-  require("memo").scratch("tab")
+  require("memo").scratch({ window = { split = "tab" } })
 end, { desc = "Memo: New scratch buffer (new tab)" })
 ```
 
-Or use the command `:MemoScratch <horizontal|vertical|tab>`.
+The window config accepts the same `split`, `size` and `position` fields as
+`require("memo").new_note()`: `{ split = "split" | "vsplit" | "tab",
+size = 0.5, position = "botright" }`. A scratch always opens a window, the
+default is a horizontal split next to the current one. Pass
+`encryption = { mode = "passphrase" }` to encrypt with a passphrase instead of
+your key:
+
+```lua
+vim.keymap.set("n", "<leader>mP", function()
+  require("memo").scratch({
+    encryption = { mode = "passphrase" },
+  })
+end, { desc = "Memo: New passphrase scratch buffer" })
+```
+
+Or use the command `:MemoScratch [passphrase|key] [split|vsplit|tab]`, e.g.
+`:MemoScratch passphrase vsplit`.
 
 Notes:
 
