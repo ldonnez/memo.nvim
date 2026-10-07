@@ -105,7 +105,7 @@ end
 --- The mode configured when the buffer created its note.
 --- @param bufnr? integer
 --- @return "passphrase"|"key"?
-local function buffered_mode(bufnr)
+local function get_encryption_mode_from_buffer(bufnr)
 	if not bufnr then
 		return nil
 	end
@@ -270,6 +270,14 @@ function M.get_file_key_ids(path)
 	return read_packets(path).key_ids
 end
 
+--- Whether a note is encrypted with a passphrase instead of a key.
+--- @param bufnr? integer
+local function drop_encryption_mode_from_buffer(bufnr)
+	if bufnr then
+		vim.api.nvim_buf_del_var(bufnr, "memo_encryption_mode")
+	end
+end
+
 --- Encrypts content into a note.
 ---@class GpgEncryptOpts
 ---@field mode? "passphrase"|"key" how to encrypt a new note, "key" when
@@ -285,44 +293,35 @@ end
 function M.encrypt(path, input, opts)
 	opts = opts or {}
 
-	local mode = opts.mode or buffered_mode(opts.bufnr)
+	local mode_from_buffer = get_encryption_mode_from_buffer(opts.bufnr)
 	local exists = require("memo.utils").file_exists(path)
+	local passphrase_mode = is_symmetric(path) or (not exists and (opts.mode or mode_from_buffer) == "passphrase")
 
-	-- The mode only picks the encryption of a new note. An existing note keeps
-	-- the way it was encrypted: a key note is never demoted to a passphrase,
-	-- and a passphrase note is not re-encrypted to the key.
-	local passphrase_mode
-	if exists then
-		passphrase_mode = is_symmetric(path)
-	elseif mode == "passphrase" then
-		passphrase_mode = true
-	else
-		passphrase_mode = false
-	end
+	if not passphrase_mode then
+		local result = vim.system({ "memo", "encrypt", path }, { stdin = input }):wait()
 
-	local result
-
-	if passphrase_mode then
-		local passphrase, fail = get_symmetric_passphrase(path, opts.bufnr, not exists)
-
-		if not passphrase then
-			-- A result for a command that never ran.
-			return { code = 1, signal = 0, stdout = "", stderr = ("Not writing %s: %s"):format(path, fail) }
+		if result.code == 0 and mode_from_buffer then
+			drop_encryption_mode_from_buffer(opts.bufnr)
 		end
 
-		result = run_with_passphrase(
-			{ "memo", "encrypt", "--symmetric", path, "--passphrase-env", PASSPHRASE_ENV },
-			passphrase,
-			{ stdin = input }
-		):wait()
-	else
-		result = vim.system({ "memo", "encrypt", path }, {
-			stdin = input,
-		}):wait()
+		return result
 	end
 
-	if result.code == 0 and opts.bufnr and buffered_mode(opts.bufnr) then
-		vim.api.nvim_buf_del_var(opts.bufnr, "memo_encryption_mode")
+	local passphrase, fail = get_symmetric_passphrase(path, opts.bufnr, not exists)
+
+	if not passphrase then
+		-- A result for a command that never ran.
+		return { code = 1, signal = 0, stdout = "", stderr = ("Not writing %s: %s"):format(path, fail) }
+	end
+
+	local result = run_with_passphrase(
+		{ "memo", "encrypt", "--symmetric", path, "--passphrase-env", PASSPHRASE_ENV },
+		passphrase,
+		{ stdin = input }
+	):wait()
+
+	if result.code == 0 and mode_from_buffer then
+		drop_encryption_mode_from_buffer(opts.bufnr)
 	end
 
 	return result
