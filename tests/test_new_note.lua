@@ -67,7 +67,7 @@ describe("new_note", function()
 			MiniTest.expect.equality(decrypted.code, 0)
 		end)
 
-		it("creates a passphrase note when symmetric is asked for", function()
+		it("creates a passphrase note when the symmetric mode is configured", function()
 			child.lua([[
       require("memo.gpg").prompt_passphrase = function() return "new-sym" end
     ]])
@@ -99,7 +99,7 @@ describe("new_note", function()
 			MiniTest.expect.equality(helpers.is_symmetric_file(note), false)
 		end)
 
-		it("asks for the passphrase twice when it creates a passphrase note", function()
+		it("prompts for the passphrase twice when it creates a passphrase note", function()
 			child.lua([[
       local prompts = 0
       local gpg = require("memo.gpg")
@@ -336,7 +336,7 @@ describe("new_note", function()
 			MiniTest.expect.equality(cursor[2], 9)
 		end)
 
-		it("asks before overwriting an existing note and keeps it when declined", function()
+		it("prompts before overwriting an existing note and keeps it when declined", function()
 			local existing = vim.env.NOTES_DIR .. "/existing.md.gpg"
 			helpers.encrypt_file(existing, "old content\n")
 

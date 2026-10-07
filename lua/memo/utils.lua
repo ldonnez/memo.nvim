@@ -68,8 +68,8 @@ function M.file_has_content(path)
 	return M.file_exists(path) and vim.fn.getfsize(path) > 0
 end
 
----Asks the user a yes/no question. Warns and returns false when declined, so
----callers can treat a decline as a plain abort.
+---Prompts the user with a yes/no question. Warns and returns false when
+---declined, so callers can treat a decline as a plain abort.
 ---@param prompt string question shown in the dialog
 ---@param title string command name used in the message
 ---@return boolean
