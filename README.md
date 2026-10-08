@@ -440,6 +440,12 @@ An existing note keeps its encryption: writing it or capturing into it does
 not switch a passphrase note to be encrypted your key, or the other way
 around. The mode option picks the encryption of a new note only.
 
+Passphrases for key-encrypted notes are handed straight to gpg-agent with
+`--pinentry-mode=loopback`, so no pinentry program pops up. gpg-agent caches
+that passphrase for its `default-cache-ttl` (10 minutes by default); raise it
+in `~/.gnupg/gpg-agent.conf` to be prompted less, e.g. `default-cache-ttl
+86400`.
+
 ### Formatting with conform.nvim
 
 `prettier` cannot infer a parser from `.asc` filenames. If you use [conform.nvim](https://github.com/stevearc/conform.nvim) to format notes, map each filetype to its parser:
