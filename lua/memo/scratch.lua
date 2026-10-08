@@ -110,11 +110,11 @@ function M.create(opts)
 
 	vim.cmd("silent edit " .. vim.fn.fnameescape(file))
 
-	-- A scratch file is always new, so the mode rides on the buffer until the
-	-- first write; later writes read it back from the file.
+	-- A scratch file is always new: its write handler carries the mode of the
+	-- first write, later writes read it back from the file.
 	local mode = opts and opts.encryption and opts.encryption.mode
 	if mode then
-		vim.b[vim.api.nvim_get_current_buf()].memo_encryption_mode = mode
+		require("memo.autocmd_callbacks").register_write(vim.api.nvim_get_current_buf(), mode)
 	end
 end
 

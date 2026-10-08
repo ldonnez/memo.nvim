@@ -26,7 +26,7 @@ if not is_same_or_child(abs_scratch, abs_notes) then
 	table.insert(patterns, abs_scratch .. "/*")
 end
 
-local GROUP = vim.api.nvim_create_augroup("MemoGpg", { clear = true })
+local GROUP = vim.api.nvim_create_augroup(config.autocmd_group, { clear = true })
 
 vim.api.nvim_create_autocmd("BufReadCmd", {
 	group = GROUP,
@@ -41,6 +41,11 @@ vim.api.nvim_create_autocmd("BufWriteCmd", {
 	group = GROUP,
 	pattern = patterns,
 	callback = function(args)
+		-- A new note or scratch registers a writer of its own.
+		if #vim.api.nvim_get_autocmds({ event = "BufWriteCmd", buf = args.buf, group = GROUP }) > 0 then
+			return
+		end
+
 		local memo = require("memo.autocmd_callbacks")
 		memo.on_write(args)
 	end,

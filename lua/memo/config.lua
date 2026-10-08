@@ -6,6 +6,7 @@
 ---@field supported_extensions string[]
 ---@field ignore_patterns string[]
 ---@field minimum_memo_version string
+---@field autocmd_group string
 
 ---@class MemoConfigModule
 ---@field setup fun()
@@ -16,6 +17,7 @@
 ---@field supported_extensions string[]
 ---@field ignore_patterns string[]
 ---@field minimum_memo_version string
+---@field autocmd_group string
 
 local M = {}
 
@@ -40,6 +42,9 @@ local DEFAULTS = {
 		"**/.ignore",
 	},
 	minimum_memo_version = "0.11.0",
+	-- The single augroup that owns the plugin's autocmds: the notes patterns
+	-- in plugin/memo.lua and the per-buffer writers in autocmd_callbacks.lua.
+	autocmd_group = "MemoGpg",
 }
 
 function M.setup()

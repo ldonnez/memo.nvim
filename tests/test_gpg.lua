@@ -623,92 +623,18 @@ describe("gpg", function()
 		MiniTest.expect.equality(result, { is_nil = true, wipes = 1 })
 	end)
 
-	it("encrypts a new note with the passphrase mode configured in the buffer", function()
-		local note = "/tmp/gpg_encrypt_buffer_symmetric.txt.gpg"
+	it("encrypts a new note with the passphrase mode", function()
+		local note = "/tmp/gpg_encrypt_mode_passphrase.txt.gpg"
 		local passphrase = "sym-pass"
 
 		local result = child.lua(
 			[[
         local passphrase, note = ...
-        local bufnr = vim.api.nvim_create_buf(true, false)
-
-        vim.b[bufnr].memo_encryption_mode = "passphrase"
-
         M.prompt_passphrase = function()
           return passphrase
         end
 
-        return {
-          result = M.encrypt(note, { "Hello world!" }, { bufnr = bufnr }),
-          mode = vim.b[bufnr].memo_encryption_mode,
-        }
-    ]],
-			{ passphrase, note }
-		)
-
-		MiniTest.expect.equality(result.result.code, 0)
-		MiniTest.expect.equality(helpers.is_symmetric_file(note), true)
-		MiniTest.expect.equality(result.mode, nil)
-
-		local decrypted = helpers.decrypt_symmetric_file(note, passphrase)
-		MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Hello world!")
-	end)
-
-	it("encrypts a new note with the key mode configured in the buffer", function()
-		local note = "/tmp/gpg_encrypt_buffer_key.txt.gpg"
-		helpers.create_gpg_key("mock@example.com")
-
-		local result = child.lua(
-			[[
-        local note = ...
-        local prompts = 0
-        local bufnr = vim.api.nvim_create_buf(true, false)
-
-        vim.b[bufnr].memo_encryption_mode = "key"
-
-        M.prompt_passphrase = function()
-          prompts = prompts + 1
-          return ""
-        end
-
-        return {
-          result = M.encrypt(note, { "Hello world!" }, { bufnr = bufnr }),
-          prompts = prompts,
-          mode = vim.b[bufnr].memo_encryption_mode,
-        }
-    ]],
-			{ note }
-		)
-
-		MiniTest.expect.equality(result.result.code, 0)
-		MiniTest.expect.equality(result.prompts, 0)
-		MiniTest.expect.equality(result.mode, nil)
-		MiniTest.expect.equality(helpers.is_symmetric_file(note), false)
-
-		local decrypted = helpers.decrypt_file(note)
-		MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Hello world!")
-	end)
-
-	it("uses the explicit mode over the buffer encryption mode for a new note", function()
-		local note = "/tmp/gpg_encrypt_mode_over_buffer.txt.gpg"
-		local passphrase = "sym-pass"
-
-		local result = child.lua(
-			[[
-        local passphrase, note = ...
-        local bufnr = vim.api.nvim_create_buf(true, false)
-
-        vim.b[bufnr].memo_encryption_mode = "key"
-
-        M.prompt_passphrase = function()
-          return passphrase
-        end
-
-        return M.encrypt(
-          note,
-          { "Hello world!" },
-          { bufnr = bufnr, mode = "passphrase" }
-        )
+        return M.encrypt(note, { "Hello world!" }, { mode = "passphrase" })
     ]],
 			{ passphrase, note }
 		)
@@ -718,6 +644,89 @@ describe("gpg", function()
 
 		local decrypted = helpers.decrypt_symmetric_file(note, passphrase)
 		MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Hello world!")
+	end)
+
+	it("encrypts a new note with the key mode", function()
+		local note = "/tmp/gpg_encrypt_mode_key.txt.gpg"
+		helpers.create_gpg_key("mock@example.com")
+
+		local result = child.lua(
+			[[
+        local note = ...
+        local prompts = 0
+
+        M.prompt_passphrase = function()
+          prompts = prompts + 1
+          return ""
+        end
+
+        local encrypted = M.encrypt(note, { "Hello world!" }, { mode = "key" })
+
+        return { code = encrypted.code, prompts = prompts }
+    ]],
+			{ note }
+		)
+
+		MiniTest.expect.equality(result.code, 0)
+		MiniTest.expect.equality(result.prompts, 0)
+		MiniTest.expect.equality(helpers.is_symmetric_file(note), false)
+
+		local decrypted = helpers.decrypt_file(note)
+		MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Hello world!")
+	end)
+
+	it("keeps an existing passphrase note symmetric when a key mode", function()
+		local note = "/tmp/gpg_encrypt_existing_symmetric.txt.gpg"
+		local passphrase = "sym-pass"
+
+		helpers.encrypt_symmetric_file(note, "Hello world!", passphrase)
+
+		local result = child.lua(
+			[[
+        local passphrase, note = ...
+        M.prompt_passphrase = function() return passphrase end
+
+        return M.encrypt(note, { "Rewritten" }, { mode = "key" })
+    ]],
+			{ passphrase, note }
+		)
+
+		MiniTest.expect.equality(result.code, 0)
+		MiniTest.expect.equality(helpers.is_symmetric_file(note), true)
+
+		local decrypted = helpers.decrypt_symmetric_file(note, passphrase)
+		MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Rewritten")
+	end)
+
+	it("keeps an existing key note key-encrypted when a passphrase mode", function()
+		local note = "/tmp/gpg_encrypt_existing_key.txt.gpg"
+
+		helpers.create_gpg_key("mock@example.com")
+		helpers.encrypt_file(note, "Hello world!")
+
+		local result = child.lua(
+			[[
+        local note = ...
+        local prompts = 0
+
+        M.prompt_passphrase = function()
+          prompts = prompts + 1
+          return "irrelevant"
+        end
+
+        local encrypted = M.encrypt(note, { "Rewritten" }, { mode = "passphrase" })
+
+        return { code = encrypted.code, prompts = prompts }
+    ]],
+			{ note }
+		)
+
+		MiniTest.expect.equality(result.code, 0)
+		MiniTest.expect.equality(result.prompts, 0)
+		MiniTest.expect.equality(helpers.is_symmetric_file(note), false)
+
+		local decrypted = helpers.decrypt_file(note)
+		MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Rewritten")
 	end)
 end)
 

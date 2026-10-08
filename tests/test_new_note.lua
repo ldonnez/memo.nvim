@@ -165,6 +165,32 @@ describe("new_note", function()
 			MiniTest.expect.equality(child.cmd_capture("messages"):find("the passphrase was not given") ~= nil, true)
 		end)
 
+		it("keeps the requested mode for a retry when the first write fails", function()
+			child.lua([[
+      require("memo.gpg").prompt_passphrase = function() return "" end
+    ]])
+
+			child.lua_get([[ new_note.create({ path = "retry.md", encryption = { mode = "passphrase" } }) ]])
+
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/retry.md.asc"), 0)
+
+			child.lua([[
+      require("memo.gpg").prompt_passphrase = function() return "retry-sym" end
+    ]])
+			child.cmd("write")
+
+			local note = vim.env.NOTES_DIR .. "/retry.md.asc"
+			MiniTest.expect.equality(child.fn.filereadable(note), 1)
+			MiniTest.expect.equality(helpers.is_symmetric_file(note), true)
+
+			local result = helpers.decrypt_symmetric_file(note, "retry-sym")
+			MiniTest.expect.equality(result.code, 0)
+
+			-- Only the buffer's own writer ran: the default writer deferred
+			-- to it instead of reporting an unchanged buffer.
+			MiniTest.expect.equality(child.cmd_capture("messages"):find("No changes detected"), nil)
+		end)
+
 		it("prompts for the path and uses the default when the prompt is accepted", function()
 			child.lua([[ vim.fn.input = function(_, default) return default end ]])
 

@@ -652,6 +652,107 @@ describe("autocmd", function()
 		end
 	end)
 
+	describe("register_write", function()
+		it("encrypts a new note as a passphrase note", function()
+			local plain = vim.env.NOTES_DIR .. "/registered-passphrase.md"
+			local encrypted = plain .. ".asc"
+
+			child.lua(
+				[[
+				local path = ...
+				require("memo.gpg").prompt_passphrase = function() return "registered-pass" end
+
+				local bufnr = vim.api.nvim_get_current_buf()
+				vim.api.nvim_buf_set_name(bufnr, path)
+				require("memo.autocmd_callbacks").register_write(bufnr, "passphrase")
+				vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "Registered secret" })
+				vim.cmd("write")
+			]],
+				{ plain }
+			)
+
+			MiniTest.expect.equality(vim.fn.filereadable(encrypted), 1)
+			MiniTest.expect.equality(helpers.is_symmetric_file(encrypted), true)
+			MiniTest.expect.equality(
+				vim.trim(helpers.decrypt_symmetric_file(encrypted, "registered-pass").stdout or ""),
+				"Registered secret"
+			)
+
+			-- The default writer deferred to the buffer's own instead of
+			-- re-running on an unchanged buffer.
+			MiniTest.expect.equality(child.cmd_capture("messages"):find("No changes detected", 1, true), nil)
+		end)
+
+		it("encrypts a new note as a key note", function()
+			local plain = vim.env.NOTES_DIR .. "/registered-key.md"
+			local encrypted = plain .. ".asc"
+
+			local prompts = child.lua(
+				[[
+				local path = ...
+				local prompts = 0
+				require("memo.gpg").prompt_passphrase = function()
+					prompts = prompts + 1
+					return ""
+				end
+
+				local bufnr = vim.api.nvim_get_current_buf()
+				vim.api.nvim_buf_set_name(bufnr, path)
+				require("memo.autocmd_callbacks").register_write(bufnr, "key")
+				vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "Registered secret" })
+				vim.cmd("write")
+
+				return prompts
+			]],
+				{ plain }
+			)
+
+			MiniTest.expect.equality(vim.fn.filereadable(encrypted), 1)
+			MiniTest.expect.equality(helpers.is_symmetric_file(encrypted), false)
+			MiniTest.expect.equality(prompts, 0)
+			MiniTest.expect.equality(helpers.decrypt_file(encrypted).stdout, "Registered secret\n")
+		end)
+
+		it("replaces the previous writer instead of stacking one", function()
+			local plain = vim.env.NOTES_DIR .. "/registered-replaced.md"
+			local encrypted = plain .. ".asc"
+
+			local result = child.lua(
+				[[
+				local path = ...
+				local prompts = 0
+				require("memo.gpg").prompt_passphrase = function()
+					prompts = prompts + 1
+					return "registered-pass"
+				end
+
+				local bufnr = vim.api.nvim_get_current_buf()
+				vim.api.nvim_buf_set_name(bufnr, path)
+
+				local callbacks = require("memo.autocmd_callbacks")
+				callbacks.register_write(bufnr, "passphrase")
+				callbacks.register_write(bufnr, "key")
+
+				local registered = #vim.api.nvim_get_autocmds({
+					event = "BufWriteCmd",
+					buf = bufnr,
+					group = "MemoGpg",
+				})
+
+				vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "Registered secret" })
+				vim.cmd("write")
+
+				return { registered = registered, prompts = prompts }
+			]],
+				{ plain }
+			)
+
+			MiniTest.expect.equality(result.registered, 1)
+			MiniTest.expect.equality(result.prompts, 0)
+			MiniTest.expect.equality(helpers.is_symmetric_file(encrypted), false)
+		end)
+	end)
+
 	describe("AutoCmd patterns", function()
 		before_each(function()
 			child.restart({

@@ -90,11 +90,11 @@ function M.create(opts)
 		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
 	end
 
-	-- A new note has no file to read the mode from, so it rides on the buffer
-	-- until the first write.
+	-- A new note has no file to read the mode from, so its write handler
+	-- carries the mode of the first write in a closure.
 	local enc_mode = new_opts.encryption and new_opts.encryption.mode
 	if enc_mode then
-		vim.b[bufnr].memo_encryption_mode = enc_mode
+		require("memo.autocmd_callbacks").register_write(bufnr, enc_mode)
 	end
 
 	vim.bo[bufnr].modified = true
