@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.1](https://github.com/ldonnez/memo.nvim/compare/v0.15.0...v0.15.1) (2026-10-08)
+
+
+### Code Refactoring
+
+* track a new note's encryption mode in a write closure ([b4fb6e4](https://github.com/ldonnez/memo.nvim/commit/b4fb6e435fea377bf91c5d7efa85ba99b6ad6296))
+
 ## [0.15.0](https://github.com/ldonnez/memo.nvim/compare/v0.14.2...v0.15.0) (2026-10-07)
 
 
