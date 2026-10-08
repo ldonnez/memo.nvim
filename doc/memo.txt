@@ -1,5 +1,5 @@
 *memo.txt* Seamless Neovim interface for memo, a CLI-based encrypted notes system
-                              For NVIM v0.11.5    Last change: 2026 October 07
+                              For NVIM v0.11.5    Last change: 2026 October 08
 
 ==============================================================================
 Table of Contents                                     *memo-table-of-contents*
@@ -483,6 +483,12 @@ Or map them:
 An existing note keeps its encryption: writing it or capturing into it does not
 switch a passphrase note to be encrypted your key, or the other way around. The
 mode option picks the encryption of a new note only.
+
+Passphrases for key-encrypted notes are handed straight to gpg-agent with
+`--pinentry-mode=loopback`, so no pinentry program pops up. gpg-agent caches
+that passphrase for its `default-cache-ttl` (10 minutes by default); raise it
+in `~/.gnupg/gpg-agent.conf` to be prompted less, e.g. `default-cache-ttl
+86400`.
 
 
 FORMATTING WITH CONFORM.NVIM ~
