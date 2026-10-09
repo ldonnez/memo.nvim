@@ -551,15 +551,25 @@ describe("gpg", function()
         local passphrase, encrypted = ...
         M.prompt_passphrase = function() return passphrase end
 
-        return M.decrypt(encrypted, nil, { text = true }):wait()
+        -- A stdout handler the caller owns only runs if its options reach memo.
+        local seen = ""
+        local opts = {
+          stdout = function(_, data)
+            seen = seen .. (data or "")
+            return true
+          end,
+        }
+
+        local obj = M.decrypt(encrypted, nil, opts):wait()
+
+        return { code = obj.code, seen = seen }
     ]],
 			{ passphrase, encrypted }
 		)
 
 		MiniTest.expect.equality(result.code, 0)
-		-- Only the caller's `text` option turns stdout into a string.
-		MiniTest.expect.equality(type(result.stdout), "string")
-		MiniTest.expect.equality(vim.trim(result.stdout or ""), "Hello world!")
+		MiniTest.expect.equality(vim.trim(result.seen), "Hello world!")
+		MiniTest.expect.equality(child.cmd_capture("messages"), "")
 	end)
 
 	it("reports the result through the callback when given one", function()
