@@ -159,6 +159,31 @@ function M.create_gpg_key(keyid, passphrase)
 	end
 end
 
+--- Resolves the full fingerprint of a key. Batch mode only deletes by
+--- fingerprint, not by key ID, so the full one is needed to delete a key.
+--- @param keyid string
+--- @return string?
+local function gpg_fingerprint(keyid)
+	local listed = vim.system({ "gpg", "--with-colons", "--list-secret-keys", keyid }, { text = true }):wait()
+
+	return (listed.stdout or ""):match("fpr:::::::::([%w]+):")
+end
+
+--- Deletes a key and its public half, leaving the keyring without it.
+--- @param keyid string
+--- @return vim.SystemCompleted
+function M.delete_gpg_key(keyid)
+	return vim.system({ "gpg", "--batch", "--yes", "--delete-secret-and-public-key", gpg_fingerprint(keyid) }):wait()
+end
+
+--- Deletes only the secret half of a key. The public half stays, so the key is
+--- still a valid recipient even though nothing can read what is encrypted to it.
+--- @param keyid string
+--- @return vim.SystemCompleted
+function M.delete_gpg_secret_key(keyid)
+	return vim.system({ "gpg", "--batch", "--yes", "--delete-secret-keys", gpg_fingerprint(keyid) }):wait()
+end
+
 function M.cache_gpg_password(password)
 	local cmd = {
 		"gpg",

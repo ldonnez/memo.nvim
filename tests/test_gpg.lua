@@ -113,9 +113,16 @@ describe("gpg", function()
 		local encrypted = "/tmp/mixed.txt.gpg"
 		local password = "mypass"
 		local my_id = helpers.create_gpg_key("me@example.com", password)
-		local foreign_id = "ABCDEF1234567890"
+		local foreign_id = helpers.create_gpg_key("foreign@example.com", "foreign-pass")
 
-		helpers.encrypt_file(encrypted, "Hello world!", { env = { GPG_RECIPIENTS = my_id .. "," .. foreign_id } })
+		-- Both are recipients, but only mine has a secret key to read it with,
+		-- so the foreign one has to be skipped.
+		--- @diagnostic disable-next-line: param-type-mismatch
+		helpers.delete_gpg_secret_key(foreign_id)
+
+		helpers.encrypt_file(encrypted, "Hello world!", {
+			env = { GPG_RECIPIENTS = "me@example.com,foreign@example.com" },
+		})
 
 		-- It should prompt for my_id, NOT foreign_id
 		local result_id = child.lua(
@@ -135,6 +142,8 @@ describe("gpg", function()
 		)
 
 		MiniTest.expect.equality(result_id, "Mock Test Key <me@example.com> (" .. my_id .. ")")
+		-- Picking the wrong key would have failed to cache its passphrase.
+		MiniTest.expect.equality(child.cmd_capture("messages"), "")
 	end)
 
 	it("aborts execution when the key cannot be unlocked", function()
@@ -157,13 +166,53 @@ describe("gpg", function()
 
 	it("decrypts a key note once the key is unlocked", function()
 		local encrypted = "/tmp/gpg_key_note.txt.gpg"
-		helpers.create_gpg_key("mock@example.com")
+		local password = "key-pass"
+		helpers.create_gpg_key("mock@example.com", password)
 		helpers.encrypt_file(encrypted, "Hello world!")
 
-		local result = child.lua_get([[ M.decrypt(...):wait() ]], { encrypted })
+		local result = child.lua(
+			[[
+        local password, encrypted = ...
+        M.prompt_passphrase = function() return password end
+
+        return M.decrypt(encrypted):wait()
+    ]],
+			{ password, encrypted }
+		)
 
 		MiniTest.expect.equality(result.code, 0)
 		MiniTest.expect.equality(vim.trim(result.stdout or ""), "Hello world!")
+		MiniTest.expect.equality(child.cmd_capture("messages"), "")
+	end)
+
+	it("does not decrypt a note encrypted to another key", function()
+		local encrypted = "/tmp/gpg_other_key.txt.gpg"
+		local other_password = "other-key-pass"
+
+		local note_key = helpers.create_gpg_key("note-key@example.com", "note-key-pass")
+		helpers.create_gpg_key("other-key@example.com", other_password)
+
+		helpers.encrypt_file(encrypted, "Hello world!", { env = { GPG_RECIPIENTS = "note-key@example.com" } })
+
+		-- The note is only readable with its own key, so deleting it leaves the other key in the keyring.
+		--- @diagnostic disable-next-line: param-type-mismatch
+		helpers.delete_gpg_key(note_key)
+
+		local result = child.lua(
+			[[
+        local password, encrypted = ...
+        M.prompt_passphrase = function() return password end
+
+        return M.decrypt(encrypted):wait()
+    ]],
+			{ other_password, encrypted }
+		)
+
+		MiniTest.expect.equality(result.code ~= 0, true)
+		MiniTest.expect.equality((result.stdout or ""):find("Hello world!", 1, true), nil)
+		-- The failure arrives on stderr; gpg leaves the reporting to callers.
+		MiniTest.expect.equality(result.stderr:find("No secret key", 1, true) ~= nil, true)
+		MiniTest.expect.equality(child.cmd_capture("messages"), "")
 	end)
 
 	it("returns the failing result without notifying; callers own error reporting", function()
