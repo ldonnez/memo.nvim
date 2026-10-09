@@ -369,6 +369,8 @@ describe("crypto", function()
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
 
 			MiniTest.expect.equality(lines, { "Line 1", "Line 2" })
+			-- The passphrase is kept in the buffer, so a later write reuses it.
+			MiniTest.expect.equality(child.b.memo_symmetric_passphrase, passphrase)
 		end)
 
 		it("decrypts a symmetric file to stdout", function()
