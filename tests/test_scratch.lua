@@ -77,7 +77,8 @@ describe("scratch", function()
 			child.lua("vim.fn.mkdir('/tmp/memo-cwd key', 'p')")
 			child.lua("vim.fn.chdir('/tmp/memo-cwd key')")
 
-			MiniTest.expect.equality(child.lua_get("M.cwd_key()"), "%2Ftmp%2Fmemo-cwd%20key")
+			local expected = vim.fn.resolve("/tmp/memo-cwd key"):gsub("/", "%%2F"):gsub(" ", "%%20")
+			MiniTest.expect.equality(child.lua_get("M.cwd_key()"), expected)
 		end)
 
 		it("maps distinct paths to distinct keys", function()

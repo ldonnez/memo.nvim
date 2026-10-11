@@ -878,7 +878,7 @@ describe("with no gpg keys", function()
 
 		-- A keyring of its own, deliberately empty: key encryption has
 		-- nothing to encrypt to, and no fallback is attempted.
-		vim.env.GNUPGHOME = "/tmp/memo.nvim/.gnupg-empty"
+		vim.env.GNUPGHOME = helpers.test_home() .. "/.gnupg-empty"
 		vim.fn.mkdir(vim.env.GNUPGHOME, "p")
 		vim.fn.system({ "chmod", "700", vim.env.GNUPGHOME })
 	end)

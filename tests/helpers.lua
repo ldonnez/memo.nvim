@@ -212,13 +212,16 @@ function M.kill_gpg_agent()
 	return vim.system(cmd):wait()
 end
 
---- Directory the test env is rooted at. Never the developer's real `$HOME`.
-local TEST_HOME = "/tmp/memo.nvim"
+--- Directory the test env is rooted at. Unique per run,
+local TEST_HOME = "/tmp/" .. vim.fn.tempname():sub(1, 40)
 
 --- @return string
 local function test_home()
 	return vim.fn.resolve(TEST_HOME)
 end
+
+-- Exported for tests that build extra fixtures inside the same home.
+M.test_home = test_home
 
 function M.setup_test_env()
 	local home = test_home()
