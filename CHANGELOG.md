@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.16.0](https://github.com/ldonnez/memo.nvim/compare/v0.15.1...v0.16.0) (2026-10-11)
+
+
+### Features
+
+* restore existing note when overwriting fails ([443ce4c](https://github.com/ldonnez/memo.nvim/commit/443ce4c40493ea1a1a5eadccef88c77bd98e49ae))
+
+
+### Bug Fixes
+
+* directory creation can report success when it failed ([875cbd2](https://github.com/ldonnez/memo.nvim/commit/875cbd28221e80ddea531e45413086faf4b14a7f))
+* don't expose passphrases in process arguments ([8a9bd64](https://github.com/ldonnez/memo.nvim/commit/8a9bd64844c0fec72477b85ca0000eb475b11b16))
+* encrypts a zero-byte existing file in passphrase mode ([6336890](https://github.com/ldonnez/memo.nvim/commit/63368909c9c7da5e8c28d7cd4201bcab73a6cc65))
+* execute BufWritePre before reading the lines to encrypt and calculating the final content hash ([c0a4e52](https://github.com/ldonnez/memo.nvim/commit/c0a4e52a873f54fb6cb3ca186d190905864dcc06))
+* make scratch working-directories collision-free ([2031de2](https://github.com/ldonnez/memo.nvim/commit/2031de2674a72cacbe23b5bd77bcdc30d85bf8cd))
+
 ## [0.15.1](https://github.com/ldonnez/memo.nvim/compare/v0.15.0...v0.15.1) (2026-10-08)
 
 
