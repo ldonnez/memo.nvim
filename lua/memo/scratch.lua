@@ -3,23 +3,35 @@ local utils = require("memo.utils")
 local window = require("memo.window")
 
 ---@return string cwd key used to prefix scratch filenames of the current
----directory, e.g. "%Users%dev%project"
+---directory, e.g. "%2FUsers%2Fdev%2Fproject"
 function M.cwd_key()
-	return (vim.fn.getcwd():gsub("[^%w%-]", "%%"))
+	return M.encode_cwd_key(vim.fn.getcwd())
 end
 
 ---Decode an encoded cwd key into a readable path, for display purposes only.
----@param key string e.g. "%Users%dev%project"
+---@param key string e.g. "%2FUsers%2Fdev%2Fproject"
 ---@return string e.g. "/Users/dev/project"
 function M.decode_cwd_key(key)
-	return (key:gsub("%%", "/"))
+	return (
+		key:gsub("%%(%x%x)", function(hex)
+			local byte = tonumber(hex, 16) --[[@as integer]]
+			return string.char(byte)
+		end)
+	)
 end
 
 ---Encode a cwd path into the key used to prefix scratch filenames.
+---
+---Every byte outside letters, digits and hyphens is percent-encoded, so the
+---encoding is reversible and distinct paths can never map to the same key:
+---"foo.bar" encodes differently from "foo/bar", which a single replacement
+---character for both would not.
 ---@param path string
 ---@return string
 function M.encode_cwd_key(path)
-	return (path:gsub("[^%w%-]", "%%"))
+	return (path:gsub("[^%w%-]", function(c)
+		return string.format("%%%02X", c:byte())
+	end))
 end
 
 ---Match the "<cwd key>-<timestamp>-<hash>.<ext>" parts of a scratch filename.
