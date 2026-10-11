@@ -27,6 +27,7 @@ function M.create(opts)
 	local config = require("memo.config")
 	local message = require("memo.message")
 	local utils = require("memo.utils")
+	local NoteBackup = require("memo.note_backup")
 	local Template = require("memo.note_template")
 	local window = require("memo.window")
 
@@ -58,14 +59,9 @@ function M.create(opts)
 		return false
 	end
 
-	-- Discarded rather than opened: a note read from disk comes back decrypted
-	-- and read-only, and its decrypt would race with writing the template.
-	if overwriting and vim.fn.delete(note_path) ~= 0 then
-		message.error("MemoNewNote: could not remove existing note (%s)", note_path)
-		return false
-	end
-
-	-- Resolved before editing: the selection belongs to the source buffer.
+	-- Resolved before editing: the selection belongs to the source buffer. The
+	-- check comes before the existing note is touched, so an empty selection
+	-- cannot cost the note it was meant to replace.
 	local source_bufnr = vim.api.nvim_get_current_buf()
 	local selected = utils.resolve_selection(source_bufnr, new_opts)
 
@@ -74,14 +70,33 @@ function M.create(opts)
 		return false
 	end
 
+	-- Prepared before the original is touched: a template that raises cannot
+	-- cost the note it was meant to replace.
 	local note_template = Template.new({ template = new_opts.template })
 	local initial_lines, cursor_pos = note_template:initial_content(selected)
+
+	-- The existing note backed up until the replacement has been written:
+	-- a cancelled passphrase prompt or a failed write leaves it restorable.
+	local backup = NoteBackup.new(note_path)
+
+	if overwriting then
+		if not backup:save() then
+			message.error("MemoNewNote: could not back up existing note (%s)", note_path)
+			return false
+		end
+
+		if vim.fn.delete(note_path) ~= 0 then
+			backup:restore()
+			message.error("MemoNewNote: could not remove existing note (%s)", note_path)
+			return false
+		end
+	end
 
 	-- Opened after the selection is resolved: a split would replace the source
 	-- window.
 	local win = window.open(new_opts.window)
 
-	-- A new note opens as an empty buffer, encrypted by the first write below.
+	-- A new note opens as an empty buffer, encrypted by the first write.
 	vim.cmd("silent edit " .. vim.fn.fnameescape(note_path))
 
 	local bufnr = vim.api.nvim_get_current_buf()
@@ -91,14 +106,26 @@ function M.create(opts)
 	end
 
 	-- A new note has no file to read the mode from, so its write handler
-	-- carries the mode of the first write in a closure.
+	-- carries the mode of the first write in a closure and settles the backup
+	-- as soon as the write reports back.
 	local enc_mode = new_opts.encryption and new_opts.encryption.mode
-	if enc_mode then
-		require("memo.autocmd_callbacks").register_write(bufnr, enc_mode)
-	end
 
-	vim.bo[bufnr].modified = true
+	require("memo.autocmd_callbacks").register_write(bufnr, enc_mode, function(success)
+		if success then
+			backup:discard()
+		else
+			backup:restore()
+		end
+	end)
+
 	vim.cmd("silent write")
+
+	-- Double-check buffer status just in case
+	if vim.bo[bufnr].modified then
+		backup:restore()
+		utils.drop_buffer_with_error(bufnr, "MemoNewNote: buffer is still modified after write")
+		return false
+	end
 
 	-- Only when the note is still in `win`: an autocmd may have moved it.
 	if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == bufnr then

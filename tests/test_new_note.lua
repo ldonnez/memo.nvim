@@ -165,32 +165,6 @@ describe("new_note", function()
 			MiniTest.expect.equality(child.cmd_capture("messages"):find("the passphrase was not given") ~= nil, true)
 		end)
 
-		it("keeps the requested mode for a retry when the first write fails", function()
-			child.lua([[
-      require("memo.gpg").prompt_passphrase = function() return "" end
-    ]])
-
-			child.lua_get([[ new_note.create({ path = "retry.md", encryption = { mode = "passphrase" } }) ]])
-
-			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/retry.md.asc"), 0)
-
-			child.lua([[
-      require("memo.gpg").prompt_passphrase = function() return "retry-sym" end
-    ]])
-			child.cmd("write")
-
-			local note = vim.env.NOTES_DIR .. "/retry.md.asc"
-			MiniTest.expect.equality(child.fn.filereadable(note), 1)
-			MiniTest.expect.equality(helpers.is_symmetric_file(note), true)
-
-			local result = helpers.decrypt_symmetric_file(note, "retry-sym")
-			MiniTest.expect.equality(result.code, 0)
-
-			-- Only the buffer's own writer ran: the default writer deferred
-			-- to it instead of reporting an unchanged buffer.
-			MiniTest.expect.equality(child.cmd_capture("messages"):find("No changes detected"), nil)
-		end)
-
 		it("prompts for the path and uses the default when the prompt is accepted", function()
 			child.lua([[ vim.fn.input = function(_, default) return default end ]])
 
@@ -425,6 +399,58 @@ describe("new_note", function()
 			MiniTest.expect.equality(decrypted.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(decrypted.stdout, "fresh content\n")
+		end)
+
+		it("keeps an existing note when a confirmed overwrite selects nothing", function()
+			local existing = vim.env.NOTES_DIR .. "/existing-selection.md.asc"
+			helpers.encrypt_file(existing, "old content\n")
+			local before = vim.fn.readfile(existing, "b")
+
+			open_source()
+			child.api.nvim_win_set_cursor(0, { 1, 5 })
+			child.cmd("normal! v")
+			child.api.nvim_win_set_cursor(0, { 1, 5 })
+
+			child.lua("vim.fn.confirm = function() return 1 end")
+
+			MiniTest.expect.equality(
+				child.lua_get([[ new_note.create({ path = "existing-selection.md.asc" }) ]]),
+				false
+			)
+			MiniTest.expect.equality(child.cmd_capture("messages"), "MemoNewNote: aborted, selection is empty")
+
+			-- The note is untouched, still decryptable to its old content.
+			MiniTest.expect.equality(vim.fn.readfile(existing, "b"), before)
+
+			local decrypted = helpers.decrypt_file(existing)
+			MiniTest.expect.equality(decrypted.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(decrypted.stdout:find("old content") ~= nil, true)
+		end)
+
+		it("keeps an existing note when a confirmed overwrite passphrase is dismissed", function()
+			local existing = vim.env.NOTES_DIR .. "/existing-dismissed.md.asc"
+			helpers.encrypt_file(existing, "old content\n")
+			local before = vim.fn.readfile(existing, "b")
+
+			child.lua("vim.fn.confirm = function() return 1 end")
+			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "" end ]])
+
+			MiniTest.expect.equality(
+				child.lua_get(
+					[[ new_note.create({ path = "existing-dismissed.md.asc", encryption = { mode = "passphrase" } }) ]]
+				),
+				false
+			)
+
+			-- The replacement buffer is dropped, but the note on disk is the old one.
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), "")
+			MiniTest.expect.equality(vim.fn.readfile(existing, "b"), before)
+
+			local decrypted = helpers.decrypt_file(existing)
+			MiniTest.expect.equality(decrypted.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(decrypted.stdout:find("old content") ~= nil, true)
 		end)
 
 		it("refuses a path outside the notes dir", function()
