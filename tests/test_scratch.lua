@@ -16,7 +16,7 @@ describe("scratch", function()
 	end)
 
 	local function cwd_key()
-		return (vim.fn.getcwd():gsub("[^%w%-]", "%%"))
+		return require("memo.scratch").encode_cwd_key(vim.fn.getcwd())
 	end
 
 	describe("is_scratch_file", function()
@@ -34,8 +34,8 @@ describe("scratch", function()
 			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), true)
 		end)
 
-		it("matches scratch files with percent characters in cwd key", function()
-			local path = scratch_dir .. "/%home%user%project-20260920T012345-a1b2c3.asc"
+		it("matches scratch files with percent escapes in cwd key", function()
+			local path = scratch_dir .. "/%2Fhome%2Fuser%2Fproject-20260920T012345-a1b2c3.asc"
 
 			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), true)
 		end)
@@ -72,14 +72,35 @@ describe("scratch", function()
 	end)
 
 	describe("cwd_key", function()
-		it("escapes non-word characters with percent", function()
+		it("encodes non-word characters as percent escapes", function()
 			child.lua("vim.fn.delete('/tmp/memo-cwd key', 'rf')")
 			child.lua("vim.fn.mkdir('/tmp/memo-cwd key', 'p')")
 			child.lua("vim.fn.chdir('/tmp/memo-cwd key')")
 
-			local expected = (child.fn.getcwd():gsub("[^%w%-]", "%%"))
+			MiniTest.expect.equality(child.lua_get("M.cwd_key()"), "%2Ftmp%2Fmemo-cwd%20key")
+		end)
 
-			MiniTest.expect.equality(child.lua_get("M.cwd_key()"), expected)
+		it("maps distinct paths to distinct keys", function()
+			local dotted = child.lua_get([[ M.encode_cwd_key(...) ]], { "/tmp/foo.bar" })
+			local slashed = child.lua_get([[ M.encode_cwd_key(...) ]], { "/tmp/foo/bar" })
+
+			MiniTest.expect.equality(dotted, "%2Ftmp%2Ffoo%2Ebar")
+			MiniTest.expect.equality(slashed, "%2Ftmp%2Ffoo%2Fbar")
+			MiniTest.expect.equality(dotted ~= slashed, true)
+		end)
+
+		it("encodes a literal percent sign reversibly", function()
+			local encoded = child.lua_get([[ M.encode_cwd_key(...) ]], { "/tmp/a%20b" })
+
+			MiniTest.expect.equality(encoded, "%2Ftmp%2Fa%2520b")
+			MiniTest.expect.equality(child.lua_get([[ M.decode_cwd_key(...) ]], { encoded }), "/tmp/a%20b")
+		end)
+
+		it("round-trips a path through encode and decode", function()
+			local path = "/tmp/memo foo/bar.baz"
+			local encoded = child.lua_get([[ M.encode_cwd_key(...) ]], { path })
+
+			MiniTest.expect.equality(child.lua_get([[ M.decode_cwd_key(...) ]], { encoded }), path)
 		end)
 	end)
 
@@ -89,7 +110,7 @@ describe("scratch", function()
 		end
 
 		it("decodes the cwd key into a readable path", function()
-			local name = "%Users%dev%project-20260920T012345-a1b2c3.asc"
+			local name = "%2FUsers%2Fdev%2Fproject-20260920T012345-a1b2c3.asc"
 
 			MiniTest.expect.equality(
 				require("memo.scratch").display_scratch(name),
@@ -99,9 +120,9 @@ describe("scratch", function()
 
 		it("round-trips to the real filename", function()
 			local names = {
-				"%Users%dev%project-20260920T012345-a1b2c3.asc",
+				"%2FUsers%2Fdev%2Fproject-20260920T012345-a1b2c3.asc",
 				"my-project-20260920T012345-a1b2c3.gpg",
-				"%tmp%memo-scratch-20260920T023456-deadbe.gpg",
+				"%2Ftmp%2Fmemo-scratch-20260920T023456-deadbe.gpg",
 			}
 
 			for _, name in ipairs(names) do
