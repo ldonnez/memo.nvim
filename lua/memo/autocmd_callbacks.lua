@@ -196,6 +196,9 @@ function M.on_write(args, mode)
 
 	-- A note that carries a supported extension keeps it.
 	local note_path = utils.resolve_note_file(file)
+
+	vim.api.nvim_exec_autocmds("BufWritePre", { buffer = bufnr, modeline = false })
+
 	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
 	local current_hash = vim.fn.sha256(table.concat(lines, "\n"))
@@ -205,7 +208,6 @@ function M.on_write(args, mode)
 		vim.bo[bufnr].modified = false
 		return
 	end
-	vim.api.nvim_exec_autocmds("BufWritePre", { buffer = bufnr, modeline = false })
 
 	local result = crypto.encrypt_from_stdin(note_path, lines, bufnr, { mode = mode })
 

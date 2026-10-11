@@ -157,6 +157,45 @@ describe("autocmd", function()
 		MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPost"), false)
 	end)
 
+	it("encrypts the content BufWritePre transformed, not the earlier snapshot", function()
+		local plain = vim.env.NOTES_DIR .. "/formatted.md"
+		local encrypted = plain .. ".asc"
+
+		vim.system({ "touch", plain }):wait()
+
+		-- A formatter-style BufWritePre rewrites the buffer on save.
+		child.lua(
+			[[
+			local path = ...
+			vim.api.nvim_create_autocmd("BufWritePre", {
+				pattern = path,
+				callback = function()
+					vim.api.nvim_buf_set_lines(0, 0, -1, false, { "rewritten by BufWritePre" })
+				end,
+			})
+		]],
+			{ plain }
+		)
+
+		child.cmd("edit " .. plain)
+		child.api.nvim_buf_set_lines(0, 0, -1, false, { "original content" })
+		child.cmd("write")
+
+		local buffer_lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+		MiniTest.expect.equality(buffer_lines, { "rewritten by BufWritePre" })
+
+		-- The encrypted file has to match the formatted buffer, not the text
+		-- that was there before BufWritePre ran.
+		local decrypted = helpers.decrypt_file(encrypted)
+		MiniTest.expect.equality(decrypted.stdout, "rewritten by BufWritePre\n")
+
+		-- The hash is derived from the same post-BufWritePre buffer, so an
+		-- unchanged follow-up write is a no-op.
+		child.cmd("messages clear")
+		child.cmd("write")
+		MiniTest.expect.equality(child.cmd_capture("messages"), "No changes detected")
+	end)
+
 	it("automatically encrypts a new file without extension saved in notes dir", function()
 		local plain = vim.env.NOTES_DIR .. "/new_note"
 		local encrypted = plain .. ".asc"
