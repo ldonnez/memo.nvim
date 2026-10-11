@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.1](https://github.com/ldonnez/memo.nvim/compare/v0.16.0...v0.16.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* force encryption of replacement, even if its content is unchanged ([12c035d](https://github.com/ldonnez/memo.nvim/commit/12c035da39dd9bd2f9155809aee5b50a47d84ec2))
+
 ## [0.16.0](https://github.com/ldonnez/memo.nvim/compare/v0.15.1...v0.16.0) (2026-10-11)
 
 
