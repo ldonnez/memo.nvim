@@ -277,11 +277,11 @@ end
 function M.encrypt(path, input, opts)
 	opts = opts or {}
 
-	local exists = require("memo.utils").file_exists(path)
-
-	-- A note that does not exist's encryption is determined bymode; an existing one keeps
-	-- the way its file is encrypted.
-	local new_passphrase = opts.mode == "passphrase" and not exists
+	-- A note with no content is new, so `mode` decides its encryption; an
+	-- existing note keeps the encryption its file already uses. "Has content"
+	-- rather than "exists" matches how the plugin treats a zero-byte file as
+	-- not yet written.
+	local new_passphrase = opts.mode == "passphrase" and not require("memo.utils").file_has_content(path)
 	local passphrase_mode = new_passphrase or is_symmetric(path)
 
 	if not passphrase_mode then
