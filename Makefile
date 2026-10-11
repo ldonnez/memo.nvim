@@ -58,10 +58,12 @@ docker/shell:
 	@docker run --rm -it --name $(CONTAINER_NAME) $(VOLUME_MOUNT) $(VOLUME_MOUNT_MEMO) $(IMAGE_NAME) /bin/bash
 
 docker/test: docker/build-image
+	@docker rm -f $(CONTAINER_NAME) 2>/dev/null || true
 	@docker run --rm --name $(CONTAINER_NAME) $(VOLUME_MOUNT) $(VOLUME_MOUNT_MEMO) $(IMAGE_NAME) make test
 
 # Run single test file in docker
 docker/test_file: docker/build-image
+	@docker rm -f $(CONTAINER_NAME) 2>/dev/null || true
 	@docker run --rm --name $(CONTAINER_NAME) $(VOLUME_MOUNT) $(VOLUME_MOUNT_MEMO) $(IMAGE_NAME) make test_file FILE=$(FILE)
 
 EMMYLUA_CFG := $(CURDIR)/.emmyrc.json
