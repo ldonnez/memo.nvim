@@ -154,12 +154,21 @@ function M.ensure_directories(dir)
 	end
 
 	local ok, err = pcall(vim.fn.mkdir, dir, "p")
-	if not ok then
-		require("memo.message").error("Error creating directory: %s", tostring(err))
-		return false
+
+	-- A successful call does not mean the directory appeared: `mkdir` returns
+	-- 0 on failure instead of raising. The check also covers the case of a
+	-- concurrent creator.
+	if vim.fn.isdirectory(dir) == 1 then
+		return true
 	end
 
-	return true
+	if not ok then
+		require("memo.message").error("Error creating directory %s: %s", dir, tostring(err))
+	else
+		require("memo.message").error("Error creating directory %s", dir)
+	end
+
+	return false
 end
 
 ---@param cmd string

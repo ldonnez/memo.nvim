@@ -389,6 +389,10 @@ describe("utils", function()
 
 			MiniTest.expect.equality(util.ensure_directories(dir), false)
 
+			local messages = vim.api.nvim_exec2("messages", { output = true }).output
+			MiniTest.expect.equality(messages:find("Error creating directory", 1, true) ~= nil, true)
+			MiniTest.expect.equality(messages:find(dir, 1, true) ~= nil, true)
+
 			vim.fn.delete(blocked)
 		end)
 	end)
