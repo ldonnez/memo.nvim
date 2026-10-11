@@ -827,6 +827,49 @@ describe("gpg", function()
 			MiniTest.expect.equality(vim.tbl_contains(cmd, "--passphrase"), false)
 		end
 	end)
+
+	it("encrypts a zero-byte existing file with the passphrase mode", function()
+		local note = "/tmp/gpg_encrypt_zero_symmetric.txt.gpg"
+		local passphrase = "zero-pass"
+
+		helpers.write_file(note, "")
+
+		local result = child.lua(
+			[[
+        local passphrase, note = ...
+        M.prompt_passphrase = function() return passphrase end
+
+        local written = M.encrypt(note, { "Hello world!" }, { mode = "passphrase" })
+
+        return { code = written.code, stderr = written.stderr }
+      ]],
+			{ passphrase, note }
+		)
+
+		MiniTest.expect.equality(result.code, 0)
+		MiniTest.expect.equality(helpers.is_symmetric_file(note), true)
+
+		local decrypted = helpers.decrypt_symmetric_file(note, passphrase)
+		MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Hello world!")
+	end)
+
+	it("does not get key IDs from an empty file", function()
+		local path = "/tmp/gpg_empty_packets.txt.gpg"
+		helpers.write_file(path, "")
+
+		local result = child.lua_get("M.get_file_key_ids(...)", { path })
+
+		MiniTest.expect.equality(result, {})
+	end)
+
+	it("does not get key IDs from garbage gpg output", function()
+		local path = "/tmp/gpg_garbage_packets.txt.gpg"
+		helpers.write_file(path, "\0\1 not gpg packets at all")
+
+		local result = child.lua_get("M.get_file_key_ids(...)", { path })
+
+		MiniTest.expect.equality(result, {})
+	end)
 end)
 
 describe("with no gpg keys", function()
