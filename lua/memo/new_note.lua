@@ -118,6 +118,9 @@ function M.create(opts)
 		end
 	end)
 
+	-- Force encryption of the replacement, even if its content is unchanged.
+	vim.b[bufnr].hash = nil
+
 	vim.cmd("silent write")
 
 	-- Double-check buffer status just in case

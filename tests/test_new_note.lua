@@ -456,6 +456,33 @@ describe("new_note", function()
 		it("refuses a path outside the notes dir", function()
 			MiniTest.expect.equality(child.lua_get([[ new_note.create({ path = "../escape.md" }) ]]), false)
 		end)
+
+		it("encrypts an overwrite when the existing buffer hash matches the template", function()
+			local existing = vim.env.NOTES_DIR .. "/same-content.md.asc"
+			helpers.encrypt_file(existing, "same content\n")
+
+			-- Load the note so its decrypted content and hash are in the buffer.
+			child.cmd("edit " .. vim.fn.fnameescape(existing))
+			child.wait_until(function()
+				return child.lua_get("vim.b.decrypting") == false
+			end, 10000)
+
+			child.lua("vim.fn.confirm = function() return 1 end")
+
+			local created = child.lua_get([[
+		new_note.create({
+			path = "same-content.md.asc",
+			template = "same content|",
+		})
+	]])
+
+			MiniTest.expect.equality(created, true)
+			MiniTest.expect.equality(child.fn.filereadable(existing), 1)
+
+			local decrypted = helpers.decrypt_file(existing)
+			MiniTest.expect.equality(decrypted.code, 0)
+			MiniTest.expect.equality(decrypted.stdout, "same content\n")
+		end)
 	end)
 
 	describe("range selection", function()
