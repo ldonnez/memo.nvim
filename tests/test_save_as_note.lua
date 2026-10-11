@@ -140,6 +140,33 @@ describe("save_as_note", function()
 			MiniTest.expect.equality(decrypted.stdout:find("old content") ~= nil, true)
 		end)
 
+		it("keeps the original note when overwrite fails during encryption", function()
+			local existing = vim.env.NOTES_DIR .. "/backup-test.gpg"
+			helpers.encrypt_file(existing, "original content\n")
+
+			child.cmd("edit " .. vim.fn.fnameescape(vim.env.NOTES_DIR .. "/random.txt"))
+			child.type_keys("i", "new content that fails encryption", "<Esc>")
+
+			child.lua("vim.fn.input = function() return 'backup-test.gpg' end")
+			child.lua("vim.fn.confirm = function() return 1 end")
+			child.lua([[
+        local crypto = require("memo.crypto")
+        crypto.encrypt_from_stdin = function()
+          return { code = 1, stderr = "encryption failed" }
+        end
+      ]])
+
+			local result = child.lua_get("{ pcall(function() return M.create() end) }")
+
+			MiniTest.expect.equality(result[1], true)
+			MiniTest.expect.equality(result[2], false)
+
+			local decrypted = helpers.decrypt_file(existing)
+			MiniTest.expect.equality(decrypted.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(decrypted.stdout:find("original content") ~= nil, true)
+		end)
+
 		it("overwrites when user confirms", function()
 			local existing = vim.env.NOTES_DIR .. "/occupied.gpg"
 			helpers.encrypt_file(existing, "old content\n")
@@ -432,6 +459,73 @@ describe("save_as_note", function()
 
 			MiniTest.expect.equality(saved, false)
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/dismissed.asc"), 0)
+		end)
+
+		it("keeps the existing passphrase note when the overwrite prompt is dismissed", function()
+			local existing = vim.env.NOTES_DIR .. "/occupied-sym.asc"
+			MiniTest.expect.equality(helpers.encrypt_symmetric_file(existing, "old content\n", passphrase).code, 0)
+			local before = vim.fn.readfile(existing, "b")
+
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.type_keys("i", "new content", "<Esc>")
+
+			child.lua("vim.fn.input = function() return 'occupied-sym' end")
+			child.lua("vim.fn.confirm = function() return 1 end")
+			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "" end ]])
+
+			local result =
+				child.lua_get("{ pcall(function() return M.create({ encryption = { mode = 'passphrase' } }) end) }")
+
+			MiniTest.expect.equality(result[1], true)
+			MiniTest.expect.equality(result[2], false)
+
+			-- The note is untouched, still decryptable with its passphrase.
+			MiniTest.expect.equality(vim.fn.readfile(existing, "b"), before)
+
+			local decrypted = helpers.decrypt_symmetric_file(existing, passphrase)
+			MiniTest.expect.equality(decrypted.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "old content")
+		end)
+
+		it("prompts for passphrase confirmation when overwriting a passphrase note", function()
+			local existing = vim.env.NOTES_DIR .. "/overwrite-sym.asc"
+			MiniTest.expect.equality(helpers.encrypt_symmetric_file(existing, "old content\n", passphrase).code, 0)
+
+			local source = vim.env.NOTES_DIR .. "/random.txt"
+			child.cmd("edit " .. vim.fn.fnameescape(source))
+			child.type_keys("i", "new overwrite content", "<Esc>")
+
+			child.lua("vim.fn.input = function() return 'overwrite-sym' end")
+			child.lua("vim.fn.confirm = function() return 1 end")
+
+			child.lua([[
+        local prompts = 0
+        local gpg = require("memo.gpg")
+        gpg.prompt_passphrase = function()
+          prompts = prompts + 1
+          return "sym-pass"
+        end
+
+        function _G.memo_overwrite_passphrase_prompts()
+          return prompts
+        end
+      ]])
+
+			local result =
+				child.lua_get("{ pcall(function() return M.create({ encryption = { mode = 'passphrase' } }) end) }")
+
+			MiniTest.expect.equality(result[1], true)
+			MiniTest.expect.equality(result[2], true)
+
+			-- Should prompt twice: once for initial passphrase, once for confirmation
+			MiniTest.expect.equality(child.lua_get([[ memo_overwrite_passphrase_prompts() ]]), 2)
+
+			local decrypted = helpers.decrypt_symmetric_file(existing, "sym-pass")
+			MiniTest.expect.equality(decrypted.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "new overwrite content")
 		end)
 	end)
 

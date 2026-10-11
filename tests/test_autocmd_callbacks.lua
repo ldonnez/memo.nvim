@@ -790,6 +790,113 @@ describe("autocmd", function()
 			MiniTest.expect.equality(result.prompts, 0)
 			MiniTest.expect.equality(helpers.is_symmetric_file(encrypted), false)
 		end)
+
+		it("passes the write result to its on_done callback", function()
+			local plain = vim.env.NOTES_DIR .. "/registered-result.md"
+			local encrypted = plain .. ".asc"
+
+			local results = child.lua(
+				[[
+				local path = ...
+				local results = {}
+
+				local bufnr = vim.api.nvim_get_current_buf()
+				vim.api.nvim_buf_set_name(bufnr, path)
+				require("memo.autocmd_callbacks").register_write(bufnr, "key", function(wrote)
+					table.insert(results, wrote)
+				end)
+				vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "Registered secret" })
+				vim.cmd("write")
+
+				return results
+			]],
+				{ plain }
+			)
+
+			MiniTest.expect.equality(results, { true })
+			MiniTest.expect.equality(vim.fn.filereadable(encrypted), 1)
+		end)
+
+		it("passes a failed write to its on_done callback", function()
+			local plain = vim.env.NOTES_DIR .. "/registered-failed.md"
+
+			-- Force a failing `memo encrypt` invocation.
+			child.lua([[
+				require("memo.crypto").encrypt_from_stdin = function()
+					return { code = 1, stderr = "boom" }
+				end
+			]])
+
+			local results = child.lua(
+				[[
+				local path = ...
+				local results = {}
+
+				local bufnr = vim.api.nvim_get_current_buf()
+				vim.api.nvim_buf_set_name(bufnr, path)
+				require("memo.autocmd_callbacks").register_write(bufnr, "key", function(wrote)
+					table.insert(results, wrote)
+				end)
+				vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "Registered secret" })
+				vim.cmd("write")
+
+				return results
+			]],
+				{ plain }
+			)
+
+			MiniTest.expect.equality(results, { false })
+			MiniTest.expect.equality(vim.fn.filereadable(plain .. ".asc"), 0)
+		end)
+	end)
+
+	describe("on_write", function()
+		it("returns true when it writes the note", function()
+			local plain = vim.env.NOTES_DIR .. "/on-write.md"
+			local encrypted = plain .. ".asc"
+
+			local wrote = child.lua(
+				[[
+				local path = ...
+				local bufnr = vim.api.nvim_get_current_buf()
+				vim.api.nvim_buf_set_name(bufnr, path)
+				vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "Written directly" })
+
+				return require("memo.autocmd_callbacks").on_write({ buf = bufnr, file = path }, "key")
+			]],
+				{ plain }
+			)
+
+			MiniTest.expect.equality(wrote, true)
+			MiniTest.expect.equality(vim.fn.filereadable(encrypted), 1)
+			MiniTest.expect.equality(helpers.decrypt_file(encrypted).stdout, "Written directly\n")
+		end)
+
+		it("returns false when encryption fails", function()
+			local plain = vim.env.NOTES_DIR .. "/on-write-fail.md"
+
+			-- Force a failing `memo encrypt` invocation.
+			child.lua([[
+				require("memo.crypto").encrypt_from_stdin = function()
+					return { code = 1, stderr = "boom" }
+				end
+			]])
+
+			local wrote = child.lua(
+				[[
+				local path = ...
+				local bufnr = vim.api.nvim_get_current_buf()
+				vim.api.nvim_buf_set_name(bufnr, path)
+				vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "Will fail" })
+
+				return require("memo.autocmd_callbacks").on_write({ buf = bufnr, file = path }, "key")
+			]],
+				{ plain }
+			)
+
+			MiniTest.expect.equality(wrote, false)
+			MiniTest.expect.equality(vim.fn.filereadable(plain .. ".asc"), 0)
+		end)
 	end)
 
 	describe("AutoCmd patterns", function()

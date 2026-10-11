@@ -155,8 +155,9 @@ end
 --- the encryption mode of its first write in a closure. The handler stays
 --- with the buffer; once the note exists.
 --- @param bufnr integer
---- @param mode "passphrase"|"key"
-function M.register_write(bufnr, mode)
+--- @param mode? "passphrase"|"key" the mode of the first write
+--- @param on_done? fun(wrote: boolean) called with the result of each write
+function M.register_write(bufnr, mode, on_done)
 	-- Re-registering replaces the previous handler instead of stacking one.
 	vim.api.nvim_clear_autocmds({ event = "BufWriteCmd", buffer = bufnr, group = GROUP })
 
@@ -165,13 +166,18 @@ function M.register_write(bufnr, mode)
 		group = GROUP,
 		desc = "memo: write a new encrypted note",
 		callback = function(args)
-			M.on_write(args, mode)
+			local ok = M.on_write(args, mode)
+
+			if on_done then
+				on_done(ok)
+			end
 		end,
 	})
 end
 
 --- @param args vim.api.keyset.create_autocmd.callback_args
 --- @param mode? "passphrase"|"key" only for a new note, ignored once the file exists
+--- @return boolean write succeeded?
 function M.on_write(args, mode)
 	local bufnr = args.buf
 	local utils = require("memo.utils")
@@ -182,16 +188,16 @@ function M.on_write(args, mode)
 	local file = vim.fn.fnamemodify(args.file, ":p")
 
 	if is_directory(file) then
-		return
+		return false
 	end
 
 	if is_ignored(file) then
 		write_regular_file(bufnr)
-		return
+		return true
 	end
 
 	if vim.b[bufnr].decrypting then
-		return
+		return false
 	end
 
 	-- A note that carries a supported extension keeps it.
@@ -206,7 +212,7 @@ function M.on_write(args, mode)
 	if current_hash == vim.b[bufnr].hash then
 		message.info("No changes detected")
 		vim.bo[bufnr].modified = false
-		return
+		return true
 	end
 
 	local result = crypto.encrypt_from_stdin(note_path, lines, bufnr, { mode = mode })
@@ -215,7 +221,7 @@ function M.on_write(args, mode)
 		-- Deferred: an ERROR-level vim.notify raises inside an autocmd.
 		local err = (result.stderr and result.stderr ~= "") and result.stderr or "Unknown encryption error"
 		message.defer_error("%s", err)
-		return
+		return false
 	end
 
 	if file ~= note_path then
@@ -229,6 +235,8 @@ function M.on_write(args, mode)
 	prepare_buffer_for_edit(bufnr)
 
 	vim.api.nvim_exec_autocmds("BufWritePost", { buffer = bufnr, modeline = false })
+
+	return true
 end
 
 return M
