@@ -55,7 +55,11 @@ docker/build-image:
 	@docker build -t $(IMAGE_NAME) .
 
 docker/shell:
-	@docker run --rm -it --name $(CONTAINER_NAME) $(VOLUME_MOUNT) $(VOLUME_MOUNT_MEMO) $(IMAGE_NAME) /bin/bash
+	@if docker ps --filter "name=$(CONTAINER_NAME)" --filter "status=running" | grep -q $(CONTAINER_NAME); then \
+		docker exec -it $(CONTAINER_NAME) /bin/bash; \
+	else \
+		docker run --rm -it --name $(CONTAINER_NAME) $(VOLUME_MOUNT) $(VOLUME_MOUNT_MEMO) $(IMAGE_NAME) /bin/bash; \
+	fi
 
 docker/test: docker/build-image
 	@docker rm -f $(CONTAINER_NAME) 2>/dev/null || true
