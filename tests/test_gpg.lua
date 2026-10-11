@@ -787,6 +787,46 @@ describe("gpg", function()
 		local decrypted = helpers.decrypt_file(note)
 		MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Rewritten")
 	end)
+
+	it("keeps the key passphrase out of the command that caches it", function()
+		local password = "key-argv-pass"
+		helpers.create_gpg_key("mock-argv@example.com", password)
+
+		local result = child.lua(
+			[[
+        local password = ...
+        local seen = {}
+        local system = vim.system
+        vim.system = function(cmd, opts, on_exit)
+          table.insert(seen, { cmd = cmd })
+          return system(cmd, opts, on_exit)
+        end
+
+        M.prompt_passphrase = function() return password end
+        local ok = M.unlock_key()
+
+        return { ok = ok, seen = seen }
+      ]],
+			{ password }
+		)
+
+		MiniTest.expect.equality(result.ok, true)
+
+		-- The caching call hands the passphrase over stdin (--passphrase-fd 0),
+		-- so it must not appear among the arguments of any gpg invocation.
+		local caching = {}
+		for _, call in ipairs(result.seen) do
+			if vim.tbl_contains(call.cmd, "--passphrase-fd") then
+				caching[#caching + 1] = call.cmd
+			end
+		end
+
+		MiniTest.expect.equality(#caching >= 1, true)
+		for _, cmd in ipairs(caching) do
+			MiniTest.expect.equality(vim.tbl_contains(cmd, password), false)
+			MiniTest.expect.equality(vim.tbl_contains(cmd, "--passphrase"), false)
+		end
+	end)
 end)
 
 describe("with no gpg keys", function()

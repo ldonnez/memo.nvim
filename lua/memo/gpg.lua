@@ -73,8 +73,8 @@ local function cache_passphrase(pass, id)
 		"--batch",
 		"--yes",
 		"--pinentry-mode=loopback",
-		"--passphrase",
-		pass,
+		"--passphrase-fd",
+		"0",
 		"--sign",
 	}
 	if id then
@@ -82,7 +82,10 @@ local function cache_passphrase(pass, id)
 		table.insert(cmd, 8, id)
 	end
 
-	local obj = vim.system(cmd):wait()
+	-- The passphrase is handed to gpg on stdin, not in the argument list: it
+	-- must never be inspectable as a command argument. gpg reads the first
+	-- line off the descriptor and signs the (empty) rest.
+	local obj = vim.system(cmd, { stdin = pass .. "\n" }):wait()
 
 	if obj.code ~= 0 then
 		message.defer_error("GPG: incorrect passphrase")
