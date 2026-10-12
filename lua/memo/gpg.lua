@@ -142,12 +142,16 @@ local function get_symmetric_passphrase(path, bufnr, confirm)
 			buffer = bufnr,
 			once = true,
 			callback = function()
-				pcall(vim.api.nvim_buf_del_var, bufnr, "memo_symmetric_passphrase")
+				M.clear_cached_passphrase(bufnr)
 			end,
 		})
 	end
 
 	return pass
+end
+
+function M.clear_cached_passphrase(bufnr)
+	vim.b[bufnr].memo_symmetric_passphrase = nil
 end
 
 --- Reads the packets of an encrypted note: whether it is symmetric and which
