@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.3](https://github.com/ldonnez/memo.nvim/compare/v0.16.2...v0.16.3) (2026-10-12)
+
+
+### Bug Fixes
+
+* clean up existing buffer when overwriting a note ([3fa7e79](https://github.com/ldonnez/memo.nvim/commit/3fa7e79eb644f29bed6de8d1ddf68362c43cbdb2))
+
 ## [0.16.2](https://github.com/ldonnez/memo.nvim/compare/v0.16.1...v0.16.2) (2026-10-12)
 
 
