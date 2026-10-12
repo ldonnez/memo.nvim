@@ -18,6 +18,26 @@ local function default_path()
 	return require("memo.utils").build_note_path(os.date("%Y-%m-%d.md"))
 end
 
+--- Remove an already-loaded buffer before replacing its note.
+---@param path string
+---@return boolean success
+local function cleanup_existing_buffer(path)
+	local bufnr = vim.fn.bufnr(path)
+
+	if bufnr == -1 or not vim.api.nvim_buf_is_loaded(bufnr) then
+		return true
+	end
+
+	local ok, err = pcall(vim.api.nvim_buf_delete, bufnr, { force = false })
+
+	if not ok then
+		require("memo.message").error("MemoNewNote: could not close existing buffer (%s): %s", path, err)
+		return false
+	end
+
+	return true
+end
+
 ---Creates a new encrypted note and opens it in the current window.
 ---A range or visual selection is inserted at the template's `|` marker.
 ---@param opts? MemoNewNoteOpts
@@ -85,6 +105,10 @@ function M.create(opts)
 			return false
 		end
 
+		if not cleanup_existing_buffer(note_path) then
+			return false
+		end
+
 		if vim.fn.delete(note_path) ~= 0 then
 			backup:restore()
 			message.error("MemoNewNote: could not remove existing note (%s)", note_path)
@@ -117,9 +141,6 @@ function M.create(opts)
 			backup:restore()
 		end
 	end)
-
-	-- Force encryption of the replacement, even if its content is unchanged.
-	vim.b[bufnr].hash = nil
 
 	vim.cmd("silent write")
 
