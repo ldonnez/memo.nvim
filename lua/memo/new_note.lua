@@ -120,6 +120,7 @@ function M.create(opts)
 
 	-- Force encryption of the replacement, even if its content is unchanged.
 	vim.b[bufnr].hash = nil
+	require("memo.gpg").clear_cached_passphrase(bufnr)
 
 	vim.cmd("silent write")
 

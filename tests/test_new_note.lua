@@ -483,6 +483,56 @@ describe("new_note", function()
 			MiniTest.expect.equality(decrypted.code, 0)
 			MiniTest.expect.equality(decrypted.stdout, "same content\n")
 		end)
+
+		it("prompts for a new passphrase when overwriting a symmetric note", function()
+			local existing = vim.env.NOTES_DIR .. "/existing-symmetric.md.asc"
+			helpers.encrypt_symmetric_file(existing, "old content\n", "old-pass")
+
+			-- Open the note so its old passphrase is cached in the buffer.
+			child.lua([[
+		require("memo.gpg").prompt_passphrase = function()
+			return "old-pass"
+		end
+	]])
+			child.cmd("edit " .. vim.fn.fnameescape(existing))
+			child.wait_until(function()
+				return child.lua_get("vim.b.decrypting") == false
+			end, 10000)
+
+			-- The replacement must prompt twice for its new passphrase.
+			child.lua([[
+		local prompts = 0
+		local gpg = require("memo.gpg")
+
+		gpg.prompt_passphrase = function()
+			prompts = prompts + 1
+			return "new-pass"
+		end
+
+		_G.memo_passphrase_prompts = function()
+			return prompts
+		end
+
+		vim.fn.confirm = function()
+			return 1
+		end
+	]])
+
+			local created = child.lua_get([[
+		new_note.create({
+			path = "existing-symmetric.md.asc",
+			template = "fresh content|",
+			encryption = { mode = "passphrase" },
+		})
+	]])
+
+			MiniTest.expect.equality(created, true)
+			MiniTest.expect.equality(child.lua_get("memo_passphrase_prompts()"), 2)
+
+			local decrypted = helpers.decrypt_symmetric_file(existing, "new-pass")
+			MiniTest.expect.equality(decrypted.code, 0)
+			MiniTest.expect.equality(decrypted.stdout, "fresh content\n")
+		end)
 	end)
 
 	describe("range selection", function()
