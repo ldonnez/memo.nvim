@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.2](https://github.com/ldonnez/memo.nvim/compare/v0.16.1...v0.16.2) (2026-10-12)
+
+
+### Bug Fixes
+
+* clear passphrase when creating new note ([6e1c83d](https://github.com/ldonnez/memo.nvim/commit/6e1c83d4f1698e651e74611c73acf82e3550588e))
+
 ## [0.16.1](https://github.com/ldonnez/memo.nvim/compare/v0.16.0...v0.16.1) (2026-10-11)
 
 
