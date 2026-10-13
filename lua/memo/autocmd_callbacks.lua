@@ -50,14 +50,6 @@ local function prepare_buffer_for_edit(bufnr)
 	vim.b[bufnr].decrypting = false
 end
 
----@param path string
----@return boolean
-local function is_armored_gpg(path)
-	local lines = vim.fn.readfile(path, "b", 1)
-
-	return lines[1] == "-----BEGIN PGP MESSAGE-----"
-end
-
 --- @param bufnr integer
 local function write_regular_file(bufnr)
 	vim.api.nvim_exec_autocmds("BufWritePre", {
@@ -124,7 +116,7 @@ function M.on_read(args)
 		return
 	end
 
-	if not is_armored_gpg(note_path) then
+	if not utils.is_armored_gpg(note_path) then
 		read_regular_file(bufnr, file)
 		return
 	end

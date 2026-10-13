@@ -1,13 +1,20 @@
 local utils = require("memo.utils")
 local config = require("memo.config")
 local scratch = require("memo.scratch")
+local previewer = require("memo.pickers.fzf_previewer")
 local M = {}
 
 ---@class MemoPickerOpts
----@field dir string
+---@field dir? string
 ---@field delete? boolean
 ---@field filter? fun(name: string): boolean
 ---@field display_scratch? boolean
+---@field previewer? boolean show the decrypted preview pane
+
+---@type MemoPickerOpts
+local DEFAULTS = {
+	previewer = false,
+}
 
 ---Delete the selected scratch files, also wiping any buffer that has them
 ---open. Entries are relative to the picker `cwd` and may carry icon/ANSI
@@ -53,7 +60,7 @@ local function pick(fzf, opts)
 
 	fzf.files({
 		cwd = opts.dir,
-		previewer = false,
+		previewer = opts.previewer and previewer.build() or false,
 		actions = actions,
 		fn_transform = fn_transform,
 		-- A function transform cannot be serialized to the worker process, so
@@ -65,27 +72,38 @@ local function pick(fzf, opts)
 	})
 end
 
-function M.files_picker()
+---@param opts? MemoPickerOpts
+function M.files_picker(opts)
 	local fzf = utils.load_plugin("fzf-lua")
 
 	if not fzf then
 		return
 	end
 
-	pick(fzf, { dir = config.notes_dir })
+	pick(fzf, vim.tbl_extend("force", DEFAULTS, { dir = config.notes_dir }, opts or {}))
 end
 
-function M.scratch_files_picker()
+---@param opts? MemoPickerOpts
+function M.scratch_files_picker(opts)
 	local fzf = utils.load_plugin("fzf-lua")
 
 	if not fzf then
 		return
 	end
 
-	pick(fzf, { dir = config.scratch_dir, delete = true, display_scratch = true })
+	pick(
+		fzf,
+		vim.tbl_extend(
+			"force",
+			DEFAULTS,
+			{ dir = config.scratch_dir, delete = true, display_scratch = true },
+			opts or {}
+		)
+	)
 end
 
-function M.cwd_scratch_files_picker()
+---@param opts? MemoPickerOpts
+function M.cwd_scratch_files_picker(opts)
 	local fzf = utils.load_plugin("fzf-lua")
 
 	if not fzf then
@@ -93,14 +111,19 @@ function M.cwd_scratch_files_picker()
 	end
 
 	local prefix = scratch.cwd_key() .. "-"
-	pick(fzf, {
-		dir = config.scratch_dir,
-		delete = true,
-		display_scratch = true,
-		filter = function(name)
-			return name:sub(1, #prefix) == prefix
-		end,
-	})
+	local cwd_filter = function(name)
+		return name:sub(1, #prefix) == prefix
+	end
+
+	pick(
+		fzf,
+		vim.tbl_extend(
+			"force",
+			DEFAULTS,
+			{ dir = config.scratch_dir, delete = true, display_scratch = true, filter = cwd_filter },
+			opts or {}
+		)
+	)
 end
 
 return M

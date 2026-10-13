@@ -68,6 +68,21 @@ function M.file_has_content(path)
 	return M.file_exists(path) and vim.fn.getfsize(path) > 0
 end
 
+---Checks whether `path` holds an armored PGP message, the shape notes
+---encrypted by `memo` take. Only the first line is read; missing files and
+---directories are not armored.
+---@param path string
+---@return boolean
+function M.is_armored_gpg(path)
+	if vim.fn.filereadable(path) ~= 1 then
+		return false
+	end
+
+	local lines = vim.fn.readfile(path, "b", 1)
+
+	return lines[1] == "-----BEGIN PGP MESSAGE-----"
+end
+
 ---Prompts the user with a yes/no question. Warns and returns false when
 ---declined, so callers can treat a decline as a plain abort.
 ---@param prompt string question shown in the dialog
@@ -242,6 +257,29 @@ function M.drop_buffer_with_error(bufnr, message)
 			vim.api.nvim_buf_delete(bufnr, { force = true })
 		end
 	end)
+end
+
+--- Fingerprint of a file: identity (device, inode) plus mtime, ctime and size,
+--- so both a rewrite and a replacement are seen. A heuristic, not a guarantee.
+--- @param path string
+--- @return string?
+function M.file_signature(path)
+	local stat = vim.uv.fs_stat(path)
+
+	if not stat then
+		return nil
+	end
+
+	return string.format(
+		"%d:%d:%d:%d:%d:%d:%d",
+		stat.dev,
+		stat.ino,
+		stat.mtime.sec,
+		stat.mtime.nsec,
+		stat.ctime.sec,
+		stat.ctime.nsec,
+		stat.size
+	)
 end
 
 return M
