@@ -2,6 +2,10 @@ local M = {}
 
 local message = require("memo.message")
 
+--- What gpg-agent knows, shared by every caller: the recipients of a note and
+--- which keys its cache holds. See `memo.gpg_cache`.
+local cache = require("memo.gpg_cache").new()
+
 --- Variable the passphrase of a passphrase note is handed to `memo` in.
 local PASSPHRASE_ENV = "MEMO_NOTE_PASSPHRASE"
 
@@ -9,21 +13,23 @@ local NO_PASSPHRASE = "the passphrase was not given"
 
 local NO_MATCH = "the passphrases do not match"
 
---- Milliseconds a decrypt may run before gpg is killed. Protects the pickers
----and note reads from a decrypt that waits forever, e.g. on a passphrase prompt
----without a terminal.
+--- Milliseconds a decrypt may run before gpg is killed.
 local DECRYPT_TIMEOUT_MS = 30000
 
---- Check if a specific key (or default) is unlocked in gpg-agent
+--- Check if a specific key (or default) is unlocked in gpg-agent.
+--- A failed decrypt clears the cache so the next attempt prompts again.
 --- @param id string?
 --- @return boolean
 local function is_key_unlocked(id)
-	local cmd = { "gpg", "--batch", "--pinentry-mode=error", "--no-tty", "--sign" }
-	if id then
-		table.insert(cmd, 3, "--local-user")
-		table.insert(cmd, 4, id)
-	end
-	return vim.system(cmd):wait().code == 0
+	return cache:key_unlocked(id, function(key)
+		local cmd = { "gpg", "--batch", "--pinentry-mode=error", "--no-tty", "--sign" }
+		if key then
+			table.insert(cmd, 3, "--local-user")
+			table.insert(cmd, 4, key)
+		end
+
+		return vim.system(cmd):wait().code == 0
+	end)
 end
 
 --- Get the user info for a key ID.
@@ -96,6 +102,10 @@ local function cache_passphrase(pass, id)
 		message.defer_error("GPG: incorrect passphrase")
 		return false
 	end
+
+	-- gpg-agent holds the key now, so the next check can be skipped.
+	cache:mark_key_unlocked(id)
+
 	return true
 end
 
@@ -160,24 +170,27 @@ end
 --- @param path string
 --- @return { symmetric: boolean, key_ids: string[] }
 local function read_packets(path)
-	local obj = vim.system(
-		{ "gpg", "--batch", "--list-packets", "--pinentry-mode=loopback", "--no-tty", path },
-		{ text = true }
-	)
-		:wait()
+	return cache:packets(path, function(checked)
+		local obj = vim.system(
+			{ "gpg", "--batch", "--list-packets", "--pinentry-mode=loopback", "--no-tty", checked },
+			{ text = true }
+		):wait()
 
-	-- The packets go to stdout, the recipient key IDs to stderr.
-	local stderr = obj.stderr or ""
-	local file = {
-		symmetric = ((obj.stdout or "") .. stderr):find("symkey enc packet", 1, true) ~= nil,
-		key_ids = {},
-	}
+		-- The packets go to stdout, the recipient key IDs to stderr.
+		local stderr = obj.stderr or ""
+		local packets = {
+			symmetric = ((obj.stdout or "") .. stderr):find("symkey enc packet", 1, true) ~= nil,
+			key_ids = {},
+		}
 
-	for id in stderr:gmatch("ID ([%w%d]+)") do
-		table.insert(file.key_ids, id:upper())
-	end
+		for id in stderr:gmatch("ID ([%w%d]+)") do
+			table.insert(packets.key_ids, id:upper())
+		end
 
-	return file
+		-- A failed read is handed back but not kept, so the next call tries
+		-- again instead of trusting an empty answer.
+		return packets, obj.code == 0
+	end)
 end
 
 --- Whether a note is encrypted with a passphrase instead of a key.
@@ -264,7 +277,14 @@ end
 --- @param path string
 --- @return string[]
 function M.get_file_key_ids(path)
-	return read_packets(path).key_ids
+	-- A copy: the answer is cached, and callers sort and edit what they get.
+	return vim.deepcopy(read_packets(path).key_ids)
+end
+
+--- Drops the cached keys, so the next attempt probes gpg-agent again.
+--- @param keyids string[]
+local function forget_unlocked_keys(keyids)
+	cache:forget_unlocked_keys(keyids)
 end
 
 --- Encrypts content into a note.
@@ -335,7 +355,19 @@ function M.decrypt(path, bufnr, opts, on_exit)
 		return nil
 	end
 
-	return vim.system({ "memo", "decrypt", path }, opts, on_exit)
+	-- Read (from cache) the keys to clear if the decrypt fails.
+	local keyids = require("memo.utils").file_exists(path) and M.get_file_key_ids(path) or {}
+
+	return vim.system({ "memo", "decrypt", path }, opts, function(result)
+		-- A cached unlock that no longer holds makes the decrypt fail; drop it.
+		if result.code ~= 0 then
+			forget_unlocked_keys(keyids)
+		end
+
+		if on_exit then
+			on_exit(result)
+		end
+	end)
 end
 
 return M

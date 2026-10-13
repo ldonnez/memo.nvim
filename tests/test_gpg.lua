@@ -927,6 +927,286 @@ describe("gpg", function()
 
 		MiniTest.expect.equality(result, {})
 	end)
+
+	it("caches the default key unlock and does not probe it again", function()
+		helpers.create_gpg_key("mock@example.com")
+
+		local result = child.lua([[
+      local gpg = require("memo.gpg")
+
+      local original = vim.system
+      local probes = 0
+      vim.system = function(cmd, opts, on_exit)
+        if type(cmd) == "table" and cmd[1] == "gpg" and vim.tbl_contains(cmd, "--sign") then
+          probes = probes + 1
+        end
+        return original(cmd, opts, on_exit)
+      end
+
+      gpg.unlock_key()
+      local first = probes
+      gpg.unlock_key()
+      local second = probes
+
+      vim.system = original
+      return { first = first, second = second }
+    ]])
+
+		-- The first check probes gpg-agent; the second is served from the cache.
+		MiniTest.expect.equality(result.first, 1)
+		MiniTest.expect.equality(result.second, 1)
+	end)
+
+	it("does not cache a key that stays locked", function()
+		local encrypted = "/tmp/gpg_locked.txt.gpg"
+		local password = "locked-pass"
+
+		helpers.create_gpg_key("mock@example.com", password)
+		helpers.encrypt_file(encrypted, "Hello world!")
+
+		local result = child.lua(
+			[[
+      local encrypted = ...
+      local gpg = require("memo.gpg")
+
+      gpg.prompt_passphrase = function() return "" end
+      local declined = gpg.unlock_key(encrypted)
+
+      local original = vim.system
+      local probes = 0
+      vim.system = function(cmd, opts, on_exit)
+        if type(cmd) == "table" and cmd[1] == "gpg"
+            and vim.tbl_contains(cmd, "--sign")
+            and not vim.tbl_contains(cmd, "--passphrase-fd") then
+          probes = probes + 1
+        end
+        return original(cmd, opts, on_exit)
+      end
+
+      local again = gpg.unlock_key(encrypted)
+
+      vim.system = original
+      return { declined = declined, again = again, probes = probes }
+    ]],
+			{ encrypted }
+		)
+
+		MiniTest.expect.equality(result.declined, false)
+		MiniTest.expect.equality(result.again, false)
+		-- A "no" is never cached, so the second attempt probes the agent again.
+		MiniTest.expect.equality(result.probes >= 1, true)
+	end)
+
+	it("marks the key unlocked after its passphrase is accepted", function()
+		local encrypted = "/tmp/gpg_mark_unlocked.txt.gpg"
+		local password = "mark-pass"
+
+		helpers.create_gpg_key("mock@example.com", password)
+		helpers.encrypt_file(encrypted, "Hello world!")
+
+		local result = child.lua(
+			[[
+      local password, encrypted = ...
+      local gpg = require("memo.gpg")
+
+      local prompts = 0
+      gpg.prompt_passphrase = function()
+        prompts = prompts + 1
+        return password
+      end
+
+      local original = vim.system
+      local probes = 0
+      vim.system = function(cmd, opts, on_exit)
+        if type(cmd) == "table" and cmd[1] == "gpg"
+            and vim.tbl_contains(cmd, "--sign")
+            and not vim.tbl_contains(cmd, "--passphrase-fd") then
+          probes = probes + 1
+        end
+        return original(cmd, opts, on_exit)
+      end
+
+      local first = gpg.unlock_key(encrypted)
+      local probes_after_first = probes
+      local second = gpg.unlock_key(encrypted)
+      local probes_after_second = probes
+
+      vim.system = original
+      return {
+        first = first,
+        second = second,
+        prompts = prompts,
+        probes_after_first = probes_after_first,
+        probes_after_second = probes_after_second,
+      }
+    ]],
+			{ password, encrypted }
+		)
+
+		MiniTest.expect.equality(result.first, true)
+		MiniTest.expect.equality(result.second, true)
+		-- Caching the passphrase unlocks the key, so the second call neither
+		-- prompts nor probes the agent.
+		MiniTest.expect.equality(result.prompts, 1)
+		MiniTest.expect.equality(result.probes_after_first, 1)
+		MiniTest.expect.equality(result.probes_after_second, 1)
+	end)
+
+	it("forgets the cached unlock when a decrypt still fails", function()
+		local encrypted = "/tmp/gpg_forget_on_fail.txt.gpg"
+
+		helpers.create_gpg_key("mock@example.com")
+		helpers.encrypt_file(encrypted, "Hello world!")
+
+		-- A `memo` that fails, so the key is (cached as) unlocked yet the
+		-- decrypt reaches its failure path.
+		local fake_dir = vim.fn.tempname()
+		vim.fn.mkdir(fake_dir, "p")
+		helpers.write_file(fake_dir .. "/memo", "#!/bin/sh\nexit 1\n")
+		vim.fn.system({ "chmod", "+x", fake_dir .. "/memo" })
+
+		local result = child.lua(
+			[[
+      local encrypted, fake_dir = ...
+      local gpg = require("memo.gpg")
+
+      local original = vim.system
+      local probes = 0
+      vim.system = function(cmd, opts, on_exit)
+        if type(cmd) == "table" and cmd[1] == "gpg"
+            and vim.tbl_contains(cmd, "--sign")
+            and not vim.tbl_contains(cmd, "--passphrase-fd") then
+          probes = probes + 1
+        end
+        return original(cmd, opts, on_exit)
+      end
+
+      -- Warm the cache: one probe, then a cache hit.
+      gpg.unlock_key(encrypted)
+      gpg.unlock_key(encrypted)
+      local warmed = probes
+
+      vim.env.PATH = fake_dir .. ":" .. vim.env.PATH
+      local done = false
+      gpg.decrypt(encrypted, nil, {}, function() done = true end)
+      vim.wait(5000, function() return done end)
+
+      -- The cached unlock was dropped, so this has to probe again.
+      gpg.unlock_key(encrypted)
+      local after_fail = probes
+
+      vim.system = original
+      return { warmed = warmed, after_fail = after_fail }
+    ]],
+			{ encrypted, fake_dir }
+		)
+
+		MiniTest.expect.equality(result.warmed, 1)
+		MiniTest.expect.equality(result.after_fail, 2)
+	end)
+
+	it("hands every caller its own copy of the key IDs", function()
+		local encrypted = "/tmp/gpg_packets_copy.txt.gpg"
+
+		helpers.create_gpg_key("mock@example.com")
+		helpers.encrypt_file(encrypted, "Hello world!")
+
+		local result = child.lua(
+			[[
+      local encrypted = ...
+      local gpg = require("memo.gpg")
+
+      local first = gpg.get_file_key_ids(encrypted)
+      -- Callers may sort or empty what they get; the cache must not follow.
+      table.remove(first, 1)
+
+      local second = gpg.get_file_key_ids(encrypted)
+      return { first = first, second = second }
+    ]],
+			{ encrypted }
+		)
+
+		MiniTest.expect.equality(result.first, {})
+		MiniTest.expect.equality(#result.second, 1)
+	end)
+
+	it("reads the packets again when gpg cannot parse the file", function()
+		local plain = "/tmp/gpg_packets_unreadable.txt"
+		helpers.write_file(plain, "not an encrypted note")
+
+		local gpg = require("memo.gpg")
+		local original = vim.system
+		local reads = 0
+		vim.system = function()
+			reads = reads + 1
+			return {
+				wait = function()
+					return { code = 2, stdout = "", stderr = "no valid OpenPGP data found" }
+				end,
+			}
+		end
+
+		-- The file exists, so it could be cached: only the failed read keeps it
+		-- out, and the second call has to shell out again.
+		local first = gpg.get_file_key_ids(plain)
+		local second = gpg.get_file_key_ids(plain)
+
+		vim.system = original
+
+		MiniTest.expect.equality(reads, 2)
+		MiniTest.expect.equality(first, {})
+		MiniTest.expect.equality(second, {})
+	end)
+
+	it("keeps the packets and unlock cached across decrypts", function()
+		local encrypted = "/tmp/gpg_decrypt_cache.txt.gpg"
+
+		helpers.create_gpg_key("mock@example.com")
+		helpers.encrypt_file(encrypted, "Hello world!")
+
+		local result = child.lua(
+			[[
+      local encrypted = ...
+      local gpg = require("memo.gpg")
+
+      local original = vim.system
+      local reads, probes = 0, 0
+      vim.system = function(cmd, opts, on_exit)
+        if type(cmd) == "table" and cmd[1] == "gpg" then
+          if vim.tbl_contains(cmd, "--list-packets") then
+            reads = reads + 1
+          end
+          if vim.tbl_contains(cmd, "--sign") and not vim.tbl_contains(cmd, "--passphrase-fd") then
+            probes = probes + 1
+          end
+        end
+        return original(cmd, opts, on_exit)
+      end
+
+      local first = gpg.decrypt(encrypted):wait()
+      local after_first = { reads = reads, probes = probes }
+      local second = gpg.decrypt(encrypted):wait()
+      local after_second = { reads = reads, probes = probes }
+
+      vim.system = original
+      return {
+        first = first.code,
+        second = second.code,
+        after_first = after_first,
+        after_second = after_second,
+      }
+    ]],
+			{ encrypted }
+		)
+
+		MiniTest.expect.equality(result.first, 0)
+		MiniTest.expect.equality(result.second, 0)
+		MiniTest.expect.equality(result.after_first.reads, 1)
+		MiniTest.expect.equality(result.after_first.probes, 1)
+		-- The second decrypt reads and probes nothing at all.
+		MiniTest.expect.equality(result.after_second.reads, 1)
+		MiniTest.expect.equality(result.after_second.probes, 1)
+	end)
 end)
 
 describe("with no gpg keys", function()
