@@ -134,7 +134,7 @@ function M.on_read(args)
 	vim.b[bufnr].decrypting = true
 	vim.api.nvim_exec_autocmds("BufReadPre", { buffer = bufnr, modeline = false })
 
-	crypto.decrypt_to_buffer(note_path, bufnr, function(result)
+	local obj = crypto.decrypt_to_buffer(note_path, bufnr, function(result)
 		if result.code ~= 0 then
 			local err = (result.stderr and result.stderr ~= "") and result.stderr
 				or "decryption failed with no error given"
@@ -147,6 +147,10 @@ function M.on_read(args)
 			prepare_buffer_for_edit(bufnr)
 		end)
 	end)
+
+	if not obj then
+		utils.drop_buffer_with_error(bufnr, "Decryption cancelled")
+	end
 
 	vim.api.nvim_exec_autocmds("BufReadPost", { buffer = bufnr, modeline = false })
 end

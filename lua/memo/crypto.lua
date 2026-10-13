@@ -1,11 +1,9 @@
 local gpg = require("memo.gpg")
 local message = require("memo.message")
-local utils = require("memo.utils")
 
 local M = {}
 
 local NO_PASSPHRASE = "the passphrase was not given"
-local DECRYPT_FAILED = "Decryption failed: %s"
 
 ---@param path string
 ---@param input string[]
@@ -100,13 +98,7 @@ end
 --- @param on_exit fun(result: vim.SystemCompleted)
 --- @return vim.SystemObj?
 function M.decrypt_to_buffer(path, bufnr, on_exit)
-	local obj = stream_into_buffer(path, bufnr, on_exit)
-
-	if not obj then
-		utils.drop_buffer_with_error(bufnr, DECRYPT_FAILED:format(NO_PASSPHRASE))
-	end
-
-	return obj
+	return stream_into_buffer(path, bufnr, on_exit)
 end
 
 return M
