@@ -100,12 +100,12 @@ function M.create(opts)
 	local backup = NoteBackup.new(note_path)
 
 	if overwriting then
-		if not backup:save() then
-			message.error("MemoNewNote: could not back up existing note (%s)", note_path)
+		if not cleanup_existing_buffer(note_path) then
 			return false
 		end
 
-		if not cleanup_existing_buffer(note_path) then
+		if not backup:save() then
+			message.error("MemoNewNote: could not back up existing note (%s)", note_path)
 			return false
 		end
 
