@@ -490,6 +490,11 @@ that passphrase for its `default-cache-ttl` (10 minutes by default); raise it
 in `~/.gnupg/gpg-agent.conf` to be prompted less, e.g. `default-cache-ttl
 86400`.
 
+memo.nvim remembers a key as unlocked for ten minutes, matching gpg-agent’s
+own default, so browsing from one note to the next does not re-probe the agent
+each time. gpg-agent stays the real gate: if a decrypt fails, the cached answer
+is dropped and the next attempt asks again.
+
 
 FORMATTING WITH CONFORM.NVIM ~
 
@@ -729,6 +734,20 @@ search to your notes directory or your encrypted scratch files.
 The scratch pickers additionally bind `ctrl-x` to delete the selected scratch
 files (multi-select with `tab`/`alt-a`) without closing the picker; any buffer
 holding a deleted file is wiped too.
+
+Each picker can show a preview pane with the decrypted note, off by default.
+Pass `{ previewer = true }` to turn it on:
+
+>lua
+    require("memo.pickers.fzf_lua").files_picker({ previewer = true })
+<
+
+When the note is already open in a buffer the pane previews the buffer;
+otherwise it is decrypted asynchronously, so the picker stays responsive while
+the plaintext streams in. A decrypt is given 30 seconds before it is abandoned.
+Moving to another note abandons an in-flight decrypt, and a note’s decrypted
+preview is reused so revisiting it does not decrypt again. The encrypted bytes
+on disk are never shown.
 
 Scratch files are stored under the obfuscated name
 `<encoded-cwd>-<timestamp>-<hash>.asc`, so the scratch pickers decode the cwd
