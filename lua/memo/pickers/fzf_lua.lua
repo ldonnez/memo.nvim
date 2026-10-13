@@ -59,6 +59,11 @@ local function pick(fzf, opts)
 	end
 
 	fzf.files({
+		winopts = {
+			preview = {
+				delay = 300,
+			},
+		},
 		cwd = opts.dir,
 		previewer = opts.previewer and previewer.build() or false,
 		actions = actions,
