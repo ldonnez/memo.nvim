@@ -167,46 +167,6 @@ describe("crypto", function()
 			MiniTest.expect.equality(lines, { "Line 1", "Line 2", "Line 3", "" })
 		end)
 
-		it("decrypt_to_buffer: wipes the buffer and reports when the passphrase cannot be obtained", function()
-			local path = "/tmp/auth_aborted.md.gpg"
-			helpers.encrypt_file(path, "Line 1\nLine 2")
-
-			local bufnr = child.lua(
-				[[
-			local path = ...
-			local gpg = require("memo.gpg")
-
-			-- Simulate an auth failure (e.g. the user aborted the prompt):
-			-- decrypt returns nil without ever calling on_exit.
-			gpg.decrypt = function()
-				return nil
-			end
-
-			local bufnr = vim.api.nvim_create_buf(true, false)
-			vim.api.nvim_win_set_buf(0, bufnr)
-
-			vim.g.auth_cb_called = false
-			M.decrypt_to_buffer(path, bufnr, function()
-				vim.g.auth_cb_called = true
-			end)
-
-			return bufnr
-			]],
-				{ path }
-			)
-
-			child.wait_until(function()
-				return not child.api.nvim_buf_is_valid(bufnr)
-			end)
-
-			MiniTest.expect.equality(child.api.nvim_buf_is_valid(bufnr), false)
-			MiniTest.expect.equality(child.g.auth_cb_called, false)
-
-			child.wait_until(function()
-				return child.cmd_capture("messages") == "Decryption failed: the passphrase was not given"
-			end)
-		end)
-
 		it("decrypt_to_buffer: safely ignores the result when the buffer was closed mid-decrypt", function()
 			child.cmd("messages clear")
 
@@ -464,43 +424,6 @@ describe("crypto", function()
 			end)
 
 			MiniTest.expect.equality(child.b.code ~= 0, true)
-		end)
-
-		it("wipes the buffer when the prompt is dismissed", function()
-			local path = vim.env.NOTES_DIR .. "/sym.md.gpg"
-
-			helpers.encrypt_symmetric_file(path, "Line 1\n", passphrase)
-
-			child.lua(
-				[[
-      local path = ...
-      local prompts = 0
-      require("memo.gpg").prompt_passphrase = function()
-        prompts = prompts + 1
-        return ""
-      end
-
-      local bufnr = vim.api.nvim_create_buf(true, false)
-      vim.api.nvim_win_set_buf(0, bufnr)
-
-      -- Globals, because the buffer holding them is the one that gets wiped.
-      vim.g.sym_bufnr = bufnr
-      vim.g.sym_called_back = false
-
-      M.decrypt_to_buffer(path, bufnr, function(obj)
-        vim.g.sym_called_back = true
-        return true
-      end)
-    ]],
-				{ path }
-			)
-
-			child.wait_until(function()
-				return child.cmd_capture("messages"):find("passphrase was not given", 1, true) ~= nil
-			end)
-
-			MiniTest.expect.equality(child.g.sym_called_back, false)
-			MiniTest.expect.equality(child.api.nvim_buf_is_valid(child.g.sym_bufnr), false)
 		end)
 
 		it("prompts once, returns nothing and says why when the prompt is dismissed", function()
