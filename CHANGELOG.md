@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/ldonnez/memo.nvim/compare/v0.17.0...v0.17.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* ensure preview delay to keep UI smooth ([d693044](https://github.com/ldonnez/memo.nvim/commit/d693044c44e69fe14ce2537aec01545442050386))
+
 ## [0.17.0](https://github.com/ldonnez/memo.nvim/compare/v0.16.4...v0.17.0) (2026-10-13)
 
 
