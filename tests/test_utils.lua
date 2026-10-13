@@ -115,6 +115,48 @@ describe("utils", function()
 		end)
 	end)
 
+	describe("is_armored_gpg", function()
+		it("returns true for an armored PGP message", function()
+			local path = vim.fn.tempname()
+			helpers.write_file(path, "-----BEGIN PGP MESSAGE-----\n\nciphertext\n")
+
+			MiniTest.expect.equality(util.is_armored_gpg(path), true)
+
+			vim.fn.delete(path)
+		end)
+
+		it("returns false for a plaintext file", function()
+			local path = vim.fn.tempname()
+			helpers.write_file(path, "just a plain note\n")
+
+			MiniTest.expect.equality(util.is_armored_gpg(path), false)
+
+			vim.fn.delete(path)
+		end)
+
+		it("returns false for an empty file", function()
+			local path = vim.fn.tempname()
+			helpers.write_file(path, "")
+
+			MiniTest.expect.equality(util.is_armored_gpg(path), false)
+
+			vim.fn.delete(path)
+		end)
+
+		it("returns false for a missing file", function()
+			MiniTest.expect.equality(util.is_armored_gpg(vim.fn.tempname() .. "/nope.md.gpg"), false)
+		end)
+
+		it("returns false for a directory", function()
+			local dir = vim.fn.tempname()
+			vim.fn.mkdir(dir, "p")
+
+			MiniTest.expect.equality(util.is_armored_gpg(dir), false)
+
+			vim.fn.delete(dir, "rf")
+		end)
+	end)
+
 	describe("build_note_path", function()
 		local notes_dir = "/tmp/memo_test_notes"
 		local original_notes_dir
@@ -536,6 +578,48 @@ describe("utils", function()
 			]])
 
 			MiniTest.expect.equality(result, "survived")
+		end)
+	end)
+
+	describe("file_signature", function()
+		it("returns a signature for an existing file", function()
+			local path = vim.fn.tempname()
+			helpers.write_file(path, "content")
+
+			MiniTest.expect.equality(type(util.file_signature(path)), "string")
+
+			vim.fn.delete(path)
+		end)
+
+		it("returns nil for a missing file", function()
+			MiniTest.expect.equality(util.file_signature(vim.fn.tempname()), nil)
+		end)
+
+		it("returns the same signature when the file has not changed", function()
+			local path = vim.fn.tempname()
+			helpers.write_file(path, "content")
+
+			local first = util.file_signature(path)
+			local second = util.file_signature(path)
+
+			MiniTest.expect.equality(second, first)
+
+			vim.fn.delete(path)
+		end)
+
+		it("returns a different signature when the file size changes", function()
+			local path = vim.fn.tempname()
+			helpers.write_file(path, "content")
+
+			local before = util.file_signature(path)
+
+			helpers.write_file(path, "updated content with a different size")
+
+			local after = util.file_signature(path)
+
+			MiniTest.expect.no_equality(after, before)
+
+			vim.fn.delete(path)
 		end)
 	end)
 end)

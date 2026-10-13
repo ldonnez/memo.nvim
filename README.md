@@ -675,6 +675,14 @@ require("memo.pickers.fzf_lua").cwd_scratch_files_picker() -- current cwd
 
 The scratch pickers additionally bind `ctrl-x` to delete the selected scratch files (multi-select with `tab`/`alt-a`) without closing the picker; any buffer holding a deleted file is wiped too.
 
+Each picker can show a preview pane with the decrypted note, off by default. Pass `{ previewer = true }` to turn it on:
+
+```lua
+require("memo.pickers.fzf_lua").files_picker({ previewer = true })
+```
+
+When the note is already open in a buffer the pane previews the buffer; otherwise it is decrypted asynchronously, so the picker stays responsive while the plaintext streams in. A decrypt is given 30 seconds before it is abandoned. Moving to another note abandons an in-flight decrypt, and a note's decrypted preview is reused so revisiting it does not decrypt again. The encrypted bytes on disk are never shown.
+
 Scratch files are stored under the obfuscated name `<encoded-cwd>-<timestamp>-<hash>.asc`, so the scratch pickers decode the cwd path for display and show `<cwd-path>-<timestamp>-<hash>.asc`. The cwd picker shows the scratch files created in the current working directory.
 
 ## Development
