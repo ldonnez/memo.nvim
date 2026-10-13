@@ -446,6 +446,11 @@ that passphrase for its `default-cache-ttl` (10 minutes by default); raise it
 in `~/.gnupg/gpg-agent.conf` to be prompted less, e.g. `default-cache-ttl
 86400`.
 
+memo.nvim remembers a key as unlocked for ten minutes, matching gpg-agent's
+own default, so browsing from one note to the next does not re-probe the
+agent each time. gpg-agent stays the real gate: if a decrypt fails,
+the cached answer is dropped and the next attempt asks again.
+
 ### Formatting with conform.nvim
 
 `prettier` cannot infer a parser from `.asc` filenames. If you use [conform.nvim](https://github.com/stevearc/conform.nvim) to format notes, map each filetype to its parser:
