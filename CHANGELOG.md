@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.4](https://github.com/ldonnez/memo.nvim/compare/v0.16.3...v0.16.4) (2026-10-13)
+
+
+### Bug Fixes
+
+* cleanup before before backup ([ac6908e](https://github.com/ldonnez/memo.nvim/commit/ac6908e44975533dca48e1270165181d4676194c))
+
 ## [0.16.3](https://github.com/ldonnez/memo.nvim/compare/v0.16.2...v0.16.3) (2026-10-12)
 
 
