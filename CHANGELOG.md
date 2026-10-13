@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.17.0](https://github.com/ldonnez/memo.nvim/compare/v0.16.4...v0.17.0) (2026-10-13)
+
+
+### Features
+
+* add default timeout when decrypting ([24a3731](https://github.com/ldonnez/memo.nvim/commit/24a3731dcec839bb28bd95b4722ff3da713a6f40))
+* add fzf-lua previewer of notes ([2800801](https://github.com/ldonnez/memo.nvim/commit/2800801b77fef3ea96fbd8191e34a014ac1d2a86))
+* cache GPG key unlock status and file packets ([364ad92](https://github.com/ldonnez/memo.nvim/commit/364ad9253f1ff83b55d999a47606c6935556c81d))
+
 ## [0.16.4](https://github.com/ldonnez/memo.nvim/compare/v0.16.3...v0.16.4) (2026-10-13)
 
 
