@@ -9,6 +9,11 @@ local NO_PASSPHRASE = "the passphrase was not given"
 
 local NO_MATCH = "the passphrases do not match"
 
+--- Milliseconds a decrypt may run before gpg is killed. Protects the pickers
+---and note reads from a decrypt that waits forever, e.g. on a passphrase prompt
+---without a terminal.
+local DECRYPT_TIMEOUT_MS = 30000
+
 --- Check if a specific key (or default) is unlocked in gpg-agent
 --- @param id string?
 --- @return boolean
@@ -309,6 +314,8 @@ end
 --- @param on_exit? fun(obj: vim.SystemCompleted)
 --- @return vim.SystemObj? nil when a passphrase prompt was dismissed
 function M.decrypt(path, bufnr, opts, on_exit)
+	opts = vim.tbl_extend("keep", opts or {}, { timeout = DECRYPT_TIMEOUT_MS })
+
 	if is_symmetric(path) then
 		local passphrase = get_symmetric_passphrase(path, bufnr, false)
 

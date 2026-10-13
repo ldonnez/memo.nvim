@@ -596,6 +596,63 @@ describe("gpg", function()
 		MiniTest.expect.equality(child.lua_get("_G.called_with"), 0)
 	end)
 
+	it("runs decrypts with a default timeout that a caller can override", function()
+		local result = child.lua([[
+      local gpg = require("memo.gpg")
+      local seen
+      local original = vim.system
+      vim.system = function(_, opts)
+        seen = opts
+        return { wait = function() return { code = 0, stdout = "", stderr = "" } end }
+      end
+
+      gpg.decrypt("whatever.gpg")
+      local default = seen and seen.timeout
+
+      gpg.decrypt("whatever.gpg", nil, { timeout = 1234 })
+      local explicit = seen and seen.timeout
+
+      vim.system = original
+      return { default = default, explicit = explicit }
+    ]])
+
+		MiniTest.expect.equality(result.default, 30000)
+		MiniTest.expect.equality(result.explicit, 1234)
+	end)
+
+	it("kills a decrypt that outlives the timeout", function()
+		local encrypted = "/tmp/gpg_timeout.txt.gpg"
+		helpers.create_gpg_key("timeout@example.com")
+		helpers.encrypt_file(encrypted, "Hello world!")
+
+		-- A `memo` that hangs, so the decrypt outlives the timeout. `exec` keeps
+		-- the sleeping process the one vim.system kills.
+		local fake_dir = vim.fn.tempname()
+		vim.fn.mkdir(fake_dir, "p")
+		helpers.write_file(fake_dir .. "/memo", "#!/bin/sh\nexec sleep 10\n")
+		vim.fn.system({ "chmod", "+x", fake_dir .. "/memo" })
+
+		child.lua(
+			[[
+        local encrypted, fake_dir = ...
+        _G.result = nil
+        -- The timeout is under test, so skip the key unlock path.
+        require("memo.gpg").unlock_key = function() return true end
+        vim.env.PATH = fake_dir .. ":" .. vim.env.PATH
+        require("memo.gpg").decrypt(encrypted, nil, { timeout = 300 }, function(obj)
+          _G.result = obj
+        end)
+    ]],
+			{ encrypted, fake_dir }
+		)
+
+		child.wait_until(function()
+			return child.lua_get("_G.result ~= nil") == true
+		end, 6000)
+
+		MiniTest.expect.equality(child.lua_get("_G.result.code"), 124)
+	end)
+
 	it("prompts once for a passphrase and keeps it in the buffer", function()
 		local encrypted = "/tmp/gpg_symmetric_cache.txt.gpg"
 		local passphrase = "sym-pass"
