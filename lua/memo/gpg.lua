@@ -336,7 +336,9 @@ end
 function M.decrypt(path, bufnr, opts, on_exit)
 	opts = vim.tbl_extend("keep", opts or {}, { timeout = DECRYPT_TIMEOUT_MS })
 
-	if is_symmetric(path) then
+	local packets = read_packets(path)
+
+	if packets.symmetric then
 		local passphrase = get_symmetric_passphrase(path, bufnr, false)
 
 		if not passphrase then
@@ -355,8 +357,7 @@ function M.decrypt(path, bufnr, opts, on_exit)
 		return nil
 	end
 
-	-- Read (from cache) the keys to clear if the decrypt fails.
-	local keyids = require("memo.utils").file_exists(path) and M.get_file_key_ids(path) or {}
+	local keyids = packets.key_ids
 
 	return vim.system({ "memo", "decrypt", path }, opts, function(result)
 		-- A cached unlock that no longer holds makes the decrypt fail; drop it.
