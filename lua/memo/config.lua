@@ -21,6 +21,7 @@
 
 local M = {}
 
+---@type MemoConfig?
 local options
 
 ---@type MemoConfig
