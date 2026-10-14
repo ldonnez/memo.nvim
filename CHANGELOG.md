@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.3](https://github.com/ldonnez/memo.nvim/compare/v0.17.2...v0.17.3) (2026-10-14)
+
+
+### Code Refactoring
+
+* simplify fzf picker ([40eb817](https://github.com/ldonnez/memo.nvim/commit/40eb81797231360eb2c42152fb6d276f33b8cefb))
+
 ## [0.17.2](https://github.com/ldonnez/memo.nvim/compare/v0.17.1...v0.17.2) (2026-10-14)
 
 
