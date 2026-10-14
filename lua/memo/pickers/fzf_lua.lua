@@ -1,7 +1,7 @@
 local utils = require("memo.utils")
 local config = require("memo.config")
 local scratch = require("memo.scratch")
-local previewer = require("memo.pickers.fzf_previewer")
+local GpgPreviewer = require("memo.pickers.fzf_gpg_previewer")
 local M = {}
 
 ---@class MemoPickerOpts
@@ -65,7 +65,7 @@ local function pick(fzf, opts)
 			},
 		},
 		cwd = opts.dir,
-		previewer = opts.previewer and previewer.build() or false,
+		previewer = opts.previewer and GpgPreviewer or false,
 		actions = actions,
 		fn_transform = fn_transform,
 		-- A function transform cannot be serialized to the worker process, so
