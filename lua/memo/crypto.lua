@@ -29,24 +29,59 @@ function M.decrypt_to_stdout(path, bufnr)
 	return obj:wait()
 end
 
---- Appends lines to buffer
+--- Appends lines to a buffer, replacing its content on the first write.
+--- Returns the flag for the following write, so callers can thread it instead
+--- of passing a mutable container around.
 --- @param bufnr integer
 --- @param lines string[]
---- @param state { first_write: boolean }
-local function append_to_buffer(bufnr, lines, state)
+--- @param first_write boolean
+--- @return boolean first_write
+local function append_to_buffer(bufnr, lines, first_write)
 	if #lines == 0 or not vim.api.nvim_buf_is_valid(bufnr) then
-		return
+		return first_write
 	end
 
 	vim.bo[bufnr].modifiable = true
-	if state.first_write then
+	if first_write then
 		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-		state.first_write = false
 	else
 		vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, lines)
 	end
 	vim.bo[bufnr].modifiable = false
 	vim.bo[bufnr].modified = false
+
+	return false
+end
+
+--- Splits buffered decrypt output into complete lines, carrying the text after
+--- the last newline over as `remainder` for the next batch. With
+--- `emit_partial` the unterminated tail is emitted too, which is what the end
+--- of the stream needs. Pure: no buffer or process state.
+--- @param chunks string[] raw chunks buffered since the last split
+--- @param remainder string the unterminated tail from the previous split
+--- @param emit_partial boolean whether to also emit the unterminated tail
+--- @return string[] lines
+--- @return string remainder
+local function split_lines(chunks, remainder, emit_partial)
+	local text = remainder
+
+	if #chunks > 0 then
+		text = text .. table.concat(chunks)
+	end
+
+	if text == "" then
+		return {}, remainder
+	end
+
+	local lines = vim.split(text, "\n", { plain = true })
+	remainder = table.remove(lines)
+
+	if emit_partial and remainder ~= "" then
+		lines[#lines + 1] = remainder
+		remainder = ""
+	end
+
+	return lines, remainder
 end
 
 --- Streams a decrypt command into a buffer as its output arrives.
@@ -54,24 +89,38 @@ end
 --- @param on_exit fun(result: vim.SystemCompleted)
 --- @return vim.SystemObj? nil when a passphrase prompt was dismissed
 local function stream_into_buffer(path, bufnr, on_exit)
-	local accumulator = ""
-	local state = { first_write = true }
+	local pending = {}
+	local remainder = ""
+	local first_write = true
+	local scheduled = false
 
-	local obj = gpg.decrypt(path, bufnr, {
+	local function drain(emit_partial)
+		local lines, new_remainder = split_lines(pending, remainder, emit_partial)
+		remainder = new_remainder
+		pending = {}
+
+		first_write = append_to_buffer(bufnr, lines, first_write)
+	end
+
+	local function flush()
+		scheduled = false
+		drain(false)
+	end
+
+	return gpg.decrypt(path, bufnr, {
 		stdout = function(_, data)
 			if not data or data == "" then
 				return
 			end
 
-			accumulator = accumulator .. data
+			pending[#pending + 1] = data
 
-			vim.schedule(function()
-				local lines = vim.split(accumulator, "\n", {
-					plain = true,
-				})
-				accumulator = table.remove(lines)
-				append_to_buffer(bufnr, lines, state)
-			end)
+			-- Only a chunk with a newline completes a line; anything else is
+			-- held until then, so the buffer is not rescheduled per chunk.
+			if not scheduled and data:find("\n", 1, true) then
+				scheduled = true
+				vim.schedule(flush)
+			end
 		end,
 	}, function(result)
 		vim.schedule(function()
@@ -79,16 +128,14 @@ local function stream_into_buffer(path, bufnr, on_exit)
 				return
 			end
 
-			if result.code == 0 and accumulator ~= "" then
-				append_to_buffer(bufnr, { accumulator }, state)
+			if result.code == 0 then
+				drain(true)
 			end
 			vim.bo[bufnr].modifiable = false
 			vim.bo[bufnr].modified = false
 			on_exit(result)
 		end)
 	end)
-
-	return obj
 end
 
 --- Decrypts a file into a buffer. When no passphrase can be obtained, `on_exit`
