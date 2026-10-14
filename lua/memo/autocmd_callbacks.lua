@@ -97,8 +97,7 @@ function M.on_read(args)
 	local note_path = utils.resolve_note_file(file)
 
 	-- Force filetype detection based on the name without the note extension
-	local base = utils.strip_extension(file)
-	vim.bo[bufnr].filetype = vim.filetype.match({ filename = base })
+	vim.bo[bufnr].filetype = utils.get_filetype(file)
 
 	if is_ignored(file) then
 		read_regular_file(bufnr, file)

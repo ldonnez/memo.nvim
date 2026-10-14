@@ -46,6 +46,32 @@ describe("utils", function()
 		end)
 	end)
 
+	describe("get_filetype", function()
+		it("detects markdown from the name without .asc", function()
+			MiniTest.expect.equality(util.get_filetype("note.md.asc"), "markdown")
+		end)
+
+		it("detects markdown from the name without .gpg", function()
+			MiniTest.expect.equality(util.get_filetype("note.md.gpg"), "markdown")
+		end)
+
+		it("detects lua from the name without the note extension", function()
+			MiniTest.expect.equality(util.get_filetype("config.lua.asc"), "lua")
+		end)
+
+		it("detects text from the name without the note extension", function()
+			MiniTest.expect.equality(util.get_filetype("note.txt.gpg"), "text")
+		end)
+
+		it("returns nil when only the note extension is left", function()
+			MiniTest.expect.equality(util.get_filetype("note.asc"), nil)
+		end)
+
+		it("returns nil for a name without an extension", function()
+			MiniTest.expect.equality(util.get_filetype("note"), nil)
+		end)
+	end)
+
 	describe("is_in_dir", function()
 		it("returns true when path is inside dir", function()
 			MiniTest.expect.equality(util.is_in_dir("/tmp/memo_test/sub/note.gpg", "/tmp/memo_test"), true)

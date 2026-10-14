@@ -19,6 +19,16 @@ function M.strip_extension(path)
 	return ext and path:sub(1, #path - #ext - 1) or path
 end
 
+---The filetype of a file, detected from its name without the note extension, so
+---a "note.md.asc" is recognized as markdown instead of asciidoc.
+---@param path string
+---@return string?
+function M.get_filetype(path)
+	local filetype = vim.filetype.match({ filename = M.strip_extension(path) })
+
+	return filetype
+end
+
 ---Resolves a path for a note file, adding the default extension if needed.
 ---If a supported extension is provided, it's respected. Otherwise default is added.
 ---@param path string
