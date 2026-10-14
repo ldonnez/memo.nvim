@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.2](https://github.com/ldonnez/memo.nvim/compare/v0.17.1...v0.17.2) (2026-10-14)
+
+
+### Bug Fixes
+
+* avoid unnecessary fs calls ([a082d4e](https://github.com/ldonnez/memo.nvim/commit/a082d4eebe2487340fb67a92085142a472640213))
+* read gpg packets only once ([56f2aef](https://github.com/ldonnez/memo.nvim/commit/56f2aef3ac679172f9c3f85574da9f6cc67ea811))
+
 ## [0.17.1](https://github.com/ldonnez/memo.nvim/compare/v0.17.0...v0.17.1) (2026-10-13)
 
 
