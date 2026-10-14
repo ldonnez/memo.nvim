@@ -65,7 +65,7 @@ end
 ---@param path string
 ---@return boolean
 function M.file_has_content(path)
-	return M.file_exists(path) and vim.fn.getfsize(path) > 0
+	return vim.fn.getfsize(path) > 0
 end
 
 ---Checks whether `path` holds an armored PGP message, the shape notes
@@ -74,13 +74,9 @@ end
 ---@param path string
 ---@return boolean
 function M.is_armored_gpg(path)
-	if vim.fn.filereadable(path) ~= 1 then
-		return false
-	end
+	local ok, lines = pcall(vim.fn.readfile, path, "b", 1)
 
-	local lines = vim.fn.readfile(path, "b", 1)
-
-	return lines[1] == "-----BEGIN PGP MESSAGE-----"
+	return ok and lines[1] == "-----BEGIN PGP MESSAGE-----"
 end
 
 ---Prompts the user with a yes/no question. Warns and returns false when
