@@ -38,6 +38,17 @@ local function cleanup_existing_buffer(path)
 	return true
 end
 
+---Opens a fresh buffer for the note.
+---@param note_path string
+---@param win integer
+---@return integer bufnr
+local function create_note_buffer(note_path, win)
+	return require("memo.buffer").create({
+		name = note_path,
+		window = win,
+	})
+end
+
 ---Creates a new encrypted note and opens it in the current window.
 ---A range or visual selection is inserted at the template's `|` marker.
 ---@param opts? MemoNewNoteOpts
@@ -121,35 +132,29 @@ function M.create(opts)
 	local win = window.open(new_opts.window)
 
 	-- A new note opens as an empty buffer, encrypted by the first write.
-	vim.cmd("silent edit " .. vim.fn.fnameescape(note_path))
-
-	local bufnr = vim.api.nvim_get_current_buf()
+	local bufnr = create_note_buffer(note_path, win)
 
 	if #initial_lines > 0 then
 		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
 	end
 
-	-- A new note has no file to read the mode from, so its write handler
-	-- carries the mode of the first write in a closure and settles the backup
-	-- as soon as the write reports back.
-	local enc_mode = new_opts.encryption and new_opts.encryption.mode
+	-- A new note has no file to read the mode from, so the requested mode is
+	-- used directly. The replacement is written before the buffer is settled.
+	local mode = new_opts.encryption and new_opts.encryption.mode
+	local result = require("memo.crypto").encrypt_from_stdin(note_path, initial_lines, bufnr, { mode = mode })
 
-	require("memo.autocmd_callbacks").register_write(bufnr, enc_mode, function(success)
-		if success then
-			backup:discard()
-		else
-			backup:restore()
-		end
-	end)
-
-	vim.cmd("silent write")
-
-	-- Double-check buffer status just in case
-	if vim.bo[bufnr].modified then
+	if not result or result.code ~= 0 then
 		backup:restore()
-		utils.drop_buffer_with_error(bufnr, "MemoNewNote: buffer is still modified after write")
+		vim.api.nvim_buf_delete(bufnr, { force = true })
+
+		local err = (result.stderr and result.stderr ~= "") and result.stderr or "encryption failed"
+		message.error("MemoNewNote: %s", err)
 		return false
 	end
+
+	vim.bo[bufnr].modified = false
+
+	backup:discard()
 
 	-- Only when the note is still in `win`: an autocmd may have moved it.
 	if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == bufnr then

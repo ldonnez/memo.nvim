@@ -207,6 +207,18 @@ describe("scratch", function()
 			MiniTest.expect.equality(vim.fn.fnamemodify(name, ":e"), "asc")
 		end)
 
+		it("sets the filetype from the scratch name when the read autocmds do not run", function()
+			-- The note extension is not a content extension: a scratch buffer
+			-- must not inherit the filetype of e.g. a `.lua` note extension.
+			child.lua([[ vim.g.memo_extension = "lua" ]])
+			child.lua([[ require("memo.config").setup() ]])
+			child.lua([[ vim.api.nvim_clear_autocmds({ group = "MemoGpg", event = "BufReadCmd" }) ]])
+
+			child.lua("M.create()")
+
+			MiniTest.expect.equality(child.bo.filetype, "")
+		end)
+
 		it("uses vim.g.memo_scratch_dir when set", function()
 			child.lua([[
         vim.g.memo_scratch_dir = vim.env.HOME .. '/memo-custom-scratch'
@@ -310,6 +322,8 @@ describe("scratch", function()
 		end)
 
 		it("opens the split given after the mode", function()
+			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "split-sym" end ]])
+
 			local wins_before = #child.api.nvim_list_wins()
 
 			child.cmd("MemoScratch passphrase vsplit")

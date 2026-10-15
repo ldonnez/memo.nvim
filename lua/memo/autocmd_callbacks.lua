@@ -1,10 +1,5 @@
 local M = {}
 
--- The augroup owned by plugin/memo.lua, which creates and clears it at
--- startup. The per-buffer writers below join it so the plugin's global writer
--- can tell they are registered and defer to them.
-local GROUP = require("memo.config").autocmd_group
-
 ---@param path string
 ---@return boolean
 local function is_ignored(path)
@@ -44,6 +39,7 @@ local function prepare_buffer_for_edit(bufnr)
 	vim.bo[bufnr].modifiable = true
 	vim.bo[bufnr].fileencoding = "utf-8"
 	vim.bo[bufnr].modified = false
+	vim.bo[bufnr].buftype = ""
 
 	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 	vim.b[bufnr].hash = vim.fn.sha256(table.concat(lines, "\n"))
@@ -144,30 +140,6 @@ function M.on_read(args)
 	end
 
 	vim.api.nvim_exec_autocmds("BufReadPost", { buffer = bufnr, modeline = false })
-end
-
---- Gives a buffer its own write handler, so a new note can set
---- the encryption mode of its first write in a closure. The handler stays
---- with the buffer; once the note exists.
---- @param bufnr integer
---- @param mode? "passphrase"|"key" the mode of the first write
---- @param on_done? fun(wrote: boolean) called with the result of each write
-function M.register_write(bufnr, mode, on_done)
-	-- Re-registering replaces the previous handler instead of stacking one.
-	vim.api.nvim_clear_autocmds({ event = "BufWriteCmd", buffer = bufnr, group = GROUP })
-
-	vim.api.nvim_create_autocmd("BufWriteCmd", {
-		buffer = bufnr,
-		group = GROUP,
-		desc = "memo: write a new encrypted note",
-		callback = function(args)
-			local ok = M.on_write(args, mode)
-
-			if on_done then
-				on_done(ok)
-			end
-		end,
-	})
 end
 
 --- @param args vim.api.keyset.create_autocmd.callback_args
