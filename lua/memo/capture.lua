@@ -29,7 +29,6 @@ local DEFAULTS = {
 ---@return integer win
 ---@return integer buf
 local function create_capture_window(config)
-	local base = utils.strip_extension(config.capture_file)
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_exec_autocmds("BufReadPre", { buffer = buf, modeline = false })
 
@@ -41,7 +40,7 @@ local function create_capture_window(config)
 	vim.bo[buf].bufhidden = "wipe"
 	vim.bo[buf].swapfile = false
 	vim.bo[buf].fileencoding = "utf-8"
-	vim.bo[buf].filetype = vim.filetype.match({ filename = base })
+	vim.bo[buf].filetype = utils.get_filetype(config.capture_file)
 
 	vim.api.nvim_buf_set_name(buf, "capture://" .. config.capture_file)
 	vim.api.nvim_exec_autocmds("BufReadPost", { buffer = buf, modeline = false })
