@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.4](https://github.com/ldonnez/memo.nvim/compare/v0.17.3...v0.17.4) (2026-10-16)
+
+
+### Bug Fixes
+
+* ensure encrypted note buffers use the custom BufWriteCmd ([73f6242](https://github.com/ldonnez/memo.nvim/commit/73f6242efcad3cd2c5fe448de1c09696b583a913))
+
 ## [0.17.3](https://github.com/ldonnez/memo.nvim/compare/v0.17.2...v0.17.3) (2026-10-14)
 
 
