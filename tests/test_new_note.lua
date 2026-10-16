@@ -401,6 +401,26 @@ describe("new_note", function()
 			MiniTest.expect.equality(decrypted.stdout, "fresh content\n")
 		end)
 
+		it("discards the backup once an existing note is overwritten", function()
+			local existing = vim.env.NOTES_DIR .. "/overwrite-backup.md.asc"
+			helpers.encrypt_file(existing, "old content\n")
+
+			child.lua("vim.fn.confirm = function() return 1 end")
+
+			MiniTest.expect.equality(
+				child.lua_get([[ new_note.create({ path = "overwrite-backup.md.asc", template = "fresh| content" }) ]]),
+				true
+			)
+
+			local stem = existing:gsub("%.asc$", "")
+			MiniTest.expect.equality(vim.fn.glob(stem .. ".memo-backup-*", false, true), {})
+
+			local decrypted = helpers.decrypt_file(existing)
+			MiniTest.expect.equality(decrypted.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(decrypted.stdout, "fresh content\n")
+		end)
+
 		it("keeps an existing note when a confirmed overwrite selects nothing", function()
 			local existing = vim.env.NOTES_DIR .. "/existing-selection.md.asc"
 			helpers.encrypt_file(existing, "old content\n")
