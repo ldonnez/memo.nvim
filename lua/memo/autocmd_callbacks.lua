@@ -26,24 +26,39 @@ local function is_directory(path)
 	return vim.fn.isdirectory(path) == 1
 end
 
---- @param bufnr integer
-local function prepare_buffer_for_edit(bufnr)
-	if not vim.api.nvim_buf_is_valid(bufnr) then
-		return
-	end
-
+---@param bufnr integer
+local function prepare_buffer(bufnr)
 	vim.bo[bufnr].swapfile = false
 	vim.bo[bufnr].undofile = false
-
-	-- Ensure the user can edit
 	vim.bo[bufnr].modifiable = true
 	vim.bo[bufnr].fileencoding = "utf-8"
 	vim.bo[bufnr].modified = false
+	vim.b[bufnr].decrypting = false
+end
+
+---@param bufnr integer
+---@param file string
+local function prepare_new_file(bufnr, file)
+	prepare_buffer(bufnr)
+
+	vim.api.nvim_exec_autocmds("BufNewFile", {
+		buffer = bufnr,
+		modeline = false,
+	})
+
+	vim.bo[bufnr].buftype = "acwrite"
+	vim.bo[bufnr].filetype = require("memo.utils").get_filetype(file) or ""
+end
+
+---@param bufnr integer
+local function prepare_buffer_for_edit(bufnr)
+	prepare_buffer(bufnr)
+
+	-- Regular buffers restore correctly from sessions.
 	vim.bo[bufnr].buftype = ""
 
 	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 	vim.b[bufnr].hash = vim.fn.sha256(table.concat(lines, "\n"))
-	vim.b[bufnr].decrypting = false
 end
 
 --- @param bufnr integer
@@ -82,39 +97,31 @@ function M.on_read(args)
 	local bufnr = args.buf
 	local utils = require("memo.utils")
 	local crypto = require("memo.crypto")
-
-	-- Absolute, so path comparisons hold whether `args.file` is relative or not.
 	local file = vim.fn.fnamemodify(args.file, ":p")
 
 	if is_directory(file) then
 		return
 	end
 
-	local note_path = utils.resolve_note_file(file)
-
-	-- Force filetype detection based on the name without the note extension
-	vim.bo[bufnr].filetype = utils.get_filetype(file)
-
 	if is_ignored(file) then
 		read_regular_file(bufnr, file)
 		return
 	end
 
-	-- A new note: open it the regular way.
-	if not utils.file_has_content(note_path) then
-		-- Read it the regular way.
-		vim.cmd("silent edit " .. vim.fn.fnameescape(file))
-		vim.bo[bufnr].modifiable = true
-		vim.b[bufnr].decrypting = false
-
-		vim.api.nvim_exec_autocmds("BufNewFile", { buffer = bufnr, modeline = false })
+	if not utils.file_exists(file) or not utils.file_has_content(file) then
+		prepare_new_file(bufnr, file)
 		return
 	end
 
-	if not utils.is_armored_gpg(note_path) then
+	-- Existing non-encrypted files should be loaded normally.
+	if not utils.is_armored_gpg(file) then
 		read_regular_file(bufnr, file)
 		return
 	end
+
+	local note_path = utils.resolve_note_file(file)
+
+	vim.bo[bufnr].filetype = utils.get_filetype(file) or ""
 
 	vim.bo[bufnr].modifiable = false
 	vim.bo[bufnr].modified = false
@@ -143,31 +150,26 @@ function M.on_read(args)
 end
 
 --- @param args vim.api.keyset.create_autocmd.callback_args
---- @param mode? "passphrase"|"key" only for a new note, ignored once the file exists
---- @return boolean write succeeded?
-function M.on_write(args, mode)
+function M.on_write(args)
 	local bufnr = args.buf
 	local utils = require("memo.utils")
 	local crypto = require("memo.crypto")
 	local message = require("memo.message")
-
-	-- Absolute, so `file ~= note_path` and the buffer rename hold either way.
 	local file = vim.fn.fnamemodify(args.file, ":p")
 
 	if is_directory(file) then
-		return false
+		return
 	end
 
 	if is_ignored(file) then
 		write_regular_file(bufnr)
-		return true
+		return
 	end
 
 	if vim.b[bufnr].decrypting then
-		return false
+		return
 	end
 
-	-- A note that carries a supported extension keeps it.
 	local note_path = utils.resolve_note_file(file)
 
 	vim.api.nvim_exec_autocmds("BufWritePre", { buffer = bufnr, modeline = false })
@@ -179,31 +181,29 @@ function M.on_write(args, mode)
 	if current_hash == vim.b[bufnr].hash then
 		message.info("No changes detected")
 		vim.bo[bufnr].modified = false
-		return true
+		return
 	end
 
-	local result = crypto.encrypt_from_stdin(note_path, lines, bufnr, { mode = mode })
+	local result = crypto.encrypt_from_stdin(note_path, lines, bufnr)
 
-	if result.code ~= 0 then
-		-- Deferred: an ERROR-level vim.notify raises inside an autocmd.
-		local err = (result.stderr and result.stderr ~= "") and result.stderr or "Unknown encryption error"
+	if not result or result.code ~= 0 then
+		local err = (result and result.stderr and result.stderr ~= "") and result.stderr or "encryption failed"
+
 		message.defer_error("%s", err)
-		return false
+		return
 	end
 
 	if file ~= note_path then
-		-- First save of a plain text file: delete it and rename to the note.
 		if utils.file_exists(file) then
 			vim.fn.delete(file)
 		end
+
 		vim.api.nvim_buf_set_name(bufnr, note_path)
 	end
 
 	prepare_buffer_for_edit(bufnr)
 
 	vim.api.nvim_exec_autocmds("BufWritePost", { buffer = bufnr, modeline = false })
-
-	return true
 end
 
 return M

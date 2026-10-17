@@ -38,17 +38,6 @@ local function cleanup_existing_buffer(path)
 	return true
 end
 
----Opens a fresh buffer for the note.
----@param note_path string
----@param win integer
----@return integer bufnr
-local function create_note_buffer(note_path, win)
-	return require("memo.buffer").create({
-		name = note_path,
-		window = win,
-	})
-end
-
 ---Creates a new encrypted note and opens it in the current window.
 ---A range or visual selection is inserted at the template's `|` marker.
 ---@param opts? MemoNewNoteOpts
@@ -131,8 +120,11 @@ function M.create(opts)
 	-- window.
 	local win = window.open(new_opts.window)
 
-	-- A new note opens as an empty buffer, encrypted by the first write.
-	local bufnr = create_note_buffer(note_path, win)
+	vim.api.nvim_win_call(win, function()
+		vim.cmd("edit " .. vim.fn.fnameescape(note_path))
+	end)
+
+	local bufnr = vim.api.nvim_win_get_buf(win)
 
 	if #initial_lines > 0 then
 		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
@@ -145,9 +137,12 @@ function M.create(opts)
 
 	if not result or result.code ~= 0 then
 		backup:restore()
-		vim.api.nvim_buf_delete(bufnr, { force = true })
 
-		local err = (result.stderr and result.stderr ~= "") and result.stderr or "encryption failed"
+		if vim.api.nvim_buf_is_valid(bufnr) then
+			vim.api.nvim_buf_delete(bufnr, { force = true })
+		end
+
+		local err = (result and result.stderr and result.stderr ~= "") and result.stderr or "encryption failed"
 		message.error("MemoNewNote: %s", err)
 		return false
 	end
