@@ -41,11 +41,6 @@ vim.api.nvim_create_autocmd("BufWriteCmd", {
 	group = GROUP,
 	pattern = patterns,
 	callback = function(args)
-		-- A new note or scratch registers a writer of its own.
-		if #vim.api.nvim_get_autocmds({ event = "BufWriteCmd", buf = args.buf, group = GROUP }) > 0 then
-			return
-		end
-
 		local memo = require("memo.autocmd_callbacks")
 		memo.on_write(args)
 	end,
