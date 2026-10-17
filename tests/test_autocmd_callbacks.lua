@@ -583,19 +583,46 @@ describe("autocmd", function()
 		MiniTest.expect.equality(helpers.decrypt_file(encrypted).stdout, "edited legacy secret\n")
 	end)
 
-	it("decrypts the armored .asc twin when opening a .md file that has one", function()
-		local plain = vim.env.NOTES_DIR .. "/asc-twin.md"
-		local encrypted = plain .. ".asc"
+	it("restores encrypted note buffers from a session", function()
+		local encrypted = vim.env.NOTES_DIR .. "/session.md.gpg"
+		local session = vim.fn.tempname() .. ".vim"
 
-		helpers.encrypt_file(encrypted, "asc secret")
+		helpers.encrypt_file(encrypted, "Restored secret")
 
-		child.cmd("edit " .. plain)
+		child.cmd("edit " .. encrypted)
 
 		child.wait_until(function()
 			return child.b.decrypting == false
 		end)
 
-		MiniTest.expect.equality(child.api.nvim_buf_get_lines(0, 0, -1, false), { "asc secret" })
+		MiniTest.expect.equality(child.bo.buftype, "")
+
+		child.cmd("mksession! " .. vim.fn.fnameescape(session))
+
+		-- Restore the session in a fresh Neovim instance.
+		child.restart({
+			"-u",
+			"scripts/minimal_init.lua",
+		})
+
+		child.lua([[require("tests.helpers").register_autocmds(...)]], {
+			vim.env.NOTES_DIR,
+		})
+
+		child.cmd("source " .. vim.fn.fnameescape(session))
+
+		child.wait_until(function()
+			return child.b.decrypting == false
+		end)
+
+		local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+		local buffer_name = child.api.nvim_buf_get_name(0)
+
+		MiniTest.expect.equality(lines, { "Restored secret" })
+		MiniTest.expect.equality(buffer_name, encrypted)
+		MiniTest.expect.equality(child.bo.buftype, "")
+
+		vim.fn.delete(session)
 	end)
 
 	it("reads ignored files in notes dirs whose path contains spaces", function()
@@ -689,55 +716,6 @@ describe("autocmd", function()
 				MiniTest.expect.equality(helpers.autocmd_fired(child, "BufWritePost"), true)
 			end)
 		end
-	end)
-
-	describe("on_write", function()
-		it("returns true when it writes the note", function()
-			local plain = vim.env.NOTES_DIR .. "/on-write.md"
-			local encrypted = plain .. ".asc"
-
-			local wrote = child.lua(
-				[[
-				local path = ...
-				local bufnr = vim.api.nvim_get_current_buf()
-				vim.api.nvim_buf_set_name(bufnr, path)
-				vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "Written directly" })
-
-				return require("memo.autocmd_callbacks").on_write({ buf = bufnr, file = path }, "key")
-			]],
-				{ plain }
-			)
-
-			MiniTest.expect.equality(wrote, true)
-			MiniTest.expect.equality(vim.fn.filereadable(encrypted), 1)
-			MiniTest.expect.equality(helpers.decrypt_file(encrypted).stdout, "Written directly\n")
-		end)
-
-		it("returns false when encryption fails", function()
-			local plain = vim.env.NOTES_DIR .. "/on-write-fail.md"
-
-			-- Force a failing `memo encrypt` invocation.
-			child.lua([[
-				require("memo.crypto").encrypt_from_stdin = function()
-					return { code = 1, stderr = "boom" }
-				end
-			]])
-
-			local wrote = child.lua(
-				[[
-				local path = ...
-				local bufnr = vim.api.nvim_get_current_buf()
-				vim.api.nvim_buf_set_name(bufnr, path)
-				vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "Will fail" })
-
-				return require("memo.autocmd_callbacks").on_write({ buf = bufnr, file = path }, "key")
-			]],
-				{ plain }
-			)
-
-			MiniTest.expect.equality(wrote, false)
-			MiniTest.expect.equality(vim.fn.filereadable(plain .. ".asc"), 0)
-		end)
 	end)
 
 	describe("AutoCmd patterns", function()

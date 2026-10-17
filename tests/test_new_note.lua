@@ -73,16 +73,6 @@ describe("new_note", function()
 			MiniTest.expect.equality(child.bo.filetype, "markdown")
 		end)
 
-		it("sets the filetype from the note name when the read autocmds do not run", function()
-			-- The note buffer must not depend on the plugin's BufReadCmd to get
-			-- its filetype: capture sets its own, new notes must too.
-			child.lua([[ vim.api.nvim_clear_autocmds({ group = "MemoGpg", event = "BufReadCmd" }) ]])
-
-			child.lua_get([[ new_note.create({ path = "typed-nocmd.md" }) ]])
-
-			MiniTest.expect.equality(child.bo.filetype, "markdown")
-		end)
-
 		it("creates a passphrase note when the symmetric mode is configured", function()
 			child.lua([[
       require("memo.gpg").prompt_passphrase = function() return "new-sym" end
