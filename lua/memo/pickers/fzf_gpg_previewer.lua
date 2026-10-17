@@ -70,17 +70,16 @@ function GpgPreviewer:populate_preview_buf(entry_str)
 		return self._preview_request_id == request_id and vim.api.nvim_buf_is_valid(tmpbuf)
 	end
 
-	local obj = crypto.decrypt_to_buffer(path, tmpbuf, function(result)
+	local obj = crypto.decrypt_to_buffer(path, tmpbuf, function(result, err)
 		if not is_current_request() then
 			return
 		end
 
-		if result.code ~= 0 then
-			-- Exit code 124 indicates a timeout.
-			local reason = result.code == 124 and "timed out" or "failed"
-			show_preview_message(tmpbuf, "Decryption " .. reason)
-		else
+		if result then
 			self:preview_buf_post(entry)
+		else
+			-- Cancellation is quiet; failures show their reason.
+			show_preview_message(tmpbuf, err or "")
 		end
 
 		if self._preview_request_id == request_id then
@@ -88,12 +87,9 @@ function GpgPreviewer:populate_preview_buf(entry_str)
 		end
 	end)
 
+	-- Cancellation or startup failure means no subprocess exists to cancel.
+	-- The callback handles that outcome, so only install cleanup for a real job.
 	if not obj then
-		-- The user dismissed the passphrase prompt.
-		if is_current_request() then
-			show_preview_message(tmpbuf, "Decryption cancelled")
-		end
-
 		return
 	end
 

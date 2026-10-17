@@ -1,7 +1,5 @@
 local M = {}
 
-local message = require("memo.message")
-
 --- What gpg-agent knows, shared by every caller: the recipients of a note and
 --- which keys its cache holds. See `memo.gpg_cache`.
 local cache = require("memo.gpg_cache").new()
@@ -74,10 +72,11 @@ local function get_key_info(id)
 	return nil
 end
 
----Cache the passphrase for a specific key (or default)
+--- Cache the passphrase for a specific key (or default).
 ---@param pass string
 ---@param id string?
----@return boolean
+---@return boolean? ok
+---@return vim.SystemCompleted? err
 local function cache_passphrase(pass, id)
 	local cmd = {
 		"gpg",
@@ -88,22 +87,18 @@ local function cache_passphrase(pass, id)
 		"0",
 		"--sign",
 	}
+
 	if id then
 		table.insert(cmd, 7, "--local-user")
 		table.insert(cmd, 8, id)
 	end
 
-	-- The passphrase is handed to gpg on stdin, not in the argument list: it
-	-- must never be inspectable as a command argument. gpg reads the first
-	-- line off the descriptor and signs the (empty) rest.
-	local obj = vim.system(cmd, { stdin = pass .. "\n" }):wait()
+	local result = vim.system(cmd, { stdin = pass .. "\n" }):wait()
 
-	if obj.code ~= 0 then
-		message.defer_error("GPG: incorrect passphrase")
-		return false
+	if result.code ~= 0 then
+		return nil, result
 	end
 
-	-- gpg-agent holds the key now, so the next check can be skipped.
 	cache:mark_key_unlocked(id)
 
 	return true
@@ -229,10 +224,29 @@ function M.prompt_passphrase(label)
 	return vim.fn.inputsecret("GPG Passphrase for " .. label .. ": ")
 end
 
+--- Turns a failed signing operation into a useful key-unlock error.
+---@param result vim.SystemCompleted
+---@return string
+local function unlock_failure_reason(result)
+	local stderr = result.stderr or ""
+
+	if stderr:find("Bad passphrase", 1, true) then
+		return "GPG: incorrect passphrase"
+	end
+
+	if stderr:find("No secret key", 1, true) then
+		return "GPG: no secret key available"
+	end
+
+	local trimmed = vim.trim(stderr)
+
+	return trimmed ~= "" and ("GPG: could not unlock key: " .. trimmed) or "GPG: could not unlock key"
+end
+
 --- Makes sure gpg-agent holds a key the note can be read with.
---- Important to be importable for overriding in tests!
---- @param target_path string?
---- @return boolean
+---@param target_path string?
+---@return boolean? ok
+---@return string? err nil when the prompt was dismissed
 function M.unlock_key(target_path)
 	local keyids = {}
 
@@ -246,11 +260,8 @@ function M.unlock_key(target_path)
 				return true
 			end
 		end
-	else
-		-- Fallback: Check if the default local user is unlocked
-		if is_key_unlocked() then
-			return true
-		end
+	elseif is_key_unlocked() then
+		return true
 	end
 
 	local target_id = nil
@@ -275,10 +286,16 @@ function M.unlock_key(target_path)
 	local pass = M.prompt_passphrase(prompt_label)
 
 	if pass == "" then
-		return false
+		return nil
 	end
 
-	return cache_passphrase(pass, target_id)
+	local ok, result = cache_passphrase(pass, target_id)
+
+	if not ok then
+		return nil, result and unlock_failure_reason(result) or "GPG: could not unlock key"
+	end
+
+	return true
 end
 
 --- Get the Key IDs used for a specific file
@@ -307,7 +324,8 @@ end
 --- @param path string the note to write to
 --- @param input string[] the content to encrypt
 --- @param opts? GpgEncryptRequest
---- @return vim.SystemCompleted
+--- @return vim.SystemCompleted? result the command result, nil when none ran
+--- @return string? fail why no command ran, nil when the prompt was dismissed
 function M.encrypt(path, input, opts)
 	opts = opts or {}
 
@@ -322,11 +340,16 @@ function M.encrypt(path, input, opts)
 		return vim.system({ "memo", "encrypt", path }, { stdin = input }):wait()
 	end
 
-	local passphrase, fail = get_symmetric_passphrase(path, opts.bufnr, new_passphrase)
+	local passphrase, err = get_symmetric_passphrase(path, opts.bufnr, new_passphrase)
 
 	if not passphrase then
-		-- A result for a command that never ran.
-		return { code = 1, signal = 0, stdout = "", stderr = ("Not writing %s: %s"):format(path, fail) }
+		-- A dismissed prompt is a cancellation; a mismatch is a failure the
+		-- caller reports.
+		if err == NO_PASSPHRASE then
+			return nil
+		end
+
+		return nil, err
 	end
 
 	return run_with_passphrase(
@@ -337,11 +360,13 @@ function M.encrypt(path, input, opts)
 end
 
 --- Decrypts a note with its passphrase or an unlocked key.
+--- The callback reports only a decryption process that actually ran.
 --- @param path string the note to decrypt
 --- @param bufnr? integer buffer that keeps the passphrase of a passphrase note
 --- @param opts? vim.SystemOpts
---- @param on_exit? fun(obj: vim.SystemCompleted)
---- @return vim.SystemObj? nil when a passphrase prompt was dismissed
+--- @param on_exit? fun(obj: vim.SystemCompleted) called when decryption finishes
+--- @return vim.SystemObj? obj the decrypt process, nil when none started
+--- @return string? err key-unlock failure; nil when cancelled
 function M.decrypt(path, bufnr, opts, on_exit)
 	opts = vim.tbl_extend("keep", opts or {}, { timeout = DECRYPT_TIMEOUT_MS })
 
@@ -369,8 +394,10 @@ function M.decrypt(path, bufnr, opts, on_exit)
 		end)
 	end
 
-	if not M.unlock_key(path) then
-		return nil
+	local unlocked, err = M.unlock_key(path)
+
+	if not unlocked then
+		return nil, err
 	end
 
 	local keyids = packets.key_ids

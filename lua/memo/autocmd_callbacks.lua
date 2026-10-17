@@ -128,12 +128,19 @@ function M.on_read(args)
 	vim.b[bufnr].decrypting = true
 	vim.api.nvim_exec_autocmds("BufReadPre", { buffer = bufnr, modeline = false })
 
-	local obj = crypto.decrypt_to_buffer(note_path, bufnr, function(result)
-		if result.code ~= 0 then
-			local err = (result.stderr and result.stderr ~= "") and result.stderr
-				or "decryption failed with no error given"
-			utils.drop_buffer_with_error(bufnr, err)
+	crypto.decrypt_to_buffer(note_path, bufnr, function(result, err)
+		if not result then
+			if err then
+				utils.drop_buffer_with_error(bufnr, err)
+				return
+			end
 
+			-- A dismissed prompt is a cancellation, not an error: wipe quietly.
+			vim.schedule(function()
+				if vim.api.nvim_buf_is_valid(bufnr) then
+					vim.api.nvim_buf_delete(bufnr, { force = true })
+				end
+			end)
 			return
 		end
 
@@ -141,10 +148,6 @@ function M.on_read(args)
 			prepare_buffer_for_edit(bufnr)
 		end)
 	end)
-
-	if not obj then
-		utils.drop_buffer_with_error(bufnr, "Decryption cancelled")
-	end
 
 	vim.api.nvim_exec_autocmds("BufReadPost", { buffer = bufnr, modeline = false })
 end
@@ -184,12 +187,13 @@ function M.on_write(args)
 		return
 	end
 
-	local result = crypto.encrypt_from_stdin(note_path, lines, bufnr)
+	local result, err = crypto.encrypt_from_stdin(note_path, lines, bufnr)
 
-	if not result or result.code ~= 0 then
-		local err = (result and result.stderr and result.stderr ~= "") and result.stderr or "encryption failed"
-
-		message.defer_error("%s", err)
+	if not result then
+		-- A dismissed prompt has no reason: a cancellation, nothing to report.
+		if err then
+			message.defer_error("%s", err)
+		end
 		return
 	end
 

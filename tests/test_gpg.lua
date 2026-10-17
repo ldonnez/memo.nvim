@@ -56,16 +56,16 @@ describe("gpg", function()
           return password
         end
 
-        return M.unlock_key()
+        local ok, fail = M.unlock_key()
+
+        return { ok = ok, fail = fail }
     ]],
 			{ "wrong-password" }
 		)
 
-		MiniTest.expect.equality(result, false)
-
-		child.wait_until(function()
-			return child.cmd_capture("messages") == "GPG: incorrect passphrase"
-		end)
+		MiniTest.expect.equality(result.ok, nil)
+		MiniTest.expect.equality(result.fail, "GPG: incorrect passphrase")
+		MiniTest.expect.equality(child.cmd_capture("messages"), "")
 	end)
 
 	it("gets correct gpg key from encrypted file", function()
@@ -431,13 +431,13 @@ describe("gpg", function()
 
         local written = M.encrypt(note, { "Hello world!" }, { mode = "passphrase" })
 
-        return { code = written.code, stderr = written.stderr }
+        return { nil_result = written == nil }
     ]],
 			{ note }
 		)
 
-		MiniTest.expect.equality(result.code ~= 0, true)
-		MiniTest.expect.equality(result.stderr:find("passphrase was not given", 1, true) ~= nil, true)
+		-- A dismissed prompt is a cancellation: no result object.
+		MiniTest.expect.equality(result, { nil_result = true })
 		MiniTest.expect.equality(vim.fn.filereadable(note), 0)
 	end)
 
@@ -454,13 +454,12 @@ describe("gpg", function()
 
         local written = M.encrypt(note, { "Hello world!" })
 
-        return { code = written.code, stderr = written.stderr }
+        return { nil_result = written == nil }
     ]],
 			{ note }
 		)
 
-		MiniTest.expect.equality(result.code ~= 0, true)
-		MiniTest.expect.equality(result.stderr:find("passphrase was not given", 1, true) ~= nil, true)
+		MiniTest.expect.equality(result, { nil_result = true })
 
 		-- The note keeps what it held instead of becoming an empty or broken one.
 		local kept = helpers.decrypt_symmetric_file(note, passphrase)
@@ -481,16 +480,17 @@ describe("gpg", function()
           return answers[prompts]
         end
 
-        local written = M.encrypt(note, { "Hello world!" }, { mode = "passphrase" })
+        local written, fail = M.encrypt(note, { "Hello world!" }, { mode = "passphrase" })
 
-        return { prompts = prompts, code = written.code, stderr = written.stderr }
+        return { prompts = prompts, nil_result = written == nil, reason = fail or false }
     ]],
 			{ note }
 		)
 
+		-- A mismatch runs no command, yet is a failure the caller reports.
 		MiniTest.expect.equality(result.prompts, 2)
-		MiniTest.expect.equality(result.code ~= 0, true)
-		MiniTest.expect.equality(result.stderr:find("passphrases do not match", 1, true) ~= nil, true)
+		MiniTest.expect.equality(result.nil_result, true)
+		MiniTest.expect.equality(result.reason:find("passphrases do not match", 1, true) ~= nil, true)
 		MiniTest.expect.equality(vim.fn.filereadable(note), 0)
 	end)
 
@@ -1035,8 +1035,8 @@ describe("gpg", function()
 			{ encrypted }
 		)
 
-		MiniTest.expect.equality(result.declined, false)
-		MiniTest.expect.equality(result.again, false)
+		MiniTest.expect.equality(result.declined, nil)
+		MiniTest.expect.equality(result.again, nil)
 		-- A "no" is never cached, so the second attempt probes the agent again.
 		MiniTest.expect.equality(result.probes >= 1, true)
 	end)
@@ -1274,6 +1274,7 @@ describe("with no gpg keys", function()
 		local result = require("memo.gpg").encrypt(note, { "Hello world!" })
 
 		-- No fallback to a passphrase: the write fails and no file appears.
+		--- @diagnostic disable-next-line: need-check-nil
 		MiniTest.expect.equality(result.code ~= 0, true)
 		MiniTest.expect.equality(vim.fn.filereadable(note), 0)
 	end)
@@ -1289,6 +1290,7 @@ describe("with no gpg keys", function()
 		local result = gpg.encrypt(note, { "Hello world!" }, { mode = "passphrase" })
 		gpg.prompt_passphrase = original
 
+		--- @diagnostic disable-next-line: need-check-nil
 		MiniTest.expect.equality(result.code, 0)
 		MiniTest.expect.equality(vim.fn.filereadable(note), 1)
 		MiniTest.expect.equality(helpers.is_symmetric_file(note), true)

@@ -132,18 +132,22 @@ function M.create(opts)
 
 	-- A new note has no file to read the mode from, so the requested mode is
 	-- used directly. The replacement is written before the buffer is settled.
+	local crypto = require("memo.crypto")
 	local mode = new_opts.encryption and new_opts.encryption.mode
-	local result = require("memo.crypto").encrypt_from_stdin(note_path, initial_lines, bufnr, { mode = mode })
+	local result, err = crypto.encrypt_from_stdin(note_path, initial_lines, bufnr, { mode = mode })
 
-	if not result or result.code ~= 0 then
+	if not result then
 		backup:restore()
 
 		if vim.api.nvim_buf_is_valid(bufnr) then
 			vim.api.nvim_buf_delete(bufnr, { force = true })
 		end
 
-		local err = (result and result.stderr and result.stderr ~= "") and result.stderr or "encryption failed"
-		message.error("MemoNewNote: %s", err)
+		-- A dismissed prompt has no reason: a cancellation, nothing to report.
+		if err then
+			message.error("MemoNewNote: %s", err)
+		end
+
 		return false
 	end
 
