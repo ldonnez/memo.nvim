@@ -152,7 +152,7 @@ describe("save_as_note", function()
 			child.lua([[
         local crypto = require("memo.crypto")
         crypto.encrypt_from_stdin = function()
-          return { code = 1, stderr = "encryption failed" }
+          return nil, "encryption failed"
         end
       ]])
 
