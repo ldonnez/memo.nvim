@@ -120,6 +120,15 @@ local function cached_passphrase(bufnr)
 	return vim.b[bufnr].memo_symmetric_passphrase
 end
 
+--- Drops the passphrase a buffer holds for a symmetric note, so the next
+--- attempt prompts again.
+--- @param bufnr? integer
+local function forget_symmetric_passphrase(bufnr)
+	if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+		vim.b[bufnr].memo_symmetric_passphrase = nil
+	end
+end
+
 --- The passphrase of a passphrase note: the one the buffer holds, or a prompt
 --- for it.
 --- @param path string
@@ -345,12 +354,19 @@ function M.decrypt(path, bufnr, opts, on_exit)
 			return nil
 		end
 
-		return run_with_passphrase(
-			{ "memo", "decrypt", path, "--passphrase-env", PASSPHRASE_ENV },
-			passphrase,
-			opts,
-			on_exit
-		)
+		local cmd = { "memo", "decrypt", path, "--passphrase-env", PASSPHRASE_ENV }
+
+		return run_with_passphrase(cmd, passphrase, opts, function(result)
+			if result.code ~= 0 then
+				vim.schedule(function()
+					forget_symmetric_passphrase(bufnr)
+				end)
+			end
+
+			if on_exit then
+				on_exit(result)
+			end
+		end)
 	end
 
 	if not M.unlock_key(path) then

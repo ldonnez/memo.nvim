@@ -687,6 +687,50 @@ describe("gpg", function()
 		MiniTest.expect.equality(result, { prompts = 1, cached = passphrase, codes = { 0, 0 } })
 	end)
 
+	it("prompts again after a failed decrypt instead of reusing the wrong passphrase", function()
+		local encrypted = "/tmp/gpg_symmetric_retry.txt.gpg"
+		local passphrase = "sym-pass"
+
+		helpers.encrypt_symmetric_file(encrypted, "Hello world!", passphrase)
+
+		child.lua(
+			[[
+        local passphrase, encrypted = ...
+        _G.encrypted = encrypted
+        _G.prompts = 0
+        _G.bufnr = vim.api.nvim_create_buf(true, false)
+
+        M.prompt_passphrase = function()
+          _G.prompts = _G.prompts + 1
+          -- Wrong on the first attempt, correct on the retry.
+          return _G.prompts == 1 and "wrong-pass" or passphrase
+        end
+
+        _G.first = M.decrypt(encrypted, _G.bufnr):wait()
+    ]],
+			{ passphrase, encrypted }
+		)
+
+		MiniTest.expect.equality(child.lua_get("_G.first.code"), 1)
+
+		-- Process the child Neovim's scheduled cleanup before retrying.
+		child.lua([[
+        assert(vim.wait(1000, function()
+          return vim.b[_G.bufnr].memo_symmetric_passphrase == nil
+        end), "passphrase was not cleared after failed decrypt")
+    ]])
+
+		child.lua("_G.second = M.decrypt(_G.encrypted, _G.bufnr):wait()")
+
+		MiniTest.expect.equality({
+			prompts = child.lua_get("_G.prompts"),
+			codes = { child.lua_get("_G.first.code"), child.lua_get("_G.second.code") },
+		}, {
+			prompts = 2,
+			codes = { 1, 0 },
+		})
+	end)
+
 	it("keeps nothing in the buffer when the passphrase prompt is dismissed", function()
 		local encrypted = "/tmp/gpg_symmetric_dismissed.txt.gpg"
 

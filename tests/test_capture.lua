@@ -602,6 +602,42 @@ describe("capture", function()
 			MiniTest.expect.equality(result.code, 0)
 			MiniTest.expect.equality(vim.trim(result.stdout or ""), "appended\nexisting")
 		end)
+
+		it("saves on a retried write after a failed decrypt without losing the content", function()
+			local note = vim.env.NOTES_DIR .. "/sym-retry.md.asc"
+			helpers.encrypt_symmetric_file(note, "existing\n", "cap-pass")
+
+			child.lua([[
+				local answers = { "wrong-pass", "cap-pass", "cap-pass" }
+				require("memo.gpg").prompt_passphrase = function()
+					return table.remove(answers, 1)
+				end
+			]])
+			child.lua([[ M.create({ capture_file = "sym-retry.md" }) ]])
+
+			child.type_keys("i", "appended", "<Esc>")
+
+			local buf = child.api.nvim_get_current_buf()
+			child.cmd("write")
+
+			-- The wrong passphrase fails the decrypt; the buffer with the
+			-- pending text is kept.
+			MiniTest.expect.equality(child.api.nvim_buf_is_valid(buf), true)
+
+			child.wait_until(function()
+				return child.cmd_capture("messages") == "Capture failed: content was not saved"
+			end)
+
+			-- The failed passphrase is not reused: the retry prompts again and
+			-- saves the pending text.
+			child.cmd("write")
+
+			MiniTest.expect.equality(child.api.nvim_buf_is_valid(buf), false)
+
+			local result = helpers.decrypt_symmetric_file(note, "cap-pass")
+			MiniTest.expect.equality(result.code, 0)
+			MiniTest.expect.equality(vim.trim(result.stdout or ""), "appended\nexisting")
+		end)
 	end)
 
 	describe("with gpg key with password", function()
