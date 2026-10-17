@@ -1,37 +1,97 @@
 local gpg = require("memo.gpg")
-local message = require("memo.message")
 
 local M = {}
 
-local NO_PASSPHRASE = "the passphrase was not given"
+--- Converts common GPG decryption errors into clearer messages, falling back
+--- to trimmed stderr when no known error matches.
+--- @param result vim.SystemCompleted
+--- @return string
+local function decrypt_failure_reason(result)
+	-- vim.system uses exit code 124 when its timeout kills the process.
+	if result.code == 124 then
+		return "GPG: decryption timed out"
+	end
 
+	local stderr = result.stderr or ""
+
+	if stderr:find("Bad session key", 1, true) then
+		return "GPG: incorrect passphrase or corrupted file"
+	end
+
+	if stderr:find("Bad passphrase", 1, true) then
+		return "GPG: incorrect passphrase"
+	end
+
+	if stderr:find("No secret key", 1, true) then
+		return "GPG: no secret key available"
+	end
+
+	local trimmed = vim.trim(stderr)
+
+	return trimmed ~= "" and trimmed or "GPG: decryption failed"
+end
+
+--- Uses GPG's stderr for encryption failures, or a fallback if it is empty.
+--- @param result vim.SystemCompleted
+--- @return string
+local function encrypt_failure_reason(result)
+	local stderr = vim.trim(result.stderr or "")
+
+	return stderr ~= "" and stderr or "encryption failed"
+end
+
+--- Converts startup or process outcomes into a consistent result/error pair.
+--- A missing result means no process completed; err is nil when startup was
+--- cancelled without an error. A completed process succeeds only with code 0.
+--- @param result vim.SystemCompleted? nil if no process completed
+--- @param err string? startup error, or nil for cancellation / completed process
+--- @param reason fun(result: vim.SystemCompleted): string
+--- @return vim.SystemCompleted? result the successful process result, or nil
+--- @return string? err the failure reason, or nil on success or cancellation
+local function process_result(result, err, reason)
+	if not result then
+		return nil, err
+	end
+
+	if result.code ~= 0 then
+		return nil, reason(result)
+	end
+
+	return result
+end
+
+--- Encrypts content from stdin.
+--- Returns true on success, or false and an optional error on failure.
+--- If the passphrase prompt is dismissed, returns false, nil.
 ---@param path string
 ---@param input string[]
 ---@param bufnr? integer buffer holding the passphrase of a passphrase note
 ---@param opts? GpgEncryptOpts
----@return vim.SystemCompleted
+---@return boolean success
+---@return string? err the failure reason, or nil when cancelled
 function M.encrypt_from_stdin(path, input, bufnr, opts)
-	return gpg.encrypt(path, input, vim.tbl_extend("force", opts or {}, { bufnr = bufnr }))
+	local result, err = gpg.encrypt(path, input, vim.tbl_extend("force", opts or {}, { bufnr = bufnr }))
+	local successful, reason = process_result(result, err, encrypt_failure_reason)
+
+	return successful ~= nil, reason
 end
 
---- Decrypts a file and returns the content
+--- Decrypts a file and returns its completed process result.
+--- On failure, returns nil and an error; dismissing the passphrase prompt
+--- returns nil, nil.
 --- @param path string The path to the encrypted file.
 --- @param bufnr? integer buffer to remember a symmetric passphrase in.
---- @return vim.SystemCompleted?
+--- @return vim.SystemCompleted? result the successful decrypt, nil otherwise
+--- @return string? err the reason to report, nil when there is nothing to say
 function M.decrypt_to_stdout(path, bufnr)
-	local obj = gpg.decrypt(path, bufnr)
+	local obj, err = gpg.decrypt(path, bufnr)
 
-	if not obj then
-		message.error("Could not read %s: %s", path, NO_PASSPHRASE)
-		return nil
-	end
-
-	return obj:wait()
+	return process_result(obj and obj:wait(), err, decrypt_failure_reason)
 end
 
 --- Appends lines to a buffer, replacing its content on the first write.
---- Returns the flag for the following write, so callers can thread it instead
---- of passing a mutable container around.
+--- Returns whether the next write should replace the buffer, avoiding a
+--- mutable state container shared between calls.
 --- @param bufnr integer
 --- @param lines string[]
 --- @param first_write boolean
@@ -53,10 +113,9 @@ local function append_to_buffer(bufnr, lines, first_write)
 	return false
 end
 
---- Splits buffered decrypt output into complete lines, carrying the text after
---- the last newline over as `remainder` for the next batch. With
---- `emit_partial` the unterminated tail is emitted too, which is what the end
---- of the stream needs. Pure: no buffer or process state.
+--- Splits buffered output into complete lines, retaining any unterminated
+--- tail for the next batch. When emit_partial is true, also emits that tail
+--- (used when the stream ends). This helper does not access editor or process state.
 --- @param chunks string[] raw chunks buffered since the last split
 --- @param remainder string the unterminated tail from the previous split
 --- @param emit_partial boolean whether to also emit the unterminated tail
@@ -84,11 +143,15 @@ local function split_lines(chunks, remainder, emit_partial)
 	return lines, remainder
 end
 
---- Streams a decrypt command into a buffer as its output arrives.
---- @param bufnr integer the buffer handle to write into
---- @param on_exit fun(result: vim.SystemCompleted)
---- @return vim.SystemObj? nil when a passphrase prompt was dismissed
-local function stream_into_buffer(path, bufnr, on_exit)
+--- Decrypts a file into a buffer while streaming stdout.
+--- Calls on_exit once the operation finishes, including startup failures and
+--- passphrase cancellation; cancellation is reported as nil, nil. The returned
+--- process object is nil when no process started.
+--- @param path string The path to the encrypted file.
+--- @param bufnr integer The buffer handle to write into.
+--- @param on_exit fun(result: vim.SystemCompleted?, err: string?)
+--- @return vim.SystemObj? obj the decrypt process, nil when none started
+function M.decrypt_to_buffer(path, bufnr, on_exit)
 	local pending = {}
 	local remainder = ""
 	local first_write = true
@@ -107,7 +170,22 @@ local function stream_into_buffer(path, bufnr, on_exit)
 		drain(false)
 	end
 
-	return gpg.decrypt(path, bufnr, {
+	local function finish(result, err)
+		vim.schedule(function()
+			if not vim.api.nvim_buf_is_valid(bufnr) then
+				return
+			end
+
+			if result then
+				drain(true)
+			end
+			vim.bo[bufnr].modifiable = false
+			vim.bo[bufnr].modified = false
+			on_exit(result, err)
+		end)
+	end
+
+	local obj, startup_err = gpg.decrypt(path, bufnr, {
 		stdout = function(_, data)
 			if not data or data == "" then
 				return
@@ -115,37 +193,26 @@ local function stream_into_buffer(path, bufnr, on_exit)
 
 			pending[#pending + 1] = data
 
-			-- Only a chunk with a newline completes a line; anything else is
-			-- held until then, so the buffer is not rescheduled per chunk.
+			-- Flush only when a complete line arrives; chunks without a newline
+			-- stay buffered until a later chunk completes the line.
 			if not scheduled and data:find("\n", 1, true) then
 				scheduled = true
 				vim.schedule(flush)
 			end
 		end,
 	}, function(result)
-		vim.schedule(function()
-			if not vim.api.nvim_buf_is_valid(bufnr) then
-				return
-			end
-
-			if result.code == 0 then
-				drain(true)
-			end
-			vim.bo[bufnr].modifiable = false
-			vim.bo[bufnr].modified = false
-			on_exit(result)
-		end)
+		local ok, err = process_result(result, nil, decrypt_failure_reason)
+		finish(ok, err)
 	end)
-end
 
---- Decrypts a file into a buffer. When no passphrase can be obtained, `on_exit`
---- is not invoked and the buffer is wiped.
---- @param path string The path to the encrypted file.
---- @param bufnr integer The buffer handle to write into.
---- @param on_exit fun(result: vim.SystemCompleted)
---- @return vim.SystemObj?
-function M.decrypt_to_buffer(path, bufnr, on_exit)
-	return stream_into_buffer(path, bufnr, on_exit)
+	if not obj then
+		-- No process callback will run if startup was cancelled or failed.
+		-- Finish through the same scheduled path used for process completion.
+		local result, err = process_result(nil, startup_err, decrypt_failure_reason)
+		finish(result, err)
+	end
+
+	return obj
 end
 
 return M

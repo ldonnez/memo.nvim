@@ -500,7 +500,7 @@ describe("capture", function()
 			-- Simulate a failed encryption (e.g. memo CLI error).
 			child.lua([[
 				crypto.encrypt_from_stdin = function()
-					return { code = 1, stderr = "boom" }
+					return nil, "boom"
 				end
 			]])
 
@@ -515,7 +515,7 @@ describe("capture", function()
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/fail.md.gpg"), 0)
 
 			child.wait_until(function()
-				return child.cmd_capture("messages") == "Capture failed: content was not saved"
+				return child.cmd_capture("messages") == "Capture failed: boom"
 			end)
 
 			-- The BufWriteCmd handler must survive the failed attempt: retrying
@@ -621,11 +621,12 @@ describe("capture", function()
 			child.cmd("write")
 
 			-- The wrong passphrase fails the decrypt; the buffer with the
-			-- pending text is kept.
+			-- pending text is kept, and the failure is reported clearly.
 			MiniTest.expect.equality(child.api.nvim_buf_is_valid(buf), true)
 
 			child.wait_until(function()
-				return child.cmd_capture("messages") == "Capture failed: content was not saved"
+				local messages = child.cmd_capture("messages")
+				return messages:find("Capture failed: GPG: incorrect passphrase or corrupted file", 1, true) ~= nil
 			end)
 
 			-- The failed passphrase is not reused: the retry prompts again and

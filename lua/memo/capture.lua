@@ -114,7 +114,8 @@ end
 ---@param config CaptureConfig
 ---@param bufnr integer The capture buffer, which holds the passphrase of a
 ---symmetric capture file so it is not prompted for twice
----@return boolean -- true when the content was saved successfully
+---@return boolean saved -- true when the content was saved successfully
+---@return string? err
 local function append_capture(lines, config, bufnr)
 	local notes_dir = memo_config.notes_dir
 	local mode = config.encryption and config.encryption.mode
@@ -129,18 +130,21 @@ local function append_capture(lines, config, bufnr)
 		end
 
 		local merged = insert_lines({}, lines, config)
-		return crypto.encrypt_from_stdin(file, merged, bufnr, { mode = mode }).code == 0
+		return crypto.encrypt_from_stdin(file, merged, bufnr, { mode = mode })
 	end
 
-	local read_result = crypto.decrypt_to_stdout(file, bufnr)
+	local result, read_err = crypto.decrypt_to_stdout(file, bufnr)
 
-	if not read_result or read_result.code ~= 0 then
-		return false
+	-- A dismissed prompt has no reason: a cancellation. A failure carries its
+	-- reason. Deferred: this runs inside a BufWriteCmd autocmd, where a direct
+	-- ERROR-level notify fails the write.
+	if not result then
+		return false, read_err
 	end
 
-	local existing = vim.split(read_result.stdout or "", "\n", { plain = true })
+	local existing = vim.split(result.stdout or "", "\n", { plain = true })
 
-	if read_result.stdout and read_result.stdout:sub(-1, -1) == "\n" then
+	if result.stdout and result.stdout:sub(-1, -1) == "\n" then
 		if #existing > 0 and existing[#existing] == "" then
 			table.remove(existing)
 		end
@@ -148,7 +152,7 @@ local function append_capture(lines, config, bufnr)
 
 	local merged = insert_lines(existing, lines, config)
 
-	return crypto.encrypt_from_stdin(file, merged, bufnr, { mode = mode }).code == 0
+	return crypto.encrypt_from_stdin(file, merged, bufnr, { mode = mode })
 end
 
 ---Opens a capture buffer, prefilled with the target header and the template.
@@ -196,11 +200,13 @@ function M.create(opts)
 			local is_not_empty = table.concat(lines, "\n"):gsub("%s+", "") ~= ""
 
 			if has_changed and is_not_empty then
-				local saved = append_capture(lines, config, buf)
+				local saved, err = append_capture(lines, config, buf)
 
 				if not saved then
 					-- Keep the buffer so the content is not silently lost.
-					message.defer_error("Capture failed: content was not saved")
+					if err then
+						message.defer_error("Capture failed: %s", err)
+					end
 					return
 				end
 			else
