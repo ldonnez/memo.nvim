@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.17.5](https://github.com/ldonnez/memo.nvim/compare/v0.17.4...v0.17.5) (2026-10-17)
+
+
+### Bug Fixes
+
+* clear cached passphrase after failed decryption ([7a1a5ec](https://github.com/ldonnez/memo.nvim/commit/7a1a5ec4f66a4ccdd3b56ab8ad1ea31f540b67f0))
+
+
+### Code Refactoring
+
+* simplify note buffer initialization ([0d4079b](https://github.com/ldonnez/memo.nvim/commit/0d4079b93a0fc7c431165d23e2e4477b4964d946))
+
 ## [0.17.4](https://github.com/ldonnez/memo.nvim/compare/v0.17.3...v0.17.4) (2026-10-16)
 
 
