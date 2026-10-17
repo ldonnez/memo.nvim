@@ -168,7 +168,8 @@ describe("new_note", function()
 			child.lua_get([[ new_note.create({ path = "no-sym.md", encryption = { mode = "passphrase" } }) ]])
 
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/no-sym.md.asc"), 0)
-			MiniTest.expect.equality(child.cmd_capture("messages"):find("the passphrase was not given") ~= nil, true)
+			-- A dismissed prompt is a cancellation, not an error to report.
+			MiniTest.expect.equality(child.cmd_capture("messages"), "")
 		end)
 
 		it("prompts for the path and uses the default when the prompt is accepted", function()

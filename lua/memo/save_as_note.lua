@@ -72,13 +72,16 @@ function M.create(opts)
 
 	-- No buffer: a passphrase kept here would be reused for the next note.
 	local mode = opts and opts.encryption and opts.encryption.mode
-	local result = crypto.encrypt_from_stdin(note_path, lines, nil, { mode = mode })
+	local result, err = crypto.encrypt_from_stdin(note_path, lines, nil, { mode = mode })
 
-	if result.code ~= 0 then
+	if not result then
 		backup:restore()
 
-		local err = (result.stderr and result.stderr ~= "") and result.stderr or "encryption failed"
-		message.error("MemoSaveAsNote: %s", err)
+		-- A dismissed prompt has no reason: a cancellation, nothing to report.
+		if err then
+			message.error("MemoSaveAsNote: %s", err)
+		end
+
 		return false
 	end
 

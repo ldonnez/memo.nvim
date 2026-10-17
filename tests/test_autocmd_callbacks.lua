@@ -247,7 +247,7 @@ describe("autocmd", function()
 		child.lua([[
 			local crypto = require("memo.crypto")
 			crypto.encrypt_from_stdin = function()
-				return { code = 1, stderr = "boom" }
+				return nil, "boom"
 			end
 		]])
 
