@@ -166,7 +166,8 @@ function M.prompt_note_path(default_path, title)
 end
 
 ---Ensures a directory exists, creating it (including any missing parents)
----when needed.
+---when needed. The error is deferred because callers may run inside an
+---autocmd, where an ERROR-level notify raises.
 ---@param dir string
 ---@return boolean -- true when the directory exists (or was created)
 function M.ensure_directories(dir)
@@ -183,10 +184,12 @@ function M.ensure_directories(dir)
 		return true
 	end
 
+	local message = require("memo.message")
+
 	if not ok then
-		require("memo.message").error("Error creating directory %s: %s", dir, tostring(err))
+		message.defer_error("Error creating directory %s: %s", dir, tostring(err))
 	else
-		require("memo.message").error("Error creating directory %s", dir)
+		message.defer_error("Error creating directory %s", dir)
 	end
 
 	return false
@@ -236,19 +239,31 @@ function M.resolve_selection(bufnr, opts)
 	return nil
 end
 
----Lazily load a plugin with fallback to packadd (only for Neovim 0.12+)
+---Lazily load a plugin with fallback to packadd (only for Neovim 0.12+).
+---Returns nil when the module cannot be required, so callers can bail out
+---instead of using an error string as if it were the module.
 ---@param import_name string e.g. "conform"
 ---@param plugin_name string? e.g. "conform.nvim", defaults to import_name
 ---@return any?
 function M.load_plugin(import_name, plugin_name)
 	local ok, mod = pcall(require, import_name)
 
-	if not ok and vim.fn.has("nvim-0.12") == 1 then
+	if ok then
+		return mod
+	end
+
+	if vim.fn.has("nvim-0.12") == 1 then
 		local pack_name = plugin_name or import_name
 		pcall(vim.cmd.packadd, pack_name)
-		_, mod = pcall(require, import_name)
+
+		local retry_ok, retry_mod = pcall(require, import_name)
+
+		if retry_ok then
+			return retry_mod
+		end
 	end
-	return mod
+
+	return nil
 end
 
 --- Reports why something failed and throws the buffer away. Leaving a buffer in

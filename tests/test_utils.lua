@@ -360,6 +360,21 @@ describe("utils", function()
 
 			MiniTest.expect.equality(util.resolve_note_path("note.md"), notes_dir .. "/note.md.asc")
 		end)
+
+		it("accepts a note reached through a symlinked notes dir", function()
+			local real = "/tmp/memo_test_notes_real_" .. tostring(vim.uv.hrtime())
+			local link = real .. "_link"
+			vim.fn.mkdir(real, "p")
+			vim.uv.fs_symlink(real, link)
+
+			vim.g.memo_notes_dir = link
+			require("memo.config").setup()
+
+			MiniTest.expect.equality(util.resolve_note_path("note.md"), link .. "/note.md.asc")
+
+			vim.fn.delete(link)
+			vim.fn.delete(real, "rf")
+		end)
 	end)
 
 	describe("prompt_note_path", function()
@@ -457,6 +472,13 @@ describe("utils", function()
 
 			MiniTest.expect.equality(util.ensure_directories(dir), false)
 
+			-- The error is deferred so it is safe inside an autocmd; let the
+			-- scheduler run before inspecting the messages.
+			vim.wait(1000, function()
+				local messages = vim.api.nvim_exec2("messages", { output = true }).output
+				return messages:find("Error creating directory", 1, true) ~= nil
+			end)
+
 			local messages = vim.api.nvim_exec2("messages", { output = true }).output
 			MiniTest.expect.equality(messages:find("Error creating directory", 1, true) ~= nil, true)
 			MiniTest.expect.equality(messages:find(dir, 1, true) ~= nil, true)
@@ -491,6 +513,53 @@ describe("utils", function()
 
 		it("returns module when only import_name is passed", function()
 			local result = util.load_plugin("memo.utils")
+
+			MiniTest.expect.equality(type(result), "table")
+		end)
+
+		it("returns nil for a missing module instead of the error string", function()
+			local result = util.load_plugin("memo.definitely.missing")
+
+			MiniTest.expect.equality(result, nil)
+		end)
+
+		it("returns nil for a missing module when the packadd fallback runs", function()
+			child.lua([[
+        local original_has = vim.fn.has
+        vim.fn.has = function(name)
+          if name == "nvim-0.12" then
+            return 1
+          end
+          return original_has(name)
+        end
+      ]])
+
+			local result = child.lua_get([[ M.load_plugin("memo.definitely.missing") == nil ]])
+
+			MiniTest.expect.equality(result, true)
+		end)
+
+		it("returns the module when the packadd retry succeeds", function()
+			child.lua([[
+        local original_has = vim.fn.has
+        local original_cmd = vim.cmd
+        vim.fn.has = function(name)
+          if name == "nvim-0.12" then
+            return 1
+          end
+          return original_has(name)
+        end
+        vim.cmd = setmetatable({}, {
+          __index = function()
+            return function() end
+          end,
+        })
+        vim.cmd.packadd = function()
+          package.loaded["memo.fake.plugin"] = { files = "here" }
+        end
+      ]])
+
+			local result = child.lua_get([[ M.load_plugin("memo.fake.plugin") ]])
 
 			MiniTest.expect.equality(type(result), "table")
 		end)
