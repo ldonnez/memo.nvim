@@ -328,6 +328,17 @@ describe("capture", function()
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/../escape.md.asc"), 0)
 		end)
 
+		it("reports no changes when a prefilled template is written untouched", function()
+			local capture_file = "untouched.md.gpg"
+
+			child.lua([[ M.create({ capture_file = ..., template = "draft| body" }) ]], { capture_file })
+
+			child.cmd("write")
+
+			MiniTest.expect.equality(child.cmd_capture("messages"), "Capture skipped: no changes")
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/" .. capture_file), 0)
+		end)
+
 		it("ensures relative directories from capture_file are created", function()
 			local capture_file = "journals/capture.md.gpg"
 			local capture_file_path = vim.env.NOTES_DIR .. "/journals/capture.md.gpg"
