@@ -51,16 +51,8 @@ local DEFAULTS = {
 function M.setup()
 	options = vim.deepcopy(DEFAULTS)
 
-	if vim.g.memo_notes_dir ~= nil then
-		options.notes_dir = vim.g.memo_notes_dir
-	end
-
-	-- A trailing slash would double up in every path built from the notes dir.
-	options.notes_dir = options.notes_dir:gsub("/+$", "")
-
-	if vim.g.memo_scratch_dir ~= nil then
-		options.scratch_dir = vim.g.memo_scratch_dir
-	end
+	options.notes_dir = vim.fs.normalize(vim.g.memo_notes_dir or options.notes_dir)
+	options.scratch_dir = vim.fs.normalize(vim.g.memo_scratch_dir or options.scratch_dir)
 
 	if vim.g.memo_default_capture_file ~= nil then
 		options.capture_file = vim.g.memo_default_capture_file
