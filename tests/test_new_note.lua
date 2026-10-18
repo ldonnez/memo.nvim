@@ -160,6 +160,26 @@ describe("new_note", function()
 			MiniTest.expect.equality(vim.trim(result.stdout or ""), "changed body")
 		end)
 
+		it("does not re-encrypt when a new note is written again unchanged", function()
+			child.lua_get([[ new_note.create({ path = "unchanged.md" }) ]])
+
+			child.lua([[
+      crypto = require("memo.crypto")
+      local real = crypto.encrypt_from_stdin
+      encrypt_calls = 0
+      crypto.encrypt_from_stdin = function(...)
+        encrypt_calls = encrypt_calls + 1
+        return real(...)
+      end
+    ]])
+
+			-- Not `silent`: it keeps `vim.notify` out of `:messages`.
+			child.cmd("write")
+
+			MiniTest.expect.equality(child.cmd_capture("messages"), "No changes detected")
+			MiniTest.expect.equality(child.lua_get("encrypt_calls"), 0)
+		end)
+
 		it("does not create the note when the passphrase prompt is dismissed", function()
 			child.lua([[
       require("memo.gpg").prompt_passphrase = function() return "" end
