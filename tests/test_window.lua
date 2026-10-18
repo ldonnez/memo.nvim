@@ -112,5 +112,20 @@ describe("window", function()
 
 			MiniTest.expect.equality(child.api.nvim_tabpage_get_number(tab), 2)
 		end)
+
+		it("ignores an unknown split instead of running it as Ex commands", function()
+			local wins = #child.api.nvim_list_wins()
+
+			child.lua_get([[ M.open({ split = "split | let g:injected = 1" }) ]])
+
+			MiniTest.expect.equality(#child.api.nvim_list_wins(), wins + 1)
+			MiniTest.expect.equality(child.lua_get("vim.g.injected == nil"), true)
+		end)
+
+		it("ignores an unknown position instead of running it as Ex commands", function()
+			child.lua_get([[ M.open({ position = "botright | let g:injected = 1" }) ]])
+
+			MiniTest.expect.equality(child.lua_get("vim.g.injected == nil"), true)
+		end)
 	end)
 end)
