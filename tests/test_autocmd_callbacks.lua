@@ -68,6 +68,31 @@ describe("autocmd", function()
 		MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPost"), true)
 	end)
 
+	it("matches a notes dir containing glob metacharacters", function()
+		local notes = vim.env.NOTES_DIR .. "/notes[1]"
+		vim.fn.mkdir(notes, "p")
+
+		local encrypted = notes .. "/secret.md.gpg"
+		helpers.encrypt_file(encrypted, "Hello world!")
+
+		-- Set before the plugin loads: its pattern is built once from the notes
+		-- dir, and a raw "[" would otherwise be read as a character class.
+		child.restart({
+			"-u",
+			"scripts/minimal_init.lua",
+			"--cmd",
+			"let g:memo_notes_dir = '" .. notes .. "'",
+		})
+
+		child.cmd("edit " .. vim.fn.fnameescape(encrypted))
+
+		child.wait_until(function()
+			return child.b.decrypting == false
+		end)
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(0, 0, -1, false), { "Hello world!" })
+	end)
+
 	it("ensures not writing when decrypting", function()
 		local plain = vim.env.NOTES_DIR .. "/secret.md"
 		local encrypted = plain .. ".gpg"

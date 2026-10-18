@@ -16,14 +16,24 @@ local function is_same_or_child(path, parent)
 	return path == parent or vim.startswith(path, parent .. "/")
 end
 
+---Escapes glob metacharacters so a literal path matches only itself as an
+---autocmd pattern (a notes dir could otherwise contain `*`, `[`, `\`, ...).
+---@param path string
+---@return string
+local function escape_pattern(path)
+	return (
+		vim.fn.escape(path, "*?[]{}\\") --[[@as string]]
+	)
+end
+
 local abs_notes = vim.fn.fnamemodify(notes_dir, ":p"):gsub("/$", "")
 local abs_scratch = vim.fn.fnamemodify(scratch_dir, ":p"):gsub("/$", "")
 
 -- Notes may live in subdirectories, so the pattern matches recursively.
-local patterns = { abs_notes .. "/**" }
+local patterns = { escape_pattern(abs_notes) .. "/**" }
 
 if not is_same_or_child(abs_scratch, abs_notes) then
-	table.insert(patterns, abs_scratch .. "/*")
+	table.insert(patterns, escape_pattern(abs_scratch) .. "/*")
 end
 
 local GROUP = vim.api.nvim_create_augroup(config.autocmd_group, { clear = true })
@@ -49,7 +59,7 @@ vim.api.nvim_create_autocmd("BufWriteCmd", {
 vim.api.nvim_create_autocmd("BufDelete", {
 	group = GROUP,
 	-- Scratch files written before the note extension changed are cleaned up too.
-	pattern = abs_scratch .. "/*",
+	pattern = escape_pattern(abs_scratch) .. "/*",
 	callback = function(args)
 		local path = vim.api.nvim_buf_get_name(args.buf)
 		local scratch = require("memo.scratch")
