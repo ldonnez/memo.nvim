@@ -19,22 +19,27 @@ EMMYLUA_DIR := deps/emmylua
 EMMYLUA_BIN := $(EMMYLUA_DIR)/emmylua_check
 
 # Install all development dependencies and symlink to vim.pack runtimepath
-dev: deps/mini.nvim deps/memo deps/emmylua_check
+dev: deps/mini.nvim deps/memo deps/emmylua_check deps/fzf-lua
 	mkdir -p ~/.local/share/nvim/site/pack/local/opt
 	ln -sfn "$(CURDIR)" ~/.local/share/nvim/site/pack/local/opt/$(notdir $(CURDIR))
 
 # Run all test files
-test: deps/mini.nvim
+test: deps/mini.nvim deps/fzf-lua
 	nvim --headless --noplugin -u ./scripts/minimal_init.lua -c "lua MiniTest.run()"
 
 # Run test from file at `$FILE` environment variable
-test_file: deps/mini.nvim
+test_file: deps/mini.nvim deps/fzf-lua
 	nvim --headless --noplugin -u ./scripts/minimal_init.lua -c "lua MiniTest.run_file('$(FILE)')"
 
 # Download 'mini.nvim' to use its 'mini.test' testing module
 deps/mini.nvim:
 	@mkdir -p deps
 	git clone --filter=blob:none https://github.com/nvim-mini/mini.nvim $@
+
+# Download 'fzf-lua' for the picker tests (it has no release tags)
+deps/fzf-lua:
+	@mkdir -p deps
+	git clone --depth 1 https://github.com/ibhagwan/fzf-lua $@
 
 deps/memo:
 	@echo "Installing memo..."
