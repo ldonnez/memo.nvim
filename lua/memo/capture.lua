@@ -117,11 +117,16 @@ end
 ---@return boolean saved -- true when the content was saved successfully
 ---@return string? err
 local function append_capture(lines, config, bufnr)
-	local notes_dir = memo_config.notes_dir
 	local mode = config.encryption and config.encryption.mode
 
-	local expanded = vim.fn.expand(notes_dir .. "/" .. config.capture_file) --[[@as string]]
-	local file = utils.resolve_note_file(expanded)
+	-- Resolved through `resolve_note_path` so the capture file cannot escape the
+	-- notes directory (e.g. a `capture_file` containing `..`) and `~` is
+	-- expanded without shell or backtick substitution.
+	local file = utils.resolve_note_path(config.capture_file)
+
+	if not file then
+		return false, ("capture file must be inside the notes directory (%s)"):format(memo_config.notes_dir)
+	end
 
 	if not utils.file_exists(file) then
 		-- Ensure relative directories are created
