@@ -22,10 +22,15 @@ local function check_memo_binary()
 	end
 
 	local memo_version = vim.trim(result.stdout)
+	local parsed = vim.version.parse(memo_version)
 	local minimum = vim.version.parse(config.minimum_memo_version) --[[@as vim.Version]]
 
-	--- @diagnostic disable-next-line: param-type-mismatch
-	if vim.version.ge(vim.version.parse(memo_version), minimum) then
+	if not parsed then
+		vim.health.warn(string.format("could not parse memo version %q", memo_version))
+		return
+	end
+
+	if vim.version.ge(parsed, minimum) then
 		vim.health.ok(string.format("memo %s >= %s", memo_version, config.minimum_memo_version))
 	else
 		vim.health.error(string.format("memo %s < %s", memo_version, config.minimum_memo_version))

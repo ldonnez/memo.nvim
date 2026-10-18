@@ -11,6 +11,22 @@ function M.write_file(path, content)
 	f:close()
 end
 
+---Writes an executable `name` into `dir` that prints `output` for any
+---arguments: a stand-in for an external CLI resolved through `$PATH`.
+---@param dir string
+---@param name string
+---@param output string
+---@return string
+function M.write_fake_binary(dir, name, output)
+	vim.fn.mkdir(dir, "p")
+
+	local path = vim.fs.joinpath(dir, name)
+	M.write_file(path, "#!/bin/sh\necho " .. output .. "\n")
+	vim.fn.system({ "chmod", "+x", path })
+
+	return path
+end
+
 --- @param path string
 --- @param content string
 --- @param opts vim.SystemOpts?
