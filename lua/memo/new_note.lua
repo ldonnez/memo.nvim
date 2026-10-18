@@ -99,65 +99,56 @@ function M.create(opts)
 	-- a cancelled passphrase prompt or a failed write leaves it restorable.
 	local backup = NoteBackup.new(note_path)
 
-	if overwriting then
-		if not cleanup_existing_buffer(note_path) then
-			return false
-		end
-
-		if not backup:save() then
-			message.error("MemoNewNote: could not back up existing note (%s)", note_path)
-			return false
-		end
-
-		if vim.fn.delete(note_path) ~= 0 then
-			backup:restore()
-			message.error("MemoNewNote: could not remove existing note (%s)", note_path)
-			return false
-		end
+	if overwriting and not cleanup_existing_buffer(note_path) then
+		return false
 	end
 
-	-- Opened after the selection is resolved: a split would replace the source
-	-- window.
-	local win = window.open(new_opts.window)
+	local success, err = backup:protect(function()
+		-- Opened after the selection is resolved: a split would replace the source
+		-- window.
+		local win = window.open(new_opts.window)
 
-	vim.api.nvim_win_call(win, function()
-		vim.cmd("edit " .. vim.fn.fnameescape(note_path))
+		vim.api.nvim_win_call(win, function()
+			vim.cmd("edit " .. vim.fn.fnameescape(note_path))
+		end)
+
+		local bufnr = vim.api.nvim_win_get_buf(win)
+
+		if #initial_lines > 0 then
+			vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
+		end
+
+		-- A new note has no file to read the mode from, so the requested mode is
+		-- used directly. The replacement is written before the buffer is settled.
+		local crypto = require("memo.crypto")
+		local mode = new_opts.encryption and new_opts.encryption.mode
+		local written, write_err = crypto.encrypt_from_stdin(note_path, initial_lines, bufnr, { mode = mode })
+
+		if not written then
+			if vim.api.nvim_buf_is_valid(bufnr) then
+				vim.api.nvim_buf_delete(bufnr, { force = true })
+			end
+
+			return false, write_err
+		end
+
+		vim.bo[bufnr].modified = false
+
+		-- Only when the note is still in `win`: an autocmd may have moved it.
+		if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == bufnr then
+			vim.api.nvim_win_set_cursor(win, cursor_pos)
+		end
+
+		return true
 	end)
 
-	local bufnr = vim.api.nvim_win_get_buf(win)
-
-	if #initial_lines > 0 then
-		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
-	end
-
-	-- A new note has no file to read the mode from, so the requested mode is
-	-- used directly. The replacement is written before the buffer is settled.
-	local crypto = require("memo.crypto")
-	local mode = new_opts.encryption and new_opts.encryption.mode
-	local result, err = crypto.encrypt_from_stdin(note_path, initial_lines, bufnr, { mode = mode })
-
-	if not result then
-		backup:restore()
-
-		if vim.api.nvim_buf_is_valid(bufnr) then
-			vim.api.nvim_buf_delete(bufnr, { force = true })
-		end
-
+	if not success then
 		-- A dismissed prompt has no reason: a cancellation, nothing to report.
 		if err then
 			message.error("MemoNewNote: %s", err)
 		end
 
 		return false
-	end
-
-	vim.bo[bufnr].modified = false
-
-	backup:discard()
-
-	-- Only when the note is still in `win`: an autocmd may have moved it.
-	if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == bufnr then
-		vim.api.nvim_win_set_cursor(win, cursor_pos)
 	end
 
 	return true

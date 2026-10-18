@@ -7,7 +7,7 @@ local M = {}
 ---The copy lives next to the note and keeps the note extension.
 ---@class MemoNoteBackup
 ---@field path string the note being replaced
----@field backup_path? string where the note is saved, nil until `save` runs
+---@field backup_path? string where the note is saved, nil until `protect` runs
 local NoteBackup = {}
 
 NoteBackup.__index = NoteBackup
@@ -40,12 +40,14 @@ function M.new(path)
 	return self
 end
 
----Copies the note. A note that is not on disk has nothing to keep, so
----this reports `false` rather than creating an empty backup.
----@return boolean saved
+---Keeps a copy of the note so a replacement can be undone. A note that is not
+---on disk has nothing to keep, which is not a failure. Reports `false` only
+---when a note exists and its copy cannot be made.
+---@private
+---@return boolean ready
 function NoteBackup:save()
 	if not utils.file_exists(self.path) then
-		return false
+		return true
 	end
 
 	local target = backup_path_for(self.path)
@@ -66,20 +68,15 @@ function NoteBackup:save()
 	return true
 end
 
----Puts the kept note back over `path`, dropping whatever the replacement left
----there. A partial replacement is removed first so the restore always lands
----the original bytes. Reports `false` when there is nothing to restore.
+---Puts the kept note back over `path`, replacing whatever the replacement left
+---there. The rename replaces an existing destination on every supported
+---platform (POSIX `rename`, Windows `MoveFileExW` with `MOVEFILE_REPLACE_EXISTING`),
+---so the original is never missing between steps. Reports `false` when there is
+---nothing to restore or the rename cannot land.
+---@private
 ---@return boolean restored
 function NoteBackup:restore()
 	if not self.backup_path then
-		return false
-	end
-
-	-- The rename cannot land while the replacement is still there, so a failed
-	-- removal is reported before it is attempted: the original is intact at the
-	-- backup path.
-	if utils.file_exists(self.path) and vim.fn.delete(self.path) ~= 0 then
-		message.error("Memo: could not remove replacement; original remains at %s", self.backup_path)
 		return false
 	end
 
@@ -95,6 +92,7 @@ end
 
 ---Drops the kept note once the replacement is in place. Reports `false` and
 ---keeps the path when the copy cannot be removed.
+---@private
 ---@return boolean discarded
 function NoteBackup:discard()
 	if not self.backup_path then
@@ -107,6 +105,55 @@ function NoteBackup:discard()
 	end
 
 	self.backup_path = nil
+
+	return true
+end
+
+---Keeps the note, removes it, then runs `action` in its place, so the
+---destructive part of a replacement can raise without leaving the note
+---missing. Removing the note first is also what makes a passphrase-protected
+---overwrite use the fresh-note confirmation flow. `action` returns the same
+---`success, err` pair as the write it performs: an ordinary failure puts the
+---original back before the failure is returned, an exception puts it back
+---before being re-raised, and a success drops the kept copy. A recovery that
+---itself fails is reported in place of the operation's own error, which
+---`restore` has already logged. Reports `false` when the note cannot be kept
+---or removed.
+---@param action fun(): boolean, string?
+---@return boolean success
+---@return string? err
+function NoteBackup:protect(action)
+	if not self:save() then
+		return false
+	end
+
+	if self.backup_path and vim.fn.delete(self.path) ~= 0 then
+		-- The note is still on disk, so the kept copy is redundant.
+		self:discard()
+		return false, ("could not remove existing note (%s)"):format(self.path)
+	end
+
+	local ok, result, err = pcall(action)
+
+	if not ok then
+		-- A raise shifts the action's return values, so `result` is the error
+		-- value here and `err` is nil.
+		if self.backup_path and not self:restore() then
+			error(("the replacement raised %s and the original could not be restored"):format(tostring(result)), 0)
+		end
+
+		error(result, 0)
+	end
+
+	if not result then
+		if self.backup_path and not self:restore() then
+			return false, "the replacement failed and the original could not be restored"
+		end
+
+		return false, err
+	end
+
+	self:discard()
 
 	return true
 end

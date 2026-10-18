@@ -52,31 +52,17 @@ function M.create(opts)
 
 	local lines = utils.resolve_selection(bufnr, opts) or vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
-	-- The existing note is backed up until the replacement has been encrypted:
-	-- a failed or cancelled encryption leaves it restorable.
+	-- The existing note is backed up while the replacement is encrypted: a
+	-- failed or cancelled encryption leaves it restorable.
 	local backup = NoteBackup.new(note_path)
-
-	if overwriting and not backup:save() then
-		message.error("MemoSaveAsNote: could not back up existing note (%s)", note_path)
-		return false
-	end
-
-	-- Delete the existing note before encryption (like new_note does).
-	-- This is necessary so a passphrase-protected overwrite uses the same
-	-- confirmation flow as a fresh note.
-	if overwriting and vim.fn.delete(note_path) ~= 0 then
-		backup:restore()
-		message.error("MemoSaveAsNote: could not remove existing note (%s)", note_path)
-		return false
-	end
-
-	-- No buffer: a passphrase kept here would be reused for the next note.
 	local mode = opts and opts.encryption and opts.encryption.mode
-	local result, err = crypto.encrypt_from_stdin(note_path, lines, nil, { mode = mode })
 
-	if not result then
-		backup:restore()
+	local success, err = backup:protect(function()
+		-- No buffer: a passphrase kept here would be reused for the next note.
+		return crypto.encrypt_from_stdin(note_path, lines, nil, { mode = mode })
+	end)
 
+	if not success then
 		-- A dismissed prompt has no reason: a cancellation, nothing to report.
 		if err then
 			message.error("MemoSaveAsNote: %s", err)
@@ -84,8 +70,6 @@ function M.create(opts)
 
 		return false
 	end
-
-	backup:discard()
 
 	message.info("Saved note: %s", note_path)
 	return true
