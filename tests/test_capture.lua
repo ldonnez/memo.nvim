@@ -311,6 +311,21 @@ describe("capture", function()
 			MiniTest.expect.equality(lines, { "# Inbox", "", "", "New Content", "Previous Note", "" })
 		end)
 
+		it("does not pad blank lines when no target header is set", function()
+			local capture_file = "nopad.md.gpg"
+			local encrypted = vim.env.NOTES_DIR .. "/" .. capture_file
+
+			child.lua([[ M.create({ capture_file = ..., header_padding = 2 }) ]], { capture_file })
+
+			child.type_keys("i", "New Content", "<Esc>")
+			child.cmd("write")
+
+			local result = helpers.decrypt_file(encrypted)
+			MiniTest.expect.equality(result.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			local lines = vim.split(result.stdout, "\n", { plain = true })
+			MiniTest.expect.equality(lines, { "New Content", "" })
+		end)
 
 		it("refuses a capture file that escapes the notes directory", function()
 			local outside = vim.env.NOTES_DIR .. "/../escape.md.gpg"

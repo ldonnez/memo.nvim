@@ -82,13 +82,21 @@ local function insert_lines(existing, new_lines, config)
 	local target_idx = find_target_header_idx(existing, header)
 
 	-- Build the "block" to insert
+	-- Build the "block" to insert. Padding only separates a header from the
+	-- capture, so it is skipped when there is no header.
 	local block = {}
-	if target_idx == -1 and header and header ~= "" then
+	local has_header = header ~= nil and header ~= ""
+
+	if target_idx == -1 and has_header then
 		table.insert(block, header)
 	end
-	for _ = 1, padding do
-		table.insert(block, "")
+
+	if has_header then
+		for _ = 1, padding do
+			table.insert(block, "")
+		end
 	end
+
 	vim.list_extend(block, new_lines)
 
 	-- Construct the result
