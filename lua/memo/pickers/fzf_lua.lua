@@ -80,6 +80,49 @@ local function build_scratch_opts()
 	}
 end
 
+-- The `*_picker_opts` functions are exported for tests: they build the options
+-- each picker hands to fzf-lua so the tests can validate them without opening
+-- the fzf UI (which needs a terminal). The `*_picker` functions below are the
+-- real entrypoints and share these builders.
+
+---@param opts? MemoPickerOpts
+---@return table
+function M.files_picker_opts(opts)
+	return build_common_opts(vim.tbl_extend("force", DEFAULTS, {
+		dir = config.notes_dir,
+	}, opts or {}))
+end
+
+---@param opts? MemoPickerOpts
+---@return table
+function M.scratch_files_picker_opts(opts)
+	local common = build_common_opts(vim.tbl_extend("force", DEFAULTS, {
+		dir = config.scratch_dir,
+	}, opts or {}))
+
+	return vim.tbl_extend("force", common, build_scratch_opts())
+end
+
+---@param opts? MemoPickerOpts
+---@return table
+function M.cwd_scratch_files_picker_opts(opts)
+	local prefix = scratch.cwd_key() .. "-"
+	local common = build_common_opts(vim.tbl_extend("force", DEFAULTS, {
+		dir = config.scratch_dir,
+	}, opts or {}))
+
+	return vim.tbl_extend("force", common, build_scratch_opts(), {
+		fn_transform = function(file)
+			local name = vim.fn.fnamemodify(file, ":t")
+			if name:sub(1, #prefix) ~= prefix then
+				return nil
+			end
+
+			return scratch.display_scratch(name)
+		end,
+	})
+end
+
 ---@param opts? MemoPickerOpts
 function M.files_picker(opts)
 	local fzf = load_fzf()
@@ -87,11 +130,7 @@ function M.files_picker(opts)
 		return
 	end
 
-	local picker_opts = vim.tbl_extend("force", DEFAULTS, {
-		dir = config.notes_dir,
-	}, opts or {})
-
-	fzf.files(build_common_opts(picker_opts))
+	fzf.files(M.files_picker_opts(opts))
 end
 
 ---@param opts? MemoPickerOpts
@@ -101,11 +140,7 @@ function M.scratch_files_picker(opts)
 		return
 	end
 
-	local picker_opts = vim.tbl_extend("force", DEFAULTS, {
-		dir = config.scratch_dir,
-	}, opts or {})
-
-	fzf.files(vim.tbl_extend("force", build_common_opts(picker_opts), build_scratch_opts()))
+	fzf.files(M.scratch_files_picker_opts(opts))
 end
 
 ---@param opts? MemoPickerOpts
@@ -115,21 +150,7 @@ function M.cwd_scratch_files_picker(opts)
 		return
 	end
 
-	local prefix = scratch.cwd_key() .. "-"
-	local picker_opts = vim.tbl_extend("force", DEFAULTS, {
-		dir = config.scratch_dir,
-	}, opts or {})
-
-	fzf.files(vim.tbl_extend("force", build_common_opts(picker_opts), build_scratch_opts(), {
-		fn_transform = function(file)
-			local name = vim.fn.fnamemodify(file, ":t")
-			if name:sub(1, #prefix) ~= prefix then
-				return nil
-			end
-
-			return scratch.display_scratch(name)
-		end,
-	}))
+	fzf.files(M.cwd_scratch_files_picker_opts(opts))
 end
 
 return M
