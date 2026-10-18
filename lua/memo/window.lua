@@ -36,11 +36,34 @@ local function resolve_size(split, size)
 	return math.floor(extent * DEFAULTS.size)
 end
 
----The split that would be opened for this config.
+--Allowed values, used to reject anything else before it reaches `vim.cmd`.
+--Without them a config value such as "botright | !cmd" would be run as Ex
+--commands, and `|`/`!` would chain commands and open a shell.
+local SPLITS = { split = true, vsplit = true, tab = true }
+
+local POSITIONS = {
+	botright = true,
+	topleft = true,
+	leftabove = true,
+	rightbelow = true,
+}
+
+---The split that would be opened for this config, defaulted when it is unknown.
 ---@param win_config MemoWindowConfig?
 ---@return MemoWindowSplit
 local function resolve_split(win_config)
-	return win_config and win_config.split or DEFAULTS.split
+	local split = win_config and win_config.split or DEFAULTS.split
+
+	return SPLITS[split] and split or DEFAULTS.split
+end
+
+---The position modifier used for the split, defaulted when it is unknown.
+---@param win_config MemoWindowConfig?
+---@return MemoWindowPosition
+local function resolve_position(win_config)
+	local position = win_config and win_config.position or DEFAULTS.position
+
+	return POSITIONS[position] and position or DEFAULTS.position
 end
 
 ---Opens a split or tab for the next buffer, or keeps the current window when no
@@ -54,7 +77,7 @@ function M.open(win_config)
 	end
 
 	local split = resolve_split(win_config)
-	local position = win_config.position or DEFAULTS.position
+	local position = resolve_position(win_config)
 
 	-- `:tabnew` always lands after the current tab, so `position` is dropped
 	-- rather than passed on as a modifier that does nothing.
