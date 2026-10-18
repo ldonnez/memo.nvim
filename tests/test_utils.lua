@@ -96,6 +96,10 @@ describe("utils", function()
 		it("returns false for a sibling sharing the dir prefix", function()
 			MiniTest.expect.equality(util.is_in_dir("/tmp/memo_test_evil/note.gpg", "/tmp/memo_test"), false)
 		end)
+
+		it("returns true when dir is the filesystem root", function()
+			MiniTest.expect.equality(util.is_in_dir("/tmp/memo_test/note.gpg", "/"), true)
+		end)
 	end)
 
 	describe("file_exists", function()
