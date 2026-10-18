@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.17.5](https://github.com/ldonnez/memo.nvim/compare/v0.17.4...v0.17.5) (2026-10-18)
+
+
+### Bug Fixes
+
+* clear cached passphrase after failed decryption ([7a1a5ec](https://github.com/ldonnez/memo.nvim/commit/7a1a5ec4f66a4ccdd3b56ab8ad1ea31f540b67f0))
+* ensure is_in_dir root dir handling ([5a5f43a](https://github.com/ldonnez/memo.nvim/commit/5a5f43a9b7745c687b29c48c64a8b30d6a7ff5de))
+* escape autocmd path patterns ([5da0c43](https://github.com/ldonnez/memo.nvim/commit/5da0c43745ffe27239f6467b92181040f581b6f9))
+* header_padding only when header present ([ee82b22](https://github.com/ldonnez/memo.nvim/commit/ee82b228b6ed071b0caecec3c5fe391ce9f3e594))
+* **health:** guard memo version parsing ([dcb8213](https://github.com/ldonnez/memo.nvim/commit/dcb8213153fdf841da823d36f2b35063374880f2))
+* **new_note:** does not re-encrypt when a new note is written again unchanged ([bf2c85d](https://github.com/ldonnez/memo.nvim/commit/bf2c85d1cf3c932938810425823e5e229eb9cfac))
+* **note_backup:** roll back overwrites when the replacement fails ([5c607ea](https://github.com/ldonnez/memo.nvim/commit/5c607ea3bb9fcdc66650d3510553eb64eb7a3f0f))
+* propagate useful GPG errors ([79b7f8f](https://github.com/ldonnez/memo.nvim/commit/79b7f8f6649f89e74131e4ecf1dc1f76c28836fd))
+* **utils:** defer directory errors and return nil from load_plugin ([c35eb7d](https://github.com/ldonnez/memo.nvim/commit/c35eb7da2cc24bdbcfe678e64240348447529517))
+* validate capture_file against notes_dir ([4a0ec2e](https://github.com/ldonnez/memo.nvim/commit/4a0ec2e834a9c5c2b8474d737a8480bbfebcea83))
+* whitelist position/split of window opts ([339c43d](https://github.com/ldonnez/memo.nvim/commit/339c43df2d61c69eea8e8ea7f70ef33201d73bae))
+
+
+### Code Refactoring
+
+* simplify note buffer initialization ([0d4079b](https://github.com/ldonnez/memo.nvim/commit/0d4079b93a0fc7c431165d23e2e4477b4964d946))
+
 ## [0.17.4](https://github.com/ldonnez/memo.nvim/compare/v0.17.3...v0.17.4) (2026-10-16)
 
 
