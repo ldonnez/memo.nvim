@@ -480,6 +480,31 @@ describe("new_note", function()
 			MiniTest.expect.equality(decrypted.stdout:find("old content") ~= nil, true)
 		end)
 
+		it("keeps an existing note when a confirmed overwrite fails to encrypt", function()
+			local existing = vim.env.NOTES_DIR .. "/existing-failed.md.asc"
+			helpers.encrypt_file(existing, "old content\n")
+			local before = vim.fn.readfile(existing, "b")
+
+			child.lua("vim.fn.confirm = function() return 1 end")
+			child.lua([[
+        require("memo.crypto").encrypt_from_stdin = function()
+          return nil, "encryption failed"
+        end
+      ]])
+
+			MiniTest.expect.equality(child.lua_get([[ new_note.create({ path = "existing-failed.md.asc" }) ]]), false)
+
+			-- The failed replacement buffer is dropped, the original stays on disk.
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), "")
+			MiniTest.expect.equality(vim.fn.readfile(existing, "b"), before)
+			MiniTest.expect.equality(child.cmd_capture("messages"):find("encryption failed") ~= nil, true)
+
+			local decrypted = helpers.decrypt_file(existing)
+			MiniTest.expect.equality(decrypted.code, 0)
+			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
+			MiniTest.expect.equality(decrypted.stdout:find("old content") ~= nil, true)
+		end)
+
 		it("refuses a path outside the notes dir", function()
 			MiniTest.expect.equality(child.lua_get([[ new_note.create({ path = "../escape.md" }) ]]), false)
 		end)
