@@ -24,9 +24,7 @@ end
 ---@param path string
 ---@return string?
 function M.get_filetype(path)
-	local filetype = vim.filetype.match({ filename = M.strip_extension(path) })
-
-	return filetype
+	return (vim.filetype.match({ filename = M.strip_extension(path) }))
 end
 
 ---Resolves a path for a note file, adding the default extension if needed.
