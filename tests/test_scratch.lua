@@ -294,6 +294,16 @@ describe("scratch", function()
 			MiniTest.expect.equality(vim.trim(result.stdout or ""), "secret scratch more")
 		end)
 
+		it("leaves no scratch file behind when the initial passphrase is dismissed", function()
+			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "" end ]])
+
+			local created = child.lua_get([[ M.create({ encryption = { mode = "passphrase" } }) ]])
+			local name = child.api.nvim_buf_get_name(0)
+
+			MiniTest.expect.equality(created, false)
+			MiniTest.expect.equality(child.fn.filereadable(name), 0)
+		end)
+
 		it("takes the mode as a command argument", function()
 			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "cmd-sym" end ]])
 			child.cmd("MemoScratch passphrase")
