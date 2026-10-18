@@ -134,6 +134,11 @@ function M.create(opts)
 
 		vim.bo[bufnr].modified = false
 
+		-- Record the content just written so the first `:w` is a no-op instead
+		-- of re-encrypting the note it was created from.
+		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+		vim.b[bufnr].hash = vim.fn.sha256(table.concat(lines, "\n"))
+
 		-- Only when the note is still in `win`: an autocmd may have moved it.
 		if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == bufnr then
 			vim.api.nvim_win_set_cursor(win, cursor_pos)
