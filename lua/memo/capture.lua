@@ -204,18 +204,18 @@ function M.create(opts)
 			local has_changed = not vim.deep_equal(lines, template_lines)
 			local is_not_empty = table.concat(lines, "\n"):gsub("%s+", "") ~= ""
 
-			if has_changed and is_not_empty then
+			if not is_not_empty then
+				message.warn("Capture aborted: empty content")
+			elseif not has_changed then
+				message.info("Capture skipped: no changes")
+			else
 				local saved, err = append_capture(lines, config, buf)
 
 				if not saved then
 					-- Keep the buffer so the content is not silently lost.
-					if err then
-						message.defer_error("Capture failed: %s", err)
-					end
+					message.defer_error("Capture failed: %s", err)
 					return
 				end
-			else
-				message.warn("Capture aborted: empty content")
 			end
 
 			vim.api.nvim_exec_autocmds("BufWritePost", { buffer = buf, modeline = false })
