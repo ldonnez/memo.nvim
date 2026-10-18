@@ -31,6 +31,24 @@ describe("config", function()
 
 			MiniTest.expect.equality(result, "/tmp/memo-custom-notes")
 		end)
+
+		it("expands a home-relative notes dir", function()
+			child.lua([[
+        vim.g.memo_notes_dir = "~/memo-custom-notes"
+        M.setup()
+      ]])
+
+			MiniTest.expect.equality(child.lua_get("M.notes_dir"), vim.fn.expand("~/memo-custom-notes"))
+		end)
+
+		it("drops a trailing separator from the notes dir", function()
+			child.lua([[
+        vim.g.memo_notes_dir = "/tmp/memo-custom-notes/"
+        M.setup()
+      ]])
+
+			MiniTest.expect.equality(child.lua_get("M.notes_dir"), "/tmp/memo-custom-notes")
+		end)
 	end)
 
 	describe("scratch_dir", function()
@@ -53,6 +71,24 @@ describe("config", function()
 			local result = child.lua_get("M.scratch_dir")
 
 			MiniTest.expect.equality(result, "/tmp/memo-scratch")
+		end)
+
+		it("expands a home-relative scratch dir", function()
+			child.lua([[
+        vim.g.memo_scratch_dir = "~/memo-scratch-custom"
+        M.setup()
+      ]])
+
+			MiniTest.expect.equality(child.lua_get("M.scratch_dir"), vim.fn.expand("~/memo-scratch-custom"))
+		end)
+
+		it("drops a trailing separator from the scratch dir", function()
+			child.lua([[
+        vim.g.memo_scratch_dir = "/tmp/memo-scratch/"
+        M.setup()
+      ]])
+
+			MiniTest.expect.equality(child.lua_get("M.scratch_dir"), "/tmp/memo-scratch")
 		end)
 	end)
 
