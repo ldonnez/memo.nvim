@@ -311,6 +311,23 @@ describe("capture", function()
 			MiniTest.expect.equality(lines, { "# Inbox", "", "", "New Content", "Previous Note", "" })
 		end)
 
+
+		it("refuses a capture file that escapes the notes directory", function()
+			local outside = vim.env.NOTES_DIR .. "/../escape.md.gpg"
+
+			child.lua([[ M.create({ capture_file = ... }) ]], { "../escape.md.gpg" })
+
+			child.type_keys("i", "secret", "<Esc>")
+			child.cmd("write")
+
+			child.wait_until(function()
+				return child.cmd_capture("messages"):find("must be inside the notes directory", 1, true) ~= nil
+			end)
+
+			MiniTest.expect.equality(child.fn.filereadable(outside), 0)
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/../escape.md.asc"), 0)
+		end)
+
 		it("ensures relative directories from capture_file are created", function()
 			local capture_file = "journals/capture.md.gpg"
 			local capture_file_path = vim.env.NOTES_DIR .. "/journals/capture.md.gpg"
