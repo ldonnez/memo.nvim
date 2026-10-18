@@ -29,7 +29,7 @@ end
 ---@return [integer, integer] cursor_pos row and column, 0-indexed
 ---@return boolean has_cursor_marker whether a `|` marker was found
 function Template:resolve_template()
-	local template = self.config.template or ""
+	local template = self.config.template
 	local raw_text = tostring(os.date(tostring(template)))
 
 	local lines = vim.split(raw_text, "\n", { plain = true, trimempty = false })
