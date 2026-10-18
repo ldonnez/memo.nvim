@@ -2,15 +2,17 @@ local message = require("memo.message")
 
 local M = {}
 
----@return vim.SystemCompleted?
+---@return boolean synced -- true when `memo sync git` exited successfully
 function M.sync_git()
-	local cmd = { "memo", "sync", "git" }
+	local result = vim.system({ "memo", "sync", "git" }):wait()
 
-	local result = vim.system(cmd):wait()
-	if result and result.code == 0 then
-		return message.info("Sync complete: git")
+	if result.code == 0 then
+		message.info("Sync complete: git")
+		return true
 	end
-	return message.error("Something went wrong syncing git")
+
+	message.error("Something went wrong syncing git")
+	return false
 end
 
 return M
