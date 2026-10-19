@@ -74,6 +74,9 @@ describe("new_note", function()
 
 				local function create_and_delete()
 					assert(new_note.create({ path = path }), "new_note.create() should succeed")
+					-- Reopen through Neovim’s edit command so the test exercises the
+					-- same buffer/autocmd path as opening a note normally.
+					vim.cmd("edit " .. vim.fn.fnameescape(file))
 					local bufnr = vim.api.nvim_get_current_buf()
 
 					assert(vim.api.nvim_buf_get_name(bufnr) == file, "new note should be open in the current buffer")
