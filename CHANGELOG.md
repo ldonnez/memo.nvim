@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.6](https://github.com/ldonnez/memo.nvim/compare/v0.17.5...v0.17.6) (2026-10-19)
+
+
+### Bug Fixes
+
+* **gpg:** pass note passphrases to memo over stdin ([23a7a58](https://github.com/ldonnez/memo.nvim/commit/23a7a587e022b0a2851f03eb531924cab703259d))
+* recreate notes after deleting their files ([27096a8](https://github.com/ldonnez/memo.nvim/commit/27096a8257a0cafaa72b4d2f27e8d68db572158e))
+
 ## [0.17.5](https://github.com/ldonnez/memo.nvim/compare/v0.17.4...v0.17.5) (2026-10-18)
 
 
