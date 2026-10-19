@@ -99,7 +99,7 @@ function M.create(opts)
 	-- a cancelled passphrase prompt or a failed write leaves it restorable.
 	local backup = NoteBackup.new(note_path)
 
-	if overwriting and not cleanup_existing_buffer(note_path) then
+	if not cleanup_existing_buffer(note_path) then
 		return false
 	end
 

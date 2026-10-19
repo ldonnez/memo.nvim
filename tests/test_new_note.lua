@@ -67,6 +67,43 @@ describe("new_note", function()
 			MiniTest.expect.equality(decrypted.code, 0)
 		end)
 
+		it("recreates a note after its file is deleted repeatedly", function()
+			local path = "recreated.md"
+			local file = vim.env.NOTES_DIR .. "/" .. path .. ".asc"
+
+			local function create_and_delete()
+				MiniTest.expect.equality(child.lua_get([[ new_note.create({ path = "recreated.md" }) ]]), true)
+
+				-- Exercise the normal edit/autocmd path and wait for decryption.
+				child.cmd("edit " .. vim.fn.fnameescape(file))
+				child.wait_until(function()
+					return child.lua_get("vim.b.decrypting") == false
+				end, 10000)
+
+				local bufnr = child.api.nvim_get_current_buf()
+
+				MiniTest.expect.equality(child.api.nvim_buf_get_name(bufnr), file)
+				MiniTest.expect.equality(child.api.nvim_buf_is_loaded(bufnr), true)
+				MiniTest.expect.equality(child.fn.filereadable(file), 1)
+
+				-- Delete the file but deliberately leave its buffer loaded.
+				MiniTest.expect.equality(child.fn.delete(file), 0)
+				MiniTest.expect.equality(child.api.nvim_buf_is_valid(bufnr), true)
+				MiniTest.expect.equality(child.api.nvim_buf_is_loaded(bufnr), true)
+				MiniTest.expect.equality(child.api.nvim_buf_get_name(bufnr), file)
+			end
+
+			child.lua("vim.v.errmsg = ''")
+
+			create_and_delete()
+			create_and_delete()
+
+			MiniTest.expect.equality(child.lua_get([[ new_note.create({ path = "recreated.md" }) ]]), true)
+			local errmsg = child.lua_get("vim.v.errmsg")
+			MiniTest.expect.equality(errmsg:find("E211") ~= nil, false)
+			MiniTest.expect.equality(child.fn.filereadable(file), 1)
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), file)
+		end)
 		it("sets the filetype from the note name, without the note extension", function()
 			child.lua_get([[ new_note.create({ path = "typed.md" }) ]])
 
