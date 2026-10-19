@@ -235,7 +235,7 @@ describe("gpg", function()
 		MiniTest.expect.equality(child.cmd_capture("messages"), "")
 	end)
 
-	it("hands the passphrase of a passphrase note to memo in the environment", function()
+	it("hands the passphrase of a passphrase note to memo on stdin", function()
 		local encrypted = "/tmp/gpg_symmetric.txt.gpg"
 		local passphrase = "sym-pass"
 
@@ -326,6 +326,29 @@ describe("gpg", function()
 
 		local decrypted = helpers.decrypt_symmetric_file(note, passphrase)
 		MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Hello world!")
+	end)
+
+	it("keeps every note line when the passphrase shares stdin", function()
+		local note = "/tmp/gpg_encrypt_symmetric_lines.txt.gpg"
+		local passphrase = "sym-pass"
+
+		helpers.encrypt_symmetric_file(note, "Line 1\n", passphrase)
+
+		local result = child.lua(
+			[[
+        local passphrase, note = ...
+        M.prompt_passphrase = function() return passphrase end
+
+        return { code = M.encrypt(note, { "Line 1", "Line 2", "Line 3" }).code }
+    ]],
+			{ passphrase, note }
+		)
+
+		MiniTest.expect.equality(result.code, 0)
+		MiniTest.expect.equality(helpers.is_symmetric_file(note), true)
+
+		local decrypted = helpers.decrypt_symmetric_file(note, passphrase)
+		MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Line 1\nLine 2\nLine 3")
 	end)
 
 	it("encrypts to the passphrase of a new note when the passphrase mode is configured", function()
@@ -505,39 +528,88 @@ describe("gpg", function()
         local passphrase, encrypted = ...
         M.prompt_passphrase = function() return passphrase end
 
-        local seen = {}
+        local seen
+        local written = ""
         local system = vim.system
         vim.system = function(cmd, opts, on_exit)
-          table.insert(seen, { cmd = cmd, env = opts and opts.env })
-          return system(cmd, opts, on_exit)
+          local obj = system(cmd, opts, on_exit)
+
+          -- Pick the call that hands the passphrase to memo, not the gpg calls
+          -- detecting the passphrase note, and record what reaches its stdin.
+          if vim.tbl_contains(cmd, "memo") then
+            local write = obj.write
+            obj.write = function(self, data)
+              if data then written = written .. data end
+              return write(self, data)
+            end
+            seen = { cmd = cmd, env = opts and opts.env, stdin = opts and opts.stdin }
+          end
+
+          return obj
         end
 
         M.decrypt(encrypted):wait()
 
-        -- The first call is gpg detecting the passphrase note, so pick the one
-        -- that hands the passphrase to memo.
-        local decrypt_call
-        for _, call in ipairs(seen) do
-          if vim.tbl_contains(call.cmd, "memo") then
-            decrypt_call = call
-          end
-        end
-
         return {
-          cmd = decrypt_call and decrypt_call.cmd or {},
-          env = decrypt_call and vim.inspect(decrypt_call.env) or "",
+          cmd = seen and seen.cmd or {},
+          env = seen and seen.env or nil,
+          stdin = seen and seen.stdin or nil,
+          written = written,
         }
     ]],
 			{ passphrase, encrypted }
 		)
 
-		MiniTest.expect.equality(
-			result.cmd,
-			{ "memo", "decrypt", encrypted, "--passphrase-env", "MEMO_NOTE_PASSPHRASE" }
-		)
-		-- The passphrase has to travel in the environment, not in the arguments.
+		MiniTest.expect.equality(result.cmd, { "memo", "decrypt", encrypted, "--passphrase-fd", "0" })
+		-- The passphrase has to travel on stdin, not in the arguments or the
+		-- environment.
 		MiniTest.expect.equality(vim.tbl_contains(result.cmd, passphrase), false)
-		MiniTest.expect.equality(result.env:find(passphrase, 1, true) ~= nil, true)
+		MiniTest.expect.equality(result.env, nil)
+		MiniTest.expect.equality(result.stdin, true)
+		MiniTest.expect.equality(result.written, passphrase .. "\n")
+	end)
+
+	it("keeps the passphrase of an encrypted note out of the command", function()
+		local note = "/tmp/gpg_symmetric_encrypt_argv.txt.gpg"
+		local passphrase = "sym-pass"
+
+		helpers.encrypt_symmetric_file(note, "Line 1\n", passphrase)
+
+		local result = child.lua(
+			[[
+        local passphrase, note = ...
+        M.prompt_passphrase = function() return passphrase end
+
+        local seen
+        local written = ""
+        local system = vim.system
+        vim.system = function(cmd, opts, on_exit)
+          local obj = system(cmd, opts, on_exit)
+
+          if vim.tbl_contains(cmd, "memo") then
+            local write = obj.write
+            obj.write = function(self, data)
+              if data then written = written .. data end
+              return write(self, data)
+            end
+            seen = { cmd = cmd, env = opts and opts.env, stdin = opts and opts.stdin }
+          end
+
+          return obj
+        end
+
+        M.encrypt(note, { "Hello world!" })
+
+        return { seen = seen, written = written }
+    ]],
+			{ passphrase, note }
+		)
+
+		MiniTest.expect.equality(result.seen.cmd, { "memo", "encrypt", "--symmetric", note, "--passphrase-fd", "0" })
+		MiniTest.expect.equality(vim.tbl_contains(result.seen.cmd, passphrase), false)
+		MiniTest.expect.equality(result.seen.env, nil)
+		MiniTest.expect.equality(result.seen.stdin, true)
+		MiniTest.expect.equality(result.written, passphrase .. "\nHello world!\n")
 	end)
 
 	it("keeps the caller's options when it hands the passphrase over", function()

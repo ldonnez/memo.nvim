@@ -4,8 +4,11 @@ local M = {}
 --- which keys its cache holds. See `memo.gpg_cache`.
 local cache = require("memo.gpg_cache").new()
 
---- Variable the passphrase of a passphrase note is handed to `memo` in.
-local PASSPHRASE_ENV = "MEMO_NOTE_PASSPHRASE"
+--- File descriptor a passphrase is handed to gpg or `memo` on. 0 is stdin:
+--- `memo` reads the first line off it as the passphrase and leaves the rest for
+--- gpg, so the passphrase never reaches the environment, the argument list or
+--- the disk.
+local PASSPHRASE_FD = "0"
 
 local NO_PASSPHRASE = "the passphrase was not given"
 
@@ -13,6 +16,30 @@ local NO_MATCH = "the passphrases do not match"
 
 --- Milliseconds a decrypt may run before gpg is killed.
 local DECRYPT_TIMEOUT_MS = 30000
+
+--- Runs a command with the passphrase on the first line of its stdin, followed
+--- by optional content (a note being encrypted). This keeps the passphrase out
+--- of the environment, the argument list and the disk.
+--- @param cmd string[]
+--- @param passphrase string
+--- @param input? string[] content to write after the passphrase
+--- @param opts? vim.SystemOpts
+--- @param on_exit? fun(obj: vim.SystemCompleted)
+--- @return vim.SystemObj
+local function run_with_passphrase(cmd, passphrase, input, opts, on_exit)
+	local all = vim.tbl_extend("force", opts or {}, { stdin = true })
+	local obj = vim.system(cmd, all, on_exit)
+
+	obj:write(passphrase .. "\n")
+
+	if input and #input > 0 then
+		obj:write(table.concat(input, "\n") .. "\n")
+	end
+
+	obj:write(nil)
+
+	return obj
+end
 
 --- Check if a specific key (or default) is unlocked in gpg-agent.
 --- A failed decrypt clears the cache so the next attempt prompts again.
@@ -84,7 +111,7 @@ local function cache_passphrase(pass, id)
 		"--yes",
 		"--pinentry-mode=loopback",
 		"--passphrase-fd",
-		"0",
+		PASSPHRASE_FD,
 		"--sign",
 	}
 
@@ -93,7 +120,7 @@ local function cache_passphrase(pass, id)
 		table.insert(cmd, 8, id)
 	end
 
-	local result = vim.system(cmd, { stdin = pass .. "\n" }):wait()
+	local result = run_with_passphrase(cmd, pass):wait()
 
 	if result.code ~= 0 then
 		return nil, result
@@ -202,18 +229,6 @@ end
 --- @return boolean
 local function is_symmetric(path)
 	return read_packets(path).symmetric
-end
-
---- Runs a command with the passphrase in the environment.
---- @param cmd string[]
---- @param passphrase string
---- @param opts? vim.SystemOpts
---- @param on_exit? fun(obj: vim.SystemCompleted)
---- @return vim.SystemObj
-local function run_with_passphrase(cmd, passphrase, opts, on_exit)
-	local all = vim.tbl_extend("force", opts or {}, { env = { [PASSPHRASE_ENV] = passphrase } })
-
-	return vim.system(cmd, all, on_exit)
 end
 
 --- Prompt user for passphrase
@@ -353,9 +368,9 @@ function M.encrypt(path, input, opts)
 	end
 
 	return run_with_passphrase(
-		{ "memo", "encrypt", "--symmetric", path, "--passphrase-env", PASSPHRASE_ENV },
+		{ "memo", "encrypt", "--symmetric", path, "--passphrase-fd", PASSPHRASE_FD },
 		passphrase,
-		{ stdin = input }
+		input
 	):wait()
 end
 
@@ -379,9 +394,9 @@ function M.decrypt(path, bufnr, opts, on_exit)
 			return nil
 		end
 
-		local cmd = { "memo", "decrypt", path, "--passphrase-env", PASSPHRASE_ENV }
+		local cmd = { "memo", "decrypt", path, "--passphrase-fd", PASSPHRASE_FD }
 
-		return run_with_passphrase(cmd, passphrase, opts, function(result)
+		return run_with_passphrase(cmd, passphrase, nil, opts, function(result)
 			if result.code ~= 0 then
 				vim.schedule(function()
 					forget_symmetric_passphrase(bufnr)
