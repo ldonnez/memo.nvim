@@ -88,9 +88,11 @@ describe("new_note", function()
 					assert(vim.api.nvim_buf_get_name(bufnr) == file, "buffer should retain the deleted file path")
 				end
 
+				vim.v.errmsg = ""
 				create_and_delete()
 				create_and_delete()
 				assert(new_note.create({ path = path }), "third creation should succeed")
+				assert(not vim.v.errmsg:match("E211"), "unexpected E211: " .. vim.v.errmsg)
 			]])
 
 			local file = vim.env.NOTES_DIR .. "/recreated.md.asc"
