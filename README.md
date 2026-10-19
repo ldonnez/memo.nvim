@@ -375,7 +375,8 @@ note inbox.md.asc (symmetric):`.
   in the buffer, so it is entered once per buffer rather than once per write.
 - Reading and writing them goes through `memo encrypt --symmetric` and
   `memo decrypt`, so a note is exactly what the CLI writes. The passphrase is
-  handed over in the child process environment, not on the command line.
+  handed over on stdin, so it never reaches the command line, the environment
+  or the disk.
 - A wrong passphrase reports a decryption failure and the buffer is dropped.
 - The passphrase lives in `b:memo_symmetric_passphrase` for the life of the
   buffer. Avoid `:mksession` with `sessionoptions` containing `globals`, which
