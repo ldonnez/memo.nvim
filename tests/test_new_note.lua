@@ -67,6 +67,37 @@ describe("new_note", function()
 			MiniTest.expect.equality(decrypted.code, 0)
 		end)
 
+		it("recreates a note after its file is deleted repeatedly", function()
+			child.lua([[
+				local path = "recreated.md"
+				local file = vim.env.NOTES_DIR .. "/" .. path .. ".asc"
+
+				local function create_and_delete()
+					assert(new_note.create({ path = path }), "new_note.create() should succeed")
+					local bufnr = vim.api.nvim_get_current_buf()
+
+					assert(vim.api.nvim_buf_get_name(bufnr) == file, "new note should be open in the current buffer")
+					assert(vim.api.nvim_buf_is_loaded(bufnr), "new note buffer should be loaded")
+					assert(vim.fn.filereadable(file) == 1, "encrypted note should exist after creation")
+					assert(vim.fn.delete(file) == 0, "encrypted note should be deleted")
+
+					-- Deleting the file must not silently remove the buffer. The next
+					-- creation must handle this stale, still-loaded buffer.
+					assert(vim.api.nvim_buf_is_valid(bufnr), "deleted note buffer should remain valid")
+					assert(vim.api.nvim_buf_is_loaded(bufnr), "deleted note buffer should remain loaded")
+					assert(vim.api.nvim_buf_get_name(bufnr) == file, "buffer should retain the deleted file path")
+				end
+
+				create_and_delete()
+				create_and_delete()
+				assert(new_note.create({ path = path }), "third creation should succeed")
+			]])
+
+			local file = vim.env.NOTES_DIR .. "/recreated.md.asc"
+			MiniTest.expect.equality(child.fn.filereadable(file), 1)
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), file)
+		end)
+
 		it("sets the filetype from the note name, without the note extension", function()
 			child.lua_get([[ new_note.create({ path = "typed.md" }) ]])
 
