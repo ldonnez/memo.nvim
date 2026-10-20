@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.7](https://github.com/ldonnez/memo.nvim/compare/v0.17.6...v0.17.7) (2026-10-20)
+
+
+### Bug Fixes
+
+* **security:** disable plaintext persistence before decryption ([fca593e](https://github.com/ldonnez/memo.nvim/commit/fca593e81371a437b1462889b33e70bdf876d478))
+* **security:** disable undo files for capture buffers ([7b77eea](https://github.com/ldonnez/memo.nvim/commit/7b77eea7e507f2a4b4469e2accdd7650a24dadeb))
+
 ## [0.17.6](https://github.com/ldonnez/memo.nvim/compare/v0.17.5...v0.17.6) (2026-10-19)
 
 
