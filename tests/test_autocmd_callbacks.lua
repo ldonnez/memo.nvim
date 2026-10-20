@@ -41,6 +41,22 @@ describe("autocmd", function()
 		MiniTest.expect.equality(encoding, "utf-8")
 	end)
 
+	it("disables persistent storage before asynchronous decryption starts", function()
+		local encrypted = vim.env.NOTES_DIR .. "/early-options.md.gpg"
+		helpers.encrypt_file(encrypted, "Secret plaintext")
+
+		-- Keep the callback from completing decryption, so options can only be
+		-- disabled before plaintext would be streamed into the buffer.
+		child.lua([[
+			require("memo.crypto").decrypt_to_buffer = function() end
+		]])
+
+		child.cmd("edit " .. vim.fn.fnameescape(encrypted))
+
+		MiniTest.expect.equality(child.bo.swapfile, false)
+		MiniTest.expect.equality(child.bo.undofile, false)
+	end)
+
 	it("triggers decryption when opening a .gpg file", function()
 		local plain = vim.env.NOTES_DIR .. "/secret.md"
 		local encrypted = plain .. ".gpg"
