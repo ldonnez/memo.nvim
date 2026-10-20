@@ -123,6 +123,11 @@ function M.on_read(args)
 
 	vim.bo[bufnr].filetype = utils.get_filetype(file) or ""
 
+	-- Plaintext is streamed into this buffer asynchronously. Disable persistent
+	-- storage before decryption starts, not after the plaintext has arrived.
+	vim.bo[bufnr].swapfile = false
+	vim.bo[bufnr].undofile = false
+
 	vim.bo[bufnr].modifiable = false
 	vim.bo[bufnr].modified = false
 	vim.b[bufnr].decrypting = true

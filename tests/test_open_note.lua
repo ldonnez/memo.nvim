@@ -31,6 +31,8 @@ describe("open_note", function()
 
 			MiniTest.expect.equality(child.lua_get([[ M.open({ path = "existing.md.gpg" }) ]]), true)
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), note)
+			MiniTest.expect.equality(child.bo.swapfile, false)
+			MiniTest.expect.equality(child.bo.undofile, false)
 
 			-- Decryption is async, so the buffer is empty for a moment.
 			child.wait_until(function()
