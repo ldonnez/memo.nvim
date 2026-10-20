@@ -123,6 +123,10 @@ function M.on_read(args)
 
 	vim.bo[bufnr].filetype = utils.get_filetype(file) or ""
 
+	-- Do not allow plaintext produced by asynchronous decryption to reach swap
+	-- or persistent undo files before prepare_buffer_for_edit() runs.
+	vim.bo[bufnr].swapfile = false
+	vim.bo[bufnr].undofile = false
 	vim.bo[bufnr].modifiable = false
 	vim.bo[bufnr].modified = false
 	vim.b[bufnr].decrypting = true
