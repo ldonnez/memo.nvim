@@ -106,13 +106,21 @@ describe("capture", function()
 
 			helpers.track_autocmds(child, { "BufReadPre", "BufReadPost" })
 
-			child.lua([[ M.create({ capture_file = ... }) ]], { capture_file .. ".gpg" })
+			child.lua(
+				[[
+				vim.o.undofile = true
+				M.create({ capture_file = ... })
+			]],
+				{ capture_file .. ".gpg" }
+			)
 
 			local swap = child.bo.swapfile
+			local undo = child.bo.undofile
 			local bufhidden = child.bo.bufhidden
 			local encoding = child.bo.fileencoding
 
 			MiniTest.expect.equality(swap, false)
+			MiniTest.expect.equality(undo, false)
 			MiniTest.expect.equality(bufhidden, "wipe")
 			MiniTest.expect.equality(encoding, "utf-8")
 			MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPre"), true)
