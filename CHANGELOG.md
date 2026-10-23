@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.18.0](https://github.com/ldonnez/memo.nvim/compare/v0.17.7...v0.18.0) (2026-10-23)
+
+
+### Features
+
+* simplify scratch files feature ([cf00dc0](https://github.com/ldonnez/memo.nvim/commit/cf00dc0d79fdb712ce1d6256ed77215911ff03a6))
+
+
+### Bug Fixes
+
+* clear buffer when decrypting empty content ([1873d91](https://github.com/ldonnez/memo.nvim/commit/1873d91aa23669d0ea28705277bc90a6bedea47c))
+
 ## [0.17.7](https://github.com/ldonnez/memo.nvim/compare/v0.17.6...v0.17.7) (2026-10-20)
 
 
