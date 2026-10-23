@@ -27,10 +27,12 @@ function M.save_as_note(opts)
 	return require("memo.save_as_note").create(opts)
 end
 
---Opens a new encrypted scratch buffer.
+--Opens the encrypted scratch buffer for the current directory, creating it on
+--first use.
 ---@param opts? MemoScratchOpts
+---@return boolean success
 function M.scratch(opts)
-	require("memo.scratch").create(opts)
+	return require("memo.scratch").open_or_create(opts)
 end
 
 return M

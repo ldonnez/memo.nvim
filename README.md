@@ -4,7 +4,7 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo), a CLI-bas
 
 - Transparent encryption: `.asc` files in your notes directory are decrypted into the buffer and re-encrypted on write; plaintext never touches disk.
 - Passphrase-mode encryption for notes, capture files, and scratch buffers.
-- Encrypted scratch buffers for throwaway, sensitive content.
+- One encrypted scratch buffer per directory for throwaway, sensitive content.
 - Quick capture workflow that appends to a capture file (e.g. a journal).
 - fzf-lua pickers for browsing notes and scratch files.
 - Git sync via `memo sync git`.
@@ -104,13 +104,6 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
       desc = "Memo: Scratch files",
     },
     {
-      "<leader>mw",
-      function()
-        require("memo.pickers.fzf_lua").cwd_scratch_files_picker()
-      end,
-      desc = "Memo: Cwd Scratch files",
-    },
-    {
       mode = { "n", "v" },
       "<leader>mS",
       function()
@@ -199,10 +192,6 @@ end, { desc = "Memo: Capture to braindump (passphrase)" })
 vim.keymap.set("n", "<leader>mp", function()
   require("memo.pickers.fzf_lua").scratch_files_picker()
 end, { desc = "Memo: Scratch files" })
-
-vim.keymap.set("n", "<leader>mw", function()
-  require("memo.pickers.fzf_lua").cwd_scratch_files_picker()
-end, { desc = "Memo: Cwd Scratch files" })
 
 vim.keymap.set({ "n", "v" }, "<leader>mS", function()
   require("memo").save_as_note()
@@ -338,16 +327,15 @@ vim.g.memo_ignore_patterns = {
 
 ## Commands
 
-| Command                | Description                                        |
-| ---------------------- | -------------------------------------------------- |
-| `:Memo`                | Open the default capture file.                     |
-| `:MemoScratch`         | Open a new encrypted scratch buffer.               |
-| `:MemoNewNote`         | Create a new encrypted note in the notes dir.      |
-| `:MemoScratchFiles`    | Browse and open encrypted scratch files.           |
-| `:MemoScratchFilesCwd` | Browse and open scratch files for the current dir. |
-| `:MemoSaveAsNote`      | Save the buffer or selection as an encrypted note. |
-| `:MemoFiles`           | Browse and open files in the notes directory.      |
-| `:MemoSync`            | Sync the git backend (`memo sync git`).            |
+| Command             | Description                                        |
+| ------------------- | -------------------------------------------------- |
+| `:Memo`             | Open the default capture file.                     |
+| `:MemoScratch`      | Open or create the scratch buffer for the cwd.     |
+| `:MemoNewNote`      | Create a new encrypted note in the notes dir.      |
+| `:MemoScratchFiles` | Browse and open encrypted scratch files.           |
+| `:MemoSaveAsNote`   | Save the buffer or selection as an encrypted note. |
+| `:MemoFiles`        | Browse and open files in the notes directory.      |
+| `:MemoSync`         | Sync the git backend (`memo sync git`).            |
 
 ## Features
 
@@ -476,28 +464,30 @@ require("conform").setup({
 
 ### Encrypted scratch buffers
 
-Create encrypted scratch buffers for throwaway, sensitive content:
+Open an encrypted scratch buffer for throwaway, sensitive content. Each
+directory has one scratch file at a fixed path: the first call creates it, and
+later calls reopen the same file, including any unsaved content:
 
 ```lua
 vim.keymap.set("n", "<leader>ms", function()
   require("memo").scratch({ window = { split = "split" } })
-end, { desc = "Memo: New scratch buffer (horizontal split)" })
+end, { desc = "Memo: Scratch buffer (horizontal split)" })
 
 vim.keymap.set("n", "<leader>mv", function()
   require("memo").scratch({ window = { split = "vsplit" } })
-end, { desc = "Memo: New scratch buffer (vertical split)" })
+end, { desc = "Memo: Scratch buffer (vertical split)" })
 
 vim.keymap.set("n", "<leader>mt", function()
   require("memo").scratch({ window = { split = "tab" } })
-end, { desc = "Memo: New scratch buffer (new tab)" })
+end, { desc = "Memo: Scratch buffer (new tab)" })
 ```
 
 The window config accepts the same `split`, `size` and `position` fields as
 `require("memo").new_note()`: `{ split = "split" | "vsplit" | "tab",
 size = 0.5, position = "botright" }`. A scratch always opens a window, the
-default is a horizontal split next to the current one. Pass
-`encryption = { mode = "passphrase" }` to encrypt with a passphrase instead of
-your key:
+default is a horizontal split next to the current one. When creating the
+scratch file, pass `encryption = { mode = "passphrase" }` to encrypt with a
+passphrase instead of your key:
 
 ```lua
 vim.keymap.set("n", "<leader>mP", function()
@@ -508,13 +498,14 @@ end, { desc = "Memo: New passphrase scratch buffer" })
 ```
 
 Or use the command `:MemoScratch [passphrase|key] [split|vsplit|tab]`, e.g.
-`:MemoScratch passphrase vsplit`.
+`:MemoScratch passphrase vsplit`. The encryption mode only applies when the
+scratch file is first created.
 
 Notes:
 
-- Files are stored encrypted in `g:memo_scratch_dir`, named after the `cwd` plus a timestamp, so buffers from different projects never collide.
+- Files are stored encrypted in `g:memo_scratch_dir` as `<cwd-key>-scratch.<ext>`, one per `cwd`, so buffers from different projects never collide.
 - The buffer reuses the regular memo read/write autocommands, so files persist across restarts and sessions (e.g. [auto-session](https://github.com/rmagatti/auto-session)).
-- Scratch content is throwaway by design: deleting or wiping the buffer (`:bd`/`:bwipeout`) also deletes its encrypted file. The encrypted file is only created once you write content.
+- Use `ctrl-x` in the scratch pickers to delete scratch files.
 
 ### Save a buffer as a note
 
@@ -676,10 +667,11 @@ memo.nvim includes pickers built on `require("fzf-lua").files` that scope the se
 ```lua
 require("memo.pickers.fzf_lua").files_picker()             -- notes directory
 require("memo.pickers.fzf_lua").scratch_files_picker()     -- all scratches
-require("memo.pickers.fzf_lua").cwd_scratch_files_picker() -- current cwd
 ```
 
-The scratch pickers additionally bind `ctrl-x` to delete the selected scratch files (multi-select with `tab`/`alt-a`) without closing the picker; any buffer holding a deleted file is wiped too.
+The scratch pickers additionally bind `ctrl-x` to delete the selected scratch
+files (multi-select with `tab`/`alt-a`) without closing the picker; any buffer
+holding a deleted file is wiped too.
 
 Each picker can show a preview pane with the decrypted note, off by default. Pass `{ previewer = true }` to turn it on:
 
@@ -689,7 +681,7 @@ require("memo.pickers.fzf_lua").files_picker({ previewer = true })
 
 When the note is already open in a buffer the pane previews the buffer; otherwise it is decrypted asynchronously, so the picker stays responsive while the plaintext streams in. A decrypt is given 30 seconds before it is abandoned. Moving to another note abandons an in-flight decrypt, and a note's decrypted preview is reused so revisiting it does not decrypt again. The encrypted bytes on disk are never shown.
 
-Scratch files are stored under the obfuscated name `<encoded-cwd>-<timestamp>-<hash>.asc`, so the scratch pickers decode the cwd path for display and show `<cwd-path>-<timestamp>-<hash>.asc`. The cwd picker shows the scratch files created in the current working directory.
+Scratch files are stored under the obfuscated name `<encoded-cwd>-scratch.<ext>`, so the scratch pickers decode the cwd path for display and show `<cwd-path>-scratch.<ext>`. The cwd picker shows the scratch file created in the current working directory.
 
 ## Development
 

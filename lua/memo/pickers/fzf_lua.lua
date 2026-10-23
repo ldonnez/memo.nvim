@@ -47,37 +47,14 @@ local function delete_scratch_files(selected, opts)
 	for _, entry in ipairs(selected) do
 		local file = fzf_path.entry_to_file(entry, opts).path
 		if file then
-			-- Wiping the buffer triggers the memo autocmd that deletes the
-			-- on-disk file, so only delete manually for files without a buffer.
 			local bufnr = vim.fn.bufnr(file)
 			if bufnr ~= -1 then
 				vim.api.nvim_buf_delete(bufnr, { force = true })
-			else
-				vim.fn.delete(file)
 			end
+
+			vim.fn.delete(file)
 		end
 	end
-end
-
----Options shared by scratch pickers.
----@return table
-local function build_scratch_opts()
-	return {
-		actions = {
-			["ctrl-x"] = {
-				fn = delete_scratch_files,
-				reload = true,
-			},
-		},
-		fn_transform = function(file)
-			return scratch.display_scratch(vim.fn.fnamemodify(file, ":t"))
-		end,
-		_fmt = {
-			from = scratch.filename_from_display,
-		},
-		-- Function transforms cannot be serialized to the worker process.
-		multiprocess = false,
-	}
 end
 
 -- The `*_picker_opts` functions are exported for tests: they build the options
@@ -100,26 +77,21 @@ function M.scratch_files_picker_opts(opts)
 		dir = config.scratch_dir,
 	}, opts or {}))
 
-	return vim.tbl_extend("force", common, build_scratch_opts())
-end
-
----@param opts? MemoPickerOpts
----@return table
-function M.cwd_scratch_files_picker_opts(opts)
-	local prefix = scratch.cwd_key() .. "-"
-	local common = build_common_opts(vim.tbl_extend("force", DEFAULTS, {
-		dir = config.scratch_dir,
-	}, opts or {}))
-
-	return vim.tbl_extend("force", common, build_scratch_opts(), {
+	return vim.tbl_extend("force", common, {
+		actions = {
+			["ctrl-x"] = {
+				fn = delete_scratch_files,
+				reload = true,
+			},
+		},
 		fn_transform = function(file)
-			local name = vim.fn.fnamemodify(file, ":t")
-			if name:sub(1, #prefix) ~= prefix then
-				return nil
-			end
-
-			return scratch.display_scratch(name)
+			return scratch.display_scratch(vim.fn.fnamemodify(file, ":t"))
 		end,
+		_fmt = {
+			from = scratch.filename_from_display,
+		},
+		-- Function transforms cannot be serialized to the worker process.
+		multiprocess = false,
 	})
 end
 
@@ -141,16 +113,6 @@ function M.scratch_files_picker(opts)
 	end
 
 	fzf.files(M.scratch_files_picker_opts(opts))
-end
-
----@param opts? MemoPickerOpts
-function M.cwd_scratch_files_picker(opts)
-	local fzf = load_fzf()
-	if not fzf then
-		return
-	end
-
-	fzf.files(M.cwd_scratch_files_picker_opts(opts))
 end
 
 return M
