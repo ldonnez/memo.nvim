@@ -140,7 +140,7 @@ describe("crypto", function()
 			MiniTest.expect.equality(cursor, { 1, 0 })
 		end)
 
-		it("decrypt_to_buffer: handles empty file", function()
+		it("decrypt_to_buffer: clears the buffer when decrypting empty content", function()
 			local path = "/tmp/empty.md.gpg"
 			helpers.encrypt_file(path, "")
 
@@ -149,10 +149,11 @@ describe("crypto", function()
         local path = ...
         local bufnr = vim.api.nvim_create_buf(true, false)
         vim.api.nvim_win_set_buf(0, bufnr)
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "Decrypting..." })
 
         M.decrypt_to_buffer(path, bufnr, function(result, _)
           vim.b.decrypting = false
-          return true
+          vim.b.decrypt_succeeded = result ~= nil
         end)
     ]],
 				{ path }
@@ -163,8 +164,9 @@ describe("crypto", function()
 			end)
 
 			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
-			MiniTest.expect.equality(#lines, 1)
-			MiniTest.expect.equality(lines[1], "")
+
+			MiniTest.expect.equality(child.b.decrypt_succeeded, true)
+			MiniTest.expect.equality(lines, { "" })
 		end)
 
 		it("decrypt_to_buffer: handles file without trailing newline", function()

@@ -90,23 +90,24 @@ function M.decrypt_to_stdout(path, bufnr)
 end
 
 --- Appends lines to a buffer, replacing its content on the first write.
---- Returns whether the next write should replace the buffer, avoiding a
---- mutable state container shared between calls.
---- @param bufnr integer
---- @param lines string[]
---- @param first_write boolean
---- @return boolean first_write
+--- Returns whether the next write should replace the buffer.
+---@param bufnr integer
+---@param lines string[]
+---@param first_write boolean
+---@return boolean first_write
 local function append_to_buffer(bufnr, lines, first_write)
-	if #lines == 0 or not vim.api.nvim_buf_is_valid(bufnr) then
+	if not vim.api.nvim_buf_is_valid(bufnr) or (#lines == 0 and not first_write) then
 		return first_write
 	end
 
 	vim.bo[bufnr].modifiable = true
+
 	if first_write then
 		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-	else
+	elseif #lines > 0 then
 		vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, lines)
 	end
+
 	vim.bo[bufnr].modifiable = false
 	vim.bo[bufnr].modified = false
 
