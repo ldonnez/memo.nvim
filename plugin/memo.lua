@@ -56,24 +56,6 @@ vim.api.nvim_create_autocmd("BufWriteCmd", {
 	end,
 })
 
-vim.api.nvim_create_autocmd("BufDelete", {
-	group = GROUP,
-	-- Scratch files written before the note extension changed are cleaned up too.
-	pattern = escape_pattern(abs_scratch) .. "/*",
-	callback = function(args)
-		local path = vim.api.nvim_buf_get_name(args.buf)
-		local scratch = require("memo.scratch")
-
-		if not scratch.is_scratch_file(path) then
-			return
-		end
-
-		if vim.fn.filereadable(path) == 1 then
-			vim.fn.delete(path)
-		end
-	end,
-})
-
 --- Splits the arguments of a command into an encryption mode and the rest.
 --- `passphrase` and `key` are reserved as the mode and come first.
 --- @param fargs string[] the command arguments, split on whitespace
@@ -136,7 +118,7 @@ vim.api.nvim_create_user_command("MemoScratch", function(opts)
 		return
 	end
 
-	require("memo.scratch").create({
+	require("memo.scratch").open_or_create({
 		window = split ~= "" and {
 			split = split --[[@as MemoWindowSplit]],
 		} or nil,
@@ -145,7 +127,7 @@ vim.api.nvim_create_user_command("MemoScratch", function(opts)
 end, {
 	nargs = "*",
 	complete = complete_scratch,
-	desc = "Open an encrypted scratch buffer",
+	desc = "Open or create the scratch buffer for the current directory",
 })
 
 vim.api.nvim_create_user_command("MemoFiles", function()
@@ -160,13 +142,6 @@ vim.api.nvim_create_user_command("MemoScratchFiles", function()
 end, {
 	nargs = 0,
 	desc = "Browse and open encrypted scratch files",
-})
-
-vim.api.nvim_create_user_command("MemoScratchFilesCwd", function()
-	require("memo.pickers.fzf_lua").cwd_scratch_files_picker()
-end, {
-	nargs = 0,
-	desc = "Browse and open encrypted scratch files for the current directory",
 })
 
 vim.api.nvim_create_user_command("MemoSaveAsNote", function(opts)

@@ -446,9 +446,9 @@ describe("autocmd", function()
 		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), encrypted)
 	end)
 
-	it("deletes a scratch .gpg file when its buffer is deleted", function()
+	it("keeps a scratch .gpg file when its buffer is deleted", function()
 		local scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
-		local encrypted = vim.fs.joinpath(scratch_dir, "_home_user_project-20260920T012345-a1b2c3.gpg")
+		local encrypted = vim.fs.joinpath(scratch_dir, "_home_user_project-scratch.gpg")
 
 		vim.fn.mkdir(scratch_dir, "p")
 		helpers.encrypt_file(encrypted, "Temporary scratch")
@@ -463,13 +463,13 @@ describe("autocmd", function()
 
 		child.cmd("bdelete!")
 
-		MiniTest.expect.equality(vim.fn.filereadable(encrypted), 0)
+		MiniTest.expect.equality(vim.fn.filereadable(encrypted), 1)
 	end)
 
 	it("does not delete gpg files in a similarly named directory", function()
 		local scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch")
 		local outside_dir = scratch_dir .. "-backup"
-		local encrypted = vim.fs.joinpath(outside_dir, "_home_user_project-20260920T012345-a1b2c3.gpg")
+		local encrypted = vim.fs.joinpath(outside_dir, "_home_user_project-scratch.gpg")
 
 		vim.fn.mkdir(outside_dir, "p")
 		helpers.encrypt_file(encrypted, "Do not delete")
@@ -841,7 +841,7 @@ describe("autocmd", function()
 			MiniTest.expect.equality(write_autocmds[2].pattern, vim.env.HOME .. "/memo-scratch" .. "/*")
 		end)
 
-		it("registers only the scratch dir pattern on BufDelete ", function()
+		it("does not register a BufDelete autocmd", function()
 			child.lua([[
 				vim.g.memo_scratch_dir = vim.env.HOME .. "/memo-scratch"
 
@@ -855,8 +855,7 @@ describe("autocmd", function()
 				event = "BufDelete",
 			})
 
-			MiniTest.expect.equality(#delete_autocmds, 1)
-			MiniTest.expect.equality(delete_autocmds[1].pattern, vim.env.HOME .. "/memo-scratch/*")
+			MiniTest.expect.equality(#delete_autocmds, 0)
 		end)
 	end)
 end)

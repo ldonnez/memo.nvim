@@ -19,58 +19,6 @@ describe("scratch", function()
 		return require("memo.scratch").encode_cwd_key(vim.fn.getcwd())
 	end
 
-	describe("is_scratch_file", function()
-		local scratch_dir = "/tmp/memo-scratch"
-
-		it("matches a valid scratch file", function()
-			local path = scratch_dir .. "/_home_user_project-20260920T012345-a1b2c3.asc"
-
-			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), true)
-		end)
-
-		it("matches a scratch file written with the other extension", function()
-			local path = scratch_dir .. "/_home_user_project-20260920T012345-a1b2c3.gpg"
-
-			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), true)
-		end)
-
-		it("matches scratch files with percent escapes in cwd key", function()
-			local path = scratch_dir .. "/%2Fhome%2Fuser%2Fproject-20260920T012345-a1b2c3.asc"
-
-			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), true)
-		end)
-
-		it("rejects a regular note file", function()
-			local path = scratch_dir .. "/important.gpg"
-
-			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), false)
-		end)
-
-		it("rejects a file with an invalid timestamp", function()
-			local path = scratch_dir .. "/_home_user_project-20260920-invalid-a1b2c3.gpg"
-
-			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), false)
-		end)
-
-		it("rejects a file with an invalid hash", function()
-			local path = scratch_dir .. "/_home_user_project-20260920T012345-xyz123.gpg"
-
-			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), false)
-		end)
-
-		it("rejects a file without a note extension", function()
-			local path = scratch_dir .. "/_home_user_project-20260920T012345-a1b2c3.md"
-
-			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), false)
-		end)
-
-		it("rejects a scratch-looking filename without the hash", function()
-			local path = scratch_dir .. "/_home_user_project-20260920T012345.gpg"
-
-			MiniTest.expect.equality(require("memo.scratch").is_scratch_file(path), false)
-		end)
-	end)
-
 	describe("cwd_key", function()
 		it("encodes non-word characters as percent escapes", function()
 			child.lua("vim.fn.delete('/tmp/memo-cwd key', 'rf')")
@@ -111,19 +59,16 @@ describe("scratch", function()
 		end
 
 		it("decodes the cwd key into a readable path", function()
-			local name = "%2FUsers%2Fdev%2Fproject-20260920T012345-a1b2c3.asc"
+			local name = "%2FUsers%2Fdev%2Fproject-scratch.asc"
 
-			MiniTest.expect.equality(
-				require("memo.scratch").display_scratch(name),
-				"/Users/dev/project-20260920T012345-a1b2c3.asc"
-			)
+			MiniTest.expect.equality(require("memo.scratch").display_scratch(name), "/Users/dev/project-scratch.asc")
 		end)
 
 		it("round-trips to the real filename", function()
 			local names = {
-				"%2FUsers%2Fdev%2Fproject-20260920T012345-a1b2c3.asc",
-				"my-project-20260920T012345-a1b2c3.gpg",
-				"%2Ftmp%2Fmemo-scratch-20260920T023456-deadbe.gpg",
+				"%2FUsers%2Fdev%2Fproject-scratch.asc",
+				"my-project-scratch.gpg",
+				"%2Ftmp%2Fmemo-scratch-scratch.gpg",
 			}
 
 			for _, name in ipairs(names) do
@@ -139,58 +84,14 @@ describe("scratch", function()
 		end)
 	end)
 
-	describe("files_for_cwd", function()
-		before_each(function()
-			child.lua([[
-        vim.fn.delete('/tmp/memo-cwd-scratch', 'rf')
-        vim.fn.delete('/tmp/memo-cwd-workdir', 'rf')
-        vim.g.memo_scratch_dir = '/tmp/memo-cwd-scratch'
-        require('memo.config').setup()
-
-        vim.fn.mkdir('/tmp/memo-cwd-scratch', 'p')
-        vim.fn.mkdir('/tmp/memo-cwd-workdir', 'p')
-        vim.fn.chdir('/tmp/memo-cwd-workdir')
-
-        local dir = '/tmp/memo-cwd-scratch'
-        local prefix = require('memo.scratch').cwd_key() .. '-'
-        vim.fn.writefile({}, dir .. '/' .. prefix .. '20260920T012345-a1b2c3.asc')
-        vim.fn.writefile({}, dir .. '/' .. prefix .. '20260920T023456-deadbe.gpg')
-      ]])
-		end)
-
-		it("lists only scratch files for the current cwd", function()
-			local prefix = child.lua_get("require('memo.scratch').cwd_key() .. '-'")
-			local files = child.lua_get("M.files_for_cwd()")
-
-			MiniTest.expect.equality(files, {
-				"/tmp/memo-cwd-scratch/" .. prefix .. "20260920T012345-a1b2c3.asc",
-				"/tmp/memo-cwd-scratch/" .. prefix .. "20260920T023456-deadbe.gpg",
-			})
-		end)
-
-		it("excludes files of other cwds, invalid names, and non-files", function()
-			child.lua([[
-        local dir = '/tmp/memo-cwd-scratch'
-        local prefix = require('memo.scratch').cwd_key() .. '-'
-        vim.fn.writefile({}, dir .. '/zzz-20260920T012345-a1b2c4.asc')
-        vim.fn.writefile({}, dir .. '/' .. prefix .. '20260920T012345-xyz123.asc')
-        vim.fn.mkdir(dir .. '/' .. prefix .. '20260920T012345-feedcd.asc')
-      ]])
-
-			local prefix = child.lua_get("require('memo.scratch').cwd_key() .. '-'")
-			local files = child.lua_get("M.files_for_cwd()")
-
-			MiniTest.expect.equality(files, {
-				"/tmp/memo-cwd-scratch/" .. prefix .. "20260920T012345-a1b2c3.asc",
-				"/tmp/memo-cwd-scratch/" .. prefix .. "20260920T023456-deadbe.gpg",
-			})
-		end)
-	end)
-
 	describe("with gpg key without password", function()
 		setup(function()
 			helpers.setup_test_env()
 			helpers.create_gpg_key("mock@example.com")
+		end)
+
+		before_each(function()
+			child.lua([[ vim.fn.delete(vim.fs.joinpath(vim.fn.stdpath("data"), "memo-scratch"), "rf") ]])
 		end)
 
 		teardown(function()
@@ -198,7 +99,7 @@ describe("scratch", function()
 		end)
 
 		it("opens a scratch buffer named as a real file in the nvim data dir", function()
-			child.lua("M.create()")
+			child.lua("M.open_or_create()")
 
 			local buffer = child.api.nvim_get_current_buf()
 			local name = child.api.nvim_buf_get_name(buffer)
@@ -214,7 +115,7 @@ describe("scratch", function()
         -- Rerun setup to ensurethe custom global is picked up.
         require("memo.config").setup()
       ]])
-			child.lua("M.create()")
+			child.lua("M.open_or_create()")
 			local buffer = child.api.nvim_get_current_buf()
 			local name = child.api.nvim_buf_get_name(buffer)
 
@@ -222,17 +123,16 @@ describe("scratch", function()
 			MiniTest.expect.equality(vim.fn.fnamemodify(name, ":e"), "asc")
 		end)
 
-		it("names the scratch file with the cwd path and a timestamp", function()
-			child.lua("M.create()")
+		it("names the scratch file after the cwd", function()
+			child.lua("M.open_or_create()")
 
 			local name = child.api.nvim_buf_get_name(0)
 
-			MiniTest.expect.equality(name:find(cwd_key() .. "-", 1, true) ~= nil, true)
-			MiniTest.expect.equality(name:match("T%d%d%d%d%d%d%-%x%x%x%x%x%x%.asc$") ~= nil, true)
+			MiniTest.expect.equality(name:find(cwd_key() .. "-scratch.asc", 1, true) ~= nil, true)
 		end)
 
 		it("opens in a new tab when the window split is tab", function()
-			child.lua("M.create({ window = { split = 'tab' } })")
+			child.lua("M.open_or_create({ window = { split = 'tab' } })")
 
 			local buffer = child.api.nvim_get_current_buf()
 			local name = child.api.nvim_buf_get_name(buffer)
@@ -244,20 +144,20 @@ describe("scratch", function()
 		it("opens beside the current window when the window split is vsplit", function()
 			local wins_before = #child.api.nvim_list_wins()
 
-			child.lua("M.create({ window = { split = 'vsplit' } })")
+			child.lua("M.open_or_create({ window = { split = 'vsplit' } })")
 
 			MiniTest.expect.equality(#child.api.nvim_list_wins(), wins_before + 1)
 		end)
 
 		it("does not show the [Not edited] flag", function()
-			child.lua("M.create()")
+			child.lua("M.open_or_create()")
 
 			local info = child.cmd_capture("file")
 			MiniTest.expect.equality(info:find("[Not edited]", 1, true) == nil, true)
 		end)
 
 		it("encrypts scratch content to the nvim data dir on write", function()
-			child.lua("M.create()")
+			child.lua("M.open_or_create()")
 			local name = child.api.nvim_buf_get_name(0)
 
 			child.type_keys("i", "Secret scratch content", "<Esc>")
@@ -274,7 +174,7 @@ describe("scratch", function()
 
 		it("encrypts with a passphrase when the passphrase mode is configured", function()
 			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "scratch-sym" end ]])
-			child.lua("M.create({ encryption = { mode = 'passphrase' } })")
+			child.lua("M.open_or_create({ encryption = { mode = 'passphrase' } })")
 			local name = child.api.nvim_buf_get_name(0)
 
 			child.type_keys("i", "secret scratch", "<Esc>")
@@ -297,7 +197,7 @@ describe("scratch", function()
 		it("leaves no scratch file behind when the initial passphrase is dismissed", function()
 			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "" end ]])
 
-			local created = child.lua_get([[ M.create({ encryption = { mode = "passphrase" } }) ]])
+			local created = child.lua_get([[ M.open_or_create({ encryption = { mode = "passphrase" } }) ]])
 			local name = child.api.nvim_buf_get_name(0)
 
 			MiniTest.expect.equality(created, false)
@@ -354,7 +254,7 @@ describe("scratch", function()
 		end)
 
 		it("keeps the buffer open after writing", function()
-			child.lua("M.create()")
+			child.lua("M.open_or_create()")
 			local buffer = child.api.nvim_get_current_buf()
 			local name = child.api.nvim_buf_get_name(buffer)
 
@@ -366,7 +266,7 @@ describe("scratch", function()
 		end)
 
 		it("survives switching away", function()
-			child.lua("M.create()")
+			child.lua("M.open_or_create()")
 			local name = child.api.nvim_buf_get_name(0)
 
 			child.type_keys("i", "sticky", "<Esc>")
@@ -384,7 +284,7 @@ describe("scratch", function()
 		end)
 
 		it("re-encrypts updated content on subsequent writes", function()
-			child.lua("M.create()")
+			child.lua("M.open_or_create()")
 			local name = child.api.nvim_buf_get_name(0)
 
 			child.type_keys("i", "First line", "<Esc>")
@@ -401,7 +301,7 @@ describe("scratch", function()
 		end)
 
 		it("restores scratch buffers from a session", function()
-			child.lua("M.create()")
+			child.lua("M.open_or_create()")
 
 			child.type_keys("i", "Session restored content", "<Esc>")
 			child.cmd("write")
@@ -425,18 +325,32 @@ describe("scratch", function()
 			MiniTest.expect.equality(lines, { "Session restored content" })
 		end)
 
-		it("opens unique scratch buffers on repeated calls", function()
-			child.lua("M.create()")
+		it("reopens the same scratch buffer on repeated calls", function()
+			child.lua("M.open_or_create()")
 			local first = child.api.nvim_buf_get_name(0)
 
-			child.lua("M.create()")
+			child.lua("M.open_or_create()")
 			local second = child.api.nvim_buf_get_name(0)
 
-			MiniTest.expect.equality(first == second, false)
+			MiniTest.expect.equality(first, second)
+		end)
+
+		it("keeps unsaved content when reopening the scratch buffer", function()
+			child.lua("M.open_or_create()")
+			local name = child.api.nvim_buf_get_name(0)
+
+			child.type_keys("i", "unsaved scratch", "<Esc>")
+			child.lua("M.open_or_create()")
+
+			local lines = child.api.nvim_buf_get_lines(0, 0, -1, false)
+
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), name)
+			MiniTest.expect.equality(lines, { "unsaved scratch" })
+			MiniTest.expect.equality(child.bo.modified, true)
 		end)
 
 		it("loads content when opening an existing scratch file directly", function()
-			child.lua("M.create()")
+			child.lua("M.open_or_create()")
 			local name = child.api.nvim_buf_get_name(0)
 
 			child.type_keys("i", "durable content", "<Esc>")
@@ -454,8 +368,8 @@ describe("scratch", function()
 			MiniTest.expect.equality(lines, { "durable content" })
 		end)
 
-		it("deletes the encrypted file when the buffer is deleted", function()
-			child.lua("M.create()")
+		it("keeps the encrypted file when the buffer is deleted", function()
+			child.lua("M.open_or_create()")
 			local name = child.api.nvim_buf_get_name(0)
 
 			child.type_keys("i", "content", "<Esc>")
@@ -464,7 +378,7 @@ describe("scratch", function()
 			child.cmd("bdelete")
 
 			MiniTest.expect.equality(child.fn.buflisted(name), 0)
-			MiniTest.expect.equality(child.fn.filereadable(name), 0)
+			MiniTest.expect.equality(child.fn.filereadable(name), 1)
 		end)
 
 		it("does not delete unrelated note files in scratch dir", function()
@@ -480,8 +394,8 @@ describe("scratch", function()
 			MiniTest.expect.equality(child.fn.filereadable(encrypted), 1)
 		end)
 
-		it("deletes the encrypted file when the buffer is wiped", function()
-			child.lua("M.create()")
+		it("keeps the encrypted file when the buffer is wiped", function()
+			child.lua("M.open_or_create()")
 			local name = child.api.nvim_buf_get_name(0)
 
 			child.type_keys("i", "content", "<Esc>")
@@ -490,7 +404,7 @@ describe("scratch", function()
 			child.cmd("bwipeout")
 
 			MiniTest.expect.equality(child.fn.bufexists(name), 0)
-			MiniTest.expect.equality(child.fn.filereadable(name), 0)
+			MiniTest.expect.equality(child.fn.filereadable(name), 1)
 		end)
 
 		it("saves a scratch buffer as a note in the notes dir", function()
@@ -546,12 +460,16 @@ describe("scratch", function()
 			helpers.create_gpg_key("mock-password@example.com", gpg_key_password)
 		end)
 
+		before_each(function()
+			child.lua([[ vim.fn.delete(vim.fs.joinpath(vim.fn.stdpath("data"), "memo-scratch"), "rf") ]])
+		end)
+
 		teardown(function()
 			helpers.cleanup_test_env()
 		end)
 
 		it("encrypts scratch content when gpg key has password", function()
-			child.lua("M.create()")
+			child.lua("M.open_or_create()")
 			local name = child.api.nvim_buf_get_name(0)
 
 			child.type_keys("i", "Secret scratch content", "<Esc>")

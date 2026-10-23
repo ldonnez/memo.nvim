@@ -34,13 +34,13 @@ function M.encode_cwd_key(path)
 	end))
 end
 
----Match the "<cwd key>-<timestamp>-<hash>.<ext>" parts of a scratch filename.
+local SUFFIX = "-scratch"
+
+---Match the "<cwd key>-scratch.<ext>" parts of a scratch filename.
 ---The extension is captured rather than hardcoded, so a scratch file keeps the
 ---extension it was created with.
 ---@param filename string
 ---@return string? key
----@return string? timestamp
----@return string? hash
 ---@return string? ext
 local function match_parts(filename)
 	local ext = utils.get_extension(filename)
@@ -49,61 +49,63 @@ local function match_parts(filename)
 		return nil
 	end
 
-	-- The hash is wrapped in its own capture group: Lua's pattern engine
-	-- would otherwise return the previous capture for it after backtracking
-	-- the greedy leading `(.*)`.
-	local key, ts, hash =
-		filename:match("^(.*)%-(%d%d%d%d%d%d%d%dT%d%d%d%d%d%d)%-([%x][%x][%x][%x][%x][%x])%." .. ext .. "$")
+	local key = filename:match("^(.*)%-scratch%." .. ext .. "$")
 
-	if not key then
+	if not key or key == "" then
 		return nil
 	end
 
-	return key, ts, hash, ext
+	return key, ext
 end
 
----Rewrite a scratch filename for display as "<cwd path>-<timestamp>-<hash>.<ext>".
+---Rewrite a scratch filename for display as "<cwd path>-scratch.<ext>".
 ---@param filename string
 ---@return string
 function M.display_scratch(filename)
-	local key, ts, hash, ext = match_parts(filename)
+	local key, ext = match_parts(filename)
 	if not key then
 		return filename
 	end
-	return M.decode_cwd_key(key) .. "-" .. ts .. "-" .. hash .. "." .. ext
+	return M.decode_cwd_key(key) .. SUFFIX .. "." .. ext
 end
 
 ---Recover the real scratch filename from a line rendered by `display_scratch`.
 ---@param entry string
 ---@return string
 function M.filename_from_display(entry)
-	local key, ts, hash, ext = match_parts(entry)
+	local key, ext = match_parts(entry)
 	if not key then
 		return entry
 	end
-	return M.encode_cwd_key(key) .. "-" .. ts .. "-" .. hash .. "." .. ext
+	return M.encode_cwd_key(key) .. SUFFIX .. "." .. ext
 end
 
+---The scratch file for the current cwd. There is exactly one per cwd.
 ---@return string
-local function get_timestamp()
-	return os.date("!%Y%m%dT%H%M%S")
+local function scratch_file()
+	local config = require("memo.config")
+
+	return vim.fs.joinpath(config.scratch_dir, M.cwd_key() .. SUFFIX .. "." .. config.extension)
 end
 
----@return string
-local function get_hash()
-	return vim.fn.sha256(tostring(vim.uv.hrtime())):sub(1, 6)
-end
+---Opens `file` in a window, reusing its buffer when it is already loaded so
+---unsaved scratch content is never reloaded or lost.
+---@param file string
+---@param win_config? MemoWindowConfig
+---@return integer bufnr
+local function open_file(file, win_config)
+	local win = window.open(win_config)
+	local bufnr = vim.fn.bufnr(file)
 
----@return string|nil -- nil when the scratch directory could not be created
-local function get_scratch_file()
-	local dir = require("memo.config").scratch_dir
-	if not utils.ensure_directories(dir) then
-		return nil
-	end
+	vim.api.nvim_win_call(win, function()
+		if bufnr ~= -1 and vim.api.nvim_buf_is_loaded(bufnr) then
+			vim.api.nvim_win_set_buf(win, bufnr)
+		else
+			vim.cmd("silent edit " .. vim.fn.fnameescape(file))
+		end
+	end)
 
-	local base = M.cwd_key() .. "-" .. get_timestamp() .. "-" .. get_hash()
-
-	return vim.fs.joinpath(dir, base .. "." .. require("memo.config").extension)
+	return vim.api.nvim_win_get_buf(win)
 end
 
 ---@class MemoScratchOpts
@@ -111,56 +113,27 @@ end
 ---always splits by default
 ---@field encryption? GpgEncryptOpts how to encrypt, "key" when omitted
 
+---Opens the scratch file for the current cwd, creating it on first use.
 ---@param opts? MemoScratchOpts
-function M.create(opts)
-	local file = get_scratch_file()
-	if not file then
-		return
+---@return boolean success
+function M.open_or_create(opts)
+	local file = scratch_file()
+	local exists = utils.file_has_content(file)
+
+	if not exists and not utils.ensure_directories(require("memo.config").scratch_dir) then
+		return false
 	end
 
-	local win = window.open(opts and opts.window)
+	local buf = open_file(file, opts and opts.window)
 
-	vim.api.nvim_win_call(win, function()
-		vim.cmd("edit " .. vim.fn.fnameescape(file))
-	end)
-
-	local buf = vim.api.nvim_win_get_buf(win)
+	if exists then
+		return true
+	end
 
 	local mode = opts and opts.encryption and opts.encryption.mode
-	return require("memo.crypto").encrypt_from_stdin(file, {}, buf, { mode = mode })
-end
+	local ok = require("memo.crypto").encrypt_from_stdin(file, {}, buf, { mode = mode })
 
-function M.is_scratch_file(path)
-	local filename = vim.fn.fnamemodify(path, ":t")
-
-	local key = match_parts(filename)
-
-	return key ~= nil and key ~= ""
-end
-
----Lists the scratch files stored for the current cwd, oldest first.
----@return string[] absolute paths
-function M.files_for_cwd()
-	local dir = require("memo.config").scratch_dir
-	local prefix = M.cwd_key() .. "-"
-	local files = {}
-	local handle = vim.uv.fs_scandir(dir)
-	if not handle then
-		return files
-	end
-
-	while true do
-		local name, ftype = vim.uv.fs_scandir_next(handle)
-		if not name then
-			break
-		end
-		if ftype == "file" and name:sub(1, #prefix) == prefix and M.is_scratch_file(name) then
-			files[#files + 1] = vim.fs.joinpath(dir, name)
-		end
-	end
-
-	table.sort(files)
-	return files
+	return ok
 end
 
 return M

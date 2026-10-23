@@ -38,7 +38,6 @@ describe("pickers", function()
 
 		it("does not error for the scratch pickers when fzf-lua is missing", function()
 			child.lua("M.scratch_files_picker()")
-			child.lua("M.cwd_scratch_files_picker()")
 		end)
 
 		it("loads the previewer module without the optional dependency", function()
@@ -108,13 +107,6 @@ describe("pickers", function()
 			MiniTest.expect.equality(child.lua_get("type(_G.resolved._fmt.from)"), "function")
 		end)
 
-		it("hides entries outside the current directory in the cwd picker", function()
-			resolve("cwd_scratch_files_picker_opts")
-
-			MiniTest.expect.equality(child.lua_get([[_G.resolved.fn_transform("/tmp/not-a-scratch.asc") == nil]]), true)
-			MiniTest.expect.equality(child.lua_get("_G.resolved.multiprocess"), false)
-		end)
-
 		it("deletes scratch entries that have no buffer", function()
 			resolve("scratch_files_picker_opts")
 
@@ -126,6 +118,21 @@ describe("pickers", function()
       ]])
 
 			MiniTest.expect.equality(child.lua_get("vim.fn.filereadable(_G.scratch_file)"), 0)
+		end)
+
+		it("deletes scratch entries that have an open buffer", function()
+			resolve("scratch_files_picker_opts")
+
+			child.lua([[
+        local dir = require("memo.config").scratch_dir
+        _G.scratch_file = dir .. "/scratch-delete-me.md.asc"
+        vim.fn.writefile({ "body" }, _G.scratch_file)
+        vim.cmd("edit " .. vim.fn.fnameescape(_G.scratch_file))
+        _G.resolved.actions["ctrl-x"].fn({ _G.scratch_file }, _G.resolved)
+      ]])
+
+			MiniTest.expect.equality(child.lua_get("vim.fn.filereadable(_G.scratch_file)"), 0)
+			MiniTest.expect.equality(child.lua_get("vim.fn.bufexists(_G.scratch_file)"), 0)
 		end)
 
 		it("loads the previewer module with the dependency", function()
