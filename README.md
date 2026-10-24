@@ -99,7 +99,7 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
     {
       "<leader>mp",
       function()
-        require("memo.pickers.fzf_lua").scratch_files_picker()
+        require("memo.pickers.fzf_lua").scratch_files()
       end,
       desc = "Memo: Scratch files",
     },
@@ -114,7 +114,7 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
     {
       "<leader>mf",
       function()
-        require("memo.pickers.fzf_lua").files_picker()
+        require("memo.pickers.fzf_lua").files()
       end,
       desc = "Memo: Files",
     },
@@ -190,7 +190,7 @@ vim.keymap.set({ "n", "v" }, "<leader>mC", function()
 end, { desc = "Memo: Capture to braindump (passphrase)" })
 
 vim.keymap.set("n", "<leader>mp", function()
-  require("memo.pickers.fzf_lua").scratch_files_picker()
+  require("memo.pickers.fzf_lua").scratch_files()
 end, { desc = "Memo: Scratch files" })
 
 vim.keymap.set({ "n", "v" }, "<leader>mS", function()
@@ -198,7 +198,7 @@ vim.keymap.set({ "n", "v" }, "<leader>mS", function()
 end, { desc = "Memo: Save as note" })
 
 vim.keymap.set("n", "<leader>mf", function()
-  require("memo.pickers.fzf_lua").files_picker()
+  require("memo.pickers.fzf_lua").files()
 end, { desc = "Memo: Files" })
 
 vim.keymap.set({ "n", "v" }, "<leader>mn", function()
@@ -677,8 +677,8 @@ require("memo").capture({
 memo.nvim includes pickers built on `require("fzf-lua").files` that scope the search to your notes directory or your encrypted scratch files.
 
 ```lua
-require("memo.pickers.fzf_lua").files_picker()             -- notes directory
-require("memo.pickers.fzf_lua").scratch_files_picker()     -- all scratches
+require("memo.pickers.fzf_lua").files()         -- notes directory
+require("memo.pickers.fzf_lua").scratch_files() -- all scratches
 ```
 
 The scratch picker additionally binds `ctrl-x` to delete the selected scratch
@@ -688,7 +688,7 @@ holding a deleted file is wiped too.
 Each picker can show a preview pane with the decrypted note, off by default. Pass `{ previewer = true }` to turn it on:
 
 ```lua
-require("memo.pickers.fzf_lua").files_picker({ previewer = true })
+require("memo.pickers.fzf_lua").files({ previewer = true })
 ```
 
 When the note is already open in a buffer the pane previews the buffer; otherwise it is decrypted asynchronously, so the picker stays responsive while the plaintext streams in. A decrypt is given 30 seconds before it is abandoned. Moving to another note abandons an in-flight decrypt, and a note's decrypted preview is reused so revisiting it does not decrypt again. The encrypted bytes on disk are never shown.

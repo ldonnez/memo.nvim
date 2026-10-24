@@ -33,11 +33,11 @@ describe("pickers", function()
 		end)
 
 		it("does not error when fzf-lua is missing", function()
-			child.lua("M.files_picker()")
+			child.lua("M.files()")
 		end)
 
 		it("does not error for the scratch picker when fzf-lua is missing", function()
-			child.lua("M.scratch_files_picker()")
+			child.lua("M.scratch_files()")
 		end)
 
 		it("loads the previewer module without the optional dependency", function()
@@ -74,7 +74,7 @@ describe("pickers", function()
 		end
 
 		it("builds notes picker options fzf-lua accepts", function()
-			resolve("files_picker_opts")
+			resolve("files_opts")
 
 			MiniTest.expect.equality(child.lua_get("_G.resolved.cwd"), NOTES_DIR)
 			MiniTest.expect.equality(child.lua_get("_G.resolved.previewer"), false)
@@ -82,7 +82,7 @@ describe("pickers", function()
 		end)
 
 		it("forwards the gpg previewer class when previews are requested", function()
-			resolve("files_picker_opts", { previewer = true })
+			resolve("files_opts", { previewer = true })
 
 			MiniTest.expect.equality(
 				child.lua_get([[
@@ -94,7 +94,7 @@ describe("pickers", function()
 		end)
 
 		it("builds scratch picker options with actions and transforms", function()
-			resolve("scratch_files_picker_opts")
+			resolve("scratch_files_opts")
 
 			MiniTest.expect.equality(
 				child.lua_get("_G.resolved.cwd"),
@@ -108,7 +108,7 @@ describe("pickers", function()
 		end)
 
 		it("deletes scratch entries that have no buffer", function()
-			resolve("scratch_files_picker_opts")
+			resolve("scratch_files_opts")
 
 			child.lua([[
         local dir = require("memo.config").scratch_dir
@@ -121,7 +121,7 @@ describe("pickers", function()
 		end)
 
 		it("deletes scratch entries that have an open buffer", function()
-			resolve("scratch_files_picker_opts")
+			resolve("scratch_files_opts")
 
 			child.lua([[
         local dir = require("memo.config").scratch_dir

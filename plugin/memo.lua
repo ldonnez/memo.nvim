@@ -131,14 +131,14 @@ end, {
 })
 
 vim.api.nvim_create_user_command("MemoFiles", function()
-	require("memo.pickers.fzf_lua").files_picker()
+	require("memo.pickers.fzf_lua").files()
 end, {
 	nargs = 0,
 	desc = "Browse and open files",
 })
 
 vim.api.nvim_create_user_command("MemoScratchFiles", function()
-	require("memo.pickers.fzf_lua").scratch_files_picker()
+	require("memo.pickers.fzf_lua").scratch_files()
 end, {
 	nargs = 0,
 	desc = "Browse and open encrypted scratch files",

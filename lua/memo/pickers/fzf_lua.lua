@@ -57,14 +57,14 @@ local function delete_scratch_files(selected, opts)
 	end
 end
 
--- The `*_picker_opts` functions are exported for tests: they build the options
--- each picker hands to fzf-lua so the tests can validate them without opening
--- the fzf UI (which needs a terminal). The `*_picker` functions below are the
--- real entrypoints and share these builders.
+-- The `*_opts` functions are exported for tests: they build the options each
+-- picker hands to fzf-lua so the tests can validate them without opening the
+-- fzf UI (which needs a terminal). The entrypoint functions below are the real
+-- ones and share these builders.
 
 ---@param opts? MemoPickerOpts
 ---@return table
-function M.files_picker_opts(opts)
+function M.files_opts(opts)
 	return build_common_opts(vim.tbl_extend("force", DEFAULTS, {
 		dir = config.notes_dir,
 	}, opts or {}))
@@ -72,7 +72,7 @@ end
 
 ---@param opts? MemoPickerOpts
 ---@return table
-function M.scratch_files_picker_opts(opts)
+function M.scratch_files_opts(opts)
 	local common = build_common_opts(vim.tbl_extend("force", DEFAULTS, {
 		dir = config.scratch_dir,
 	}, opts or {}))
@@ -96,23 +96,23 @@ function M.scratch_files_picker_opts(opts)
 end
 
 ---@param opts? MemoPickerOpts
-function M.files_picker(opts)
+function M.files(opts)
 	local fzf = load_fzf()
 	if not fzf then
 		return
 	end
 
-	fzf.files(M.files_picker_opts(opts))
+	fzf.files(M.files_opts(opts))
 end
 
 ---@param opts? MemoPickerOpts
-function M.scratch_files_picker(opts)
+function M.scratch_files(opts)
 	local fzf = load_fzf()
 	if not fzf then
 		return
 	end
 
-	fzf.files(M.scratch_files_picker_opts(opts))
+	fzf.files(M.scratch_files_opts(opts))
 end
 
 return M
