@@ -36,7 +36,7 @@ describe("pickers", function()
 			child.lua("M.files_picker()")
 		end)
 
-		it("does not error for the scratch pickers when fzf-lua is missing", function()
+		it("does not error for the scratch picker when fzf-lua is missing", function()
 			child.lua("M.scratch_files_picker()")
 		end)
 

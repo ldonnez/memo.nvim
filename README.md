@@ -517,7 +517,7 @@ Notes:
 - Files are stored encrypted in `g:memo_scratch_dir` as `<cwd-key>-scratch[.<content extension>].<note extension>`, one per `cwd`, so buffers from different projects never collide.
 - Pass `extension = "md"` when first creating a scratch to give it a content extension and filetype.
 - The buffer reuses the regular memo read/write autocommands, so files persist across restarts and sessions (e.g. [auto-session](https://github.com/rmagatti/auto-session)).
-- Use `ctrl-x` in the scratch pickers to delete scratch files.
+- Use `ctrl-x` in the scratch picker to delete scratch files.
 
 ### Save a buffer as a note
 
@@ -681,7 +681,7 @@ require("memo.pickers.fzf_lua").files_picker()             -- notes directory
 require("memo.pickers.fzf_lua").scratch_files_picker()     -- all scratches
 ```
 
-The scratch pickers additionally bind `ctrl-x` to delete the selected scratch
+The scratch picker additionally binds `ctrl-x` to delete the selected scratch
 files (multi-select with `tab`/`alt-a`) without closing the picker; any buffer
 holding a deleted file is wiped too.
 
@@ -693,7 +693,7 @@ require("memo.pickers.fzf_lua").files_picker({ previewer = true })
 
 When the note is already open in a buffer the pane previews the buffer; otherwise it is decrypted asynchronously, so the picker stays responsive while the plaintext streams in. A decrypt is given 30 seconds before it is abandoned. Moving to another note abandons an in-flight decrypt, and a note's decrypted preview is reused so revisiting it does not decrypt again. The encrypted bytes on disk are never shown.
 
-Scratch files are stored under the obfuscated name `<encoded-cwd>-scratch[.<content extension>].<ext>`, so the scratch pickers decode the cwd path for display and show `<cwd-path>-scratch[.<content extension>].<ext>`. The cwd picker shows the scratch file created in the current working directory.
+Scratch files are stored under the obfuscated name `<encoded-cwd>-scratch[.<content extension>].<ext>`, so the scratch picker decodes the cwd path for display and shows `<cwd-path>-scratch[.<content extension>].<ext>`.
 
 ## Development
 
