@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.1](https://github.com/ldonnez/memo.nvim/compare/v0.19.0...v0.19.1) (2026-10-24)
+
+
+### Documentation
+
+* remove plural references to scratch pickers ([278f579](https://github.com/ldonnez/memo.nvim/commit/278f5796a5356205a9677c5d18d09f18a20cda83))
+
 ## [0.19.0](https://github.com/ldonnez/memo.nvim/compare/v0.18.1...v0.19.0) (2026-10-24)
 
 
