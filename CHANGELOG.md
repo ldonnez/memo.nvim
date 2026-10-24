@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.1](https://github.com/ldonnez/memo.nvim/compare/v0.18.0...v0.18.1) (2026-10-24)
+
+
+### Code Refactoring
+
+* ensure correct capture type ([8c9cad7](https://github.com/ldonnez/memo.nvim/commit/8c9cad723b964a39d92c5f5e58e04e01f5c5f984))
+
 ## [0.18.0](https://github.com/ldonnez/memo.nvim/compare/v0.17.7...v0.18.0) (2026-10-23)
 
 
