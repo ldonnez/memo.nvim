@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/ldonnez/memo.nvim/compare/v0.18.1...v0.19.0) (2026-10-24)
+
+
+### Features
+
+* **scratch:** allow a content extension for scratch files ([d8e277e](https://github.com/ldonnez/memo.nvim/commit/d8e277e33841edcda8eab3e78c75ee63f678a969))
+
 ## [0.18.1](https://github.com/ldonnez/memo.nvim/compare/v0.18.0...v0.18.1) (2026-10-24)
 
 
