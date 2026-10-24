@@ -7,17 +7,29 @@ local window = require("memo.window")
 
 local M = {}
 
----@class CaptureConfig
----@field capture_file string
----@field target_header string? header the capture is inserted under
----@field header_padding integer? blank lines kept between the header and the capture
+---Options for `require("memo").capture`.
+---@class MemoCaptureOpts
+---@field capture_file? string capture file inside the notes dir, defaults to
+---the configured `g:memo_default_capture_file`
+---@field target_header? string header the capture is inserted under
+---@field header_padding? integer blank lines kept between the header and the
+---capture
 ---@field template? string window template, supports `os.date` formats and a `|`
 ---cursor marker. A selection is inserted at that marker, and becomes the whole
 ---capture window when the template has none.
----@field window MemoWindowConfig opens the capture in a split, every option
+---@field window? MemoWindowConfig opens the capture in a split, every option
 ---has a default
 ---@field encryption? GpgEncryptOpts how to encrypt a new capture file, "key"
 ---when omitted; an existing capture file always keeps the way it was encrypted
+
+---Capture config with the defaults applied, used internally.
+---@class CaptureConfig
+---@field capture_file string
+---@field target_header? string
+---@field header_padding integer
+---@field template? string
+---@field window MemoWindowConfig
+---@field encryption? GpgEncryptOpts
 
 ---@type table
 local DEFAULTS = {
@@ -170,10 +182,9 @@ local function append_capture(lines, config, bufnr)
 end
 
 ---Opens a capture buffer, prefilled with the target header and the template.
----@param opts CaptureConfig
+---@param opts? MemoCaptureOpts
 function M.create(opts)
-	local cfg = opts --[[@as CaptureConfig]]
-	local config = vim.tbl_deep_extend("force", DEFAULTS, cfg) --[[@as CaptureConfig]]
+	local config = vim.tbl_deep_extend("force", DEFAULTS, opts or {}) --[[@as CaptureConfig]]
 
 	-- Owned by the config module, so it is resolved here and `DEFAULTS` stays
 	-- a partial. An empty value is rejected rather than resolved: `""` is

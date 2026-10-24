@@ -1,7 +1,7 @@
 local M = {}
 
 --Opens a capture buffer, prefilled with the target header and the template.
----@param opts CaptureConfig
+---@param opts? MemoCaptureOpts
 function M.capture(opts)
 	require("memo.capture").create(opts)
 end
