@@ -282,10 +282,10 @@ and `:MemoNewNote <path>` still take an explicit path and ignore the default.
 
 ### `g:memo_extension`
 
-Extension used for new notes, new scratch buffers, and notes saved from a
-buffer whose path has no note extension yet. `.asc` (armored ASCII) and
-`.gpg` are both read, and any other value is read as well, so the extension
-you pick is always recognized on the way back in.
+Extension used for new notes, the encrypted extension of new scratch buffers,
+and notes saved from a buffer whose path has no note extension yet. `.asc`
+(armored ASCII) and `.gpg` are both read, and any other value is read as
+well, so the extension you pick is always recognized on the way back in.
 
 - Default: `asc`
 
@@ -497,13 +497,25 @@ vim.keymap.set("n", "<leader>mP", function()
 end, { desc = "Memo: New passphrase scratch buffer" })
 ```
 
+Give the scratch a content extension with `extension`, e.g. `md` for a
+Markdown buffer. The note extension still follows it, so the file becomes
+`<cwd-key>-scratch.md.<note extension>`:
+
+```lua
+require("memo").scratch({ extension = "md" })
+```
+
+Like the encryption mode, `extension` only applies when the scratch file is
+first created.
+
 Or use the command `:MemoScratch [passphrase|key] [split|vsplit|tab]`, e.g.
 `:MemoScratch passphrase vsplit`. The encryption mode only applies when the
 scratch file is first created.
 
 Notes:
 
-- Files are stored encrypted in `g:memo_scratch_dir` as `<cwd-key>-scratch.<ext>`, one per `cwd`, so buffers from different projects never collide.
+- Files are stored encrypted in `g:memo_scratch_dir` as `<cwd-key>-scratch[.<content extension>].<note extension>`, one per `cwd`, so buffers from different projects never collide.
+- Pass `extension = "md"` when first creating a scratch to give it a content extension and filetype.
 - The buffer reuses the regular memo read/write autocommands, so files persist across restarts and sessions (e.g. [auto-session](https://github.com/rmagatti/auto-session)).
 - Use `ctrl-x` in the scratch pickers to delete scratch files.
 
@@ -681,7 +693,7 @@ require("memo.pickers.fzf_lua").files_picker({ previewer = true })
 
 When the note is already open in a buffer the pane previews the buffer; otherwise it is decrypted asynchronously, so the picker stays responsive while the plaintext streams in. A decrypt is given 30 seconds before it is abandoned. Moving to another note abandons an in-flight decrypt, and a note's decrypted preview is reused so revisiting it does not decrypt again. The encrypted bytes on disk are never shown.
 
-Scratch files are stored under the obfuscated name `<encoded-cwd>-scratch.<ext>`, so the scratch pickers decode the cwd path for display and show `<cwd-path>-scratch.<ext>`. The cwd picker shows the scratch file created in the current working directory.
+Scratch files are stored under the obfuscated name `<encoded-cwd>-scratch[.<content extension>].<ext>`, so the scratch pickers decode the cwd path for display and show `<cwd-path>-scratch[.<content extension>].<ext>`. The cwd picker shows the scratch file created in the current working directory.
 
 ## Development
 

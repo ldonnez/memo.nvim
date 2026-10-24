@@ -69,11 +69,18 @@ describe("scratch", function()
 				"%2FUsers%2Fdev%2Fproject-scratch.asc",
 				"my-project-scratch.gpg",
 				"%2Ftmp%2Fmemo-scratch-scratch.gpg",
+				"%2FUsers%2Fdev%2Fproject-scratch.md.asc",
 			}
 
 			for _, name in ipairs(names) do
 				MiniTest.expect.equality(roundtrip(name), name)
 			end
+		end)
+
+		it("keeps the content extension in the displayed name", function()
+			local name = "%2FUsers%2Fdev%2Fproject-scratch.md.asc"
+
+			MiniTest.expect.equality(require("memo.scratch").display_scratch(name), "/Users/dev/project-scratch.md.asc")
 		end)
 
 		it("passes through names that are not scratch files", function()
@@ -131,6 +138,33 @@ describe("scratch", function()
 			MiniTest.expect.equality(name:find(cwd_key() .. "-scratch.asc", 1, true) ~= nil, true)
 		end)
 
+		it("uses the extension option before the note extension", function()
+			child.lua([[ M.open_or_create({ extension = "md" }) ]])
+
+			local name = child.api.nvim_buf_get_name(0)
+
+			MiniTest.expect.equality(name:find(cwd_key() .. "-scratch.md.asc", 1, true) ~= nil, true)
+			MiniTest.expect.equality(child.bo.filetype, "markdown")
+		end)
+
+		it("ignores an empty extension option", function()
+			child.lua([[ M.open_or_create({ extension = "" }) ]])
+
+			local name = child.api.nvim_buf_get_name(0)
+
+			MiniTest.expect.equality(name:find(cwd_key() .. "-scratch.asc", 1, true) ~= nil, true)
+		end)
+
+		it("reopens the same extension scratch on repeated calls", function()
+			child.lua([[ M.open_or_create({ extension = "md" }) ]])
+			local first = child.api.nvim_buf_get_name(0)
+
+			child.lua([[ M.open_or_create({ extension = "md" }) ]])
+			local second = child.api.nvim_buf_get_name(0)
+
+			MiniTest.expect.equality(first, second)
+		end)
+
 		it("opens in a new tab when the window split is tab", function()
 			child.lua("M.open_or_create({ window = { split = 'tab' } })")
 
@@ -170,6 +204,21 @@ describe("scratch", function()
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			MiniTest.expect.equality(result.stdout:find("Secret scratch content") ~= nil, true)
+		end)
+
+		it("encrypts and decrypts content in an extension scratch", function()
+			child.lua([[ M.open_or_create({ extension = "md" }) ]])
+			local name = child.api.nvim_buf_get_name(0)
+
+			child.type_keys("i", "# Markdown scratch", "<Esc>")
+			child.cmd("write")
+
+			MiniTest.expect.equality(child.fn.filereadable(name), 1)
+			MiniTest.expect.equality(child.fn.readfile(name)[1], "-----BEGIN PGP MESSAGE-----")
+
+			local result = helpers.decrypt_file(name)
+			MiniTest.expect.equality(result.code, 0)
+			MiniTest.expect.equality(vim.trim(result.stdout or ""), "# Markdown scratch")
 		end)
 
 		it("encrypts with a passphrase when the passphrase mode is configured", function()

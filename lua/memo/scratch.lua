@@ -36,20 +36,18 @@ end
 
 local SUFFIX = "-scratch"
 
----Match the "<cwd key>-scratch.<ext>" parts of a scratch filename.
----The extension is captured rather than hardcoded, so a scratch file keeps the
----extension it was created with.
+---Match the "<cwd key>-scratch[.<content ext>].<note ext>" parts of a scratch
+---filename. The extensions are captured rather than hardcoded, so a scratch
+---file keeps the extensions it was created with.
 ---@param filename string
 ---@return string? key
----@return string? ext
+---@return string? ext everything after "-scratch."
 local function match_parts(filename)
-	local ext = utils.get_extension(filename)
-
-	if not ext then
+	if not utils.get_extension(filename) then
 		return nil
 	end
 
-	local key = filename:match("^(.*)%-scratch%." .. ext .. "$")
+	local key, ext = filename:match("^(.*)%-scratch%.(.+)$")
 
 	if not key or key == "" then
 		return nil
@@ -58,7 +56,8 @@ local function match_parts(filename)
 	return key, ext
 end
 
----Rewrite a scratch filename for display as "<cwd path>-scratch.<ext>".
+---Rewrite a scratch filename for display as
+---"<cwd path>-scratch[.<content ext>].<note ext>".
 ---@param filename string
 ---@return string
 function M.display_scratch(filename)
@@ -81,11 +80,17 @@ function M.filename_from_display(entry)
 end
 
 ---The scratch file for the current cwd. There is exactly one per cwd.
+---@param extension string? content extension, e.g. "md"
 ---@return string
-local function scratch_file()
+local function scratch_file(extension)
 	local config = require("memo.config")
+	local name = M.cwd_key() .. SUFFIX
 
-	return vim.fs.joinpath(config.scratch_dir, M.cwd_key() .. SUFFIX .. "." .. config.extension)
+	if extension and extension ~= "" then
+		name = name .. "." .. extension
+	end
+
+	return vim.fs.joinpath(config.scratch_dir, name .. "." .. config.extension)
 end
 
 ---Opens `file` in a window, reusing its buffer when it is already loaded so
@@ -112,12 +117,14 @@ end
 ---@field window? MemoWindowConfig opens the scratch in a split; a scratch
 ---always splits by default
 ---@field encryption? GpgEncryptOpts how to encrypt, "key" when omitted
+---@field extension? string content extension of a new scratch file, e.g.
+---"md" for a Markdown scratch buffer; the note extension still follows it
 
 ---Opens the scratch file for the current cwd, creating it on first use.
 ---@param opts? MemoScratchOpts
 ---@return boolean success
 function M.open_or_create(opts)
-	local file = scratch_file()
+	local file = scratch_file(opts and opts.extension)
 	local exists = utils.file_has_content(file)
 
 	if not exists and not utils.ensure_directories(require("memo.config").scratch_dir) then
