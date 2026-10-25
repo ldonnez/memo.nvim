@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.20.0](https://github.com/ldonnez/memo.nvim/compare/v0.19.1...v0.20.0) (2026-10-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* rename files_picker and scratch_files_picker to fiels and scratch_files
+
+### Features
+
+* add note archiving ([7671d35](https://github.com/ldonnez/memo.nvim/commit/7671d35d065f84370821b059e658dd32a2fe8949))
+
+
+### Bug Fixes
+
+* remove partial files when replacement raises ([9a5212b](https://github.com/ldonnez/memo.nvim/commit/9a5212b0095b1f145e7696a97e9e5e3cfb05c425))
+
+
+### Code Refactoring
+
+* rename files_picker and scratch_files_picker to fiels and scratch_files ([7589713](https://github.com/ldonnez/memo.nvim/commit/7589713420938f2842fd0bf2bbc56e43667cd1bf))
+
 ## [0.19.1](https://github.com/ldonnez/memo.nvim/compare/v0.19.0...v0.19.1) (2026-10-24)
 
 
