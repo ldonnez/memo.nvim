@@ -141,7 +141,10 @@ function M.create(opts)
 			local path = utils.resolve_note_path(target)
 
 			if not path then
-				message.defer_error("MemoRefile: note path must be inside the notes directory (%s)", require("memo.config").notes_dir)
+				message.defer_error(
+					"MemoRefile: note path must be inside the notes directory (%s)",
+					require("memo.config").notes_dir
+				)
 				return
 			end
 
