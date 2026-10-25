@@ -208,39 +208,6 @@ function M.check_exec(cmd)
 	return true
 end
 
----Resolves the lines to save: the active visual selection, or the lines given
----by an explicit command range (e.g. `:'<,'>MemoSaveAsNote`), or nil to fall
----back to the whole buffer.
----@param bufnr integer
----@param opts? { range?: integer, line1?: integer, line2?: integer }
----@return string[]|nil
-function M.resolve_selection(bufnr, opts)
-	if vim.fn.mode():match("[vV\22]") then
-		local start = vim.fn.getpos("v")
-		local finish = vim.fn.getpos(".")
-
-		if start[2] ~= 0 and finish[2] ~= 0 then
-			return vim.fn.getregion(start, finish)
-		end
-	end
-
-	if opts and opts.range and opts.range ~= 0 then
-		local start = vim.fn.getpos("'<")
-		local finish = vim.fn.getpos("'>")
-		local in_buffer = function(pos)
-			return pos[1] == 0 or pos[1] == bufnr
-		end
-		if in_buffer(start) and in_buffer(finish) and start[2] ~= 0 and finish[2] ~= 0 then
-			return vim.fn.getregion(start, finish)
-		end
-		local line1 = opts.line1 --[[@as integer]]
-		local line2 = opts.line2 --[[@as integer]]
-		return vim.api.nvim_buf_get_lines(bufnr, line1 - 1, line2, false)
-	end
-
-	return nil
-end
-
 ---Lazily load a plugin with fallback to packadd (only for Neovim 0.12+).
 ---Returns nil when the module cannot be required, so callers can bail out
 ---instead of using an error string as if it were the module.

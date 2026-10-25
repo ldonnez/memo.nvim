@@ -213,7 +213,7 @@ describe("save_as_note", function()
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.HOME .. "/escape.gpg"), 0)
 		end)
 
-		it("saves only the characterwise visual selection via the user command", function()
+		it("saves whole lines from a characterwise visual range via the user command", function()
 			local source = vim.env.NOTES_DIR .. "/random.txt"
 			child.cmd("edit " .. vim.fn.fnameescape(source))
 			child.api.nvim_buf_set_lines(0, 0, -1, false, {
@@ -234,9 +234,7 @@ describe("save_as_note", function()
 			local result = helpers.decrypt_file(note)
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
-			MiniTest.expect.equality(result.stdout:find("beta") ~= nil, true)
-			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
-			MiniTest.expect.equality(result.stdout:find("alpha") ~= nil, false)
+			MiniTest.expect.equality(result.stdout, "alpha beta gamma\n")
 		end)
 
 		it("saves only the visual selection when called during visual mode", function()
