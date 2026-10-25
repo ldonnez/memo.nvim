@@ -229,7 +229,7 @@ function M.kill_gpg_agent()
 end
 
 --- Directory the test env is rooted at. Unique per run,
-local TEST_HOME = "/tmp/" .. vim.fn.tempname():sub(1, 40)
+local TEST_HOME = "/tmp/memo-test-" .. vim.fn.getpid() .. "-" .. vim.uv.hrtime()
 
 --- @return string
 local function test_home()
@@ -249,7 +249,7 @@ function M.setup_test_env()
 	vim.env.NOTES_DIR = notes_dir
 	vim.env.SCRATCH_DIR = scratch_dir
 
-	vim.fn.mkdir(home, "p")
+	vim.uv.fs_mkdir(home, 448)
 	vim.fn.mkdir(notes_dir, "p")
 	vim.fn.mkdir(scratch_dir, "p")
 	vim.fn.mkdir(home .. "/.gnupg", "p")

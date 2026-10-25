@@ -470,22 +470,23 @@ describe("utils", function()
 		end)
 
 		it("returns false when the directory cannot be created", function()
-			local blocked = vim.fn.tempname()
+			local blocked = vim.fn.tempname() .. "-blocked-" .. vim.uv.hrtime()
 			local dir = blocked .. "/sub"
 			helpers.write_file(blocked, "not a directory")
 
-			MiniTest.expect.equality(util.ensure_directories(dir), false)
+			local message = require("memo.message")
+			local original_defer_error = message.defer_error
+			local reported
+			message.defer_error = function(fmt, ...)
+				reported = string.format(fmt, ...)
+			end
 
-			-- The error is deferred so it is safe inside an autocmd; let the
-			-- scheduler run before inspecting the messages.
-			vim.wait(1000, function()
-				local messages = vim.api.nvim_exec2("messages", { output = true }).output
-				return messages:find("Error creating directory", 1, true) ~= nil
-			end)
+			local created = util.ensure_directories(dir)
+			message.defer_error = original_defer_error
 
-			local messages = vim.api.nvim_exec2("messages", { output = true }).output
-			MiniTest.expect.equality(messages:find("Error creating directory", 1, true) ~= nil, true)
-			MiniTest.expect.equality(messages:find(dir, 1, true) ~= nil, true)
+			MiniTest.expect.equality(created, false)
+			MiniTest.expect.equality(reported:find("Error creating directory", 1, true) ~= nil, true)
+			MiniTest.expect.equality(reported:find(dir, 1, true) ~= nil, true)
 
 			vim.fn.delete(blocked)
 		end)
