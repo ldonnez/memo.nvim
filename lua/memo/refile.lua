@@ -145,6 +145,12 @@ function M.create(opts)
 				return
 			end
 
+			local source_path = vim.api.nvim_buf_get_name(source_buf)
+			if source_path ~= "" and vim.fn.fnamemodify(source_path, ":p") == path then
+				message.defer_error("MemoRefile: destination must differ from the source buffer")
+				return
+			end
+
 			if not utils.ensure_directories(vim.fs.dirname(path)) then
 				return
 			end
