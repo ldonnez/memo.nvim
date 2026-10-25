@@ -27,6 +27,13 @@ function M.save_as_note(opts)
 	return require("memo.save_as_note").create(opts)
 end
 
+--Moves the selected lines into the current note's companion archive file.
+---@param opts? MemoArchiveOpts
+---@return boolean success
+function M.archive(opts)
+	return require("memo.archive").archive(opts)
+end
+
 --Opens the encrypted scratch buffer for the current directory, creating it on
 --first use.
 ---@param opts? MemoScratchOpts

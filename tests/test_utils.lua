@@ -490,7 +490,7 @@ describe("utils", function()
 
 			local message = require("memo.message")
 			local original_defer_error = message.defer_error
-			local reported
+			local reported = ""
 			message.defer_error = function(fmt, ...)
 				reported = string.format(fmt, ...)
 			end

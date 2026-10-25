@@ -6,6 +6,7 @@ Seamless Neovim interface for [memo](https://github.com/ldonnez/memo), a CLI-bas
 - Passphrase-mode encryption for notes, capture files, and scratch buffers.
 - One encrypted scratch buffer per directory for throwaway, sensitive content.
 - Quick capture workflow that appends to a capture file (e.g. a journal).
+- Archive selected text into companion encrypted archive files.
 - fzf-lua pickers for browsing notes and scratch files.
 - Git sync via `memo sync git`.
 - Zero required configuration; set a few globals to customize.
@@ -112,6 +113,14 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
       desc = "Memo: Save as note",
     },
     {
+      mode = "x",
+      "<leader>ma",
+      function()
+        require("memo").archive()
+      end,
+      desc = "Memo: Archive selected text",
+    },
+    {
       "<leader>mf",
       function()
         require("memo.pickers.fzf_lua").files()
@@ -196,6 +205,10 @@ end, { desc = "Memo: Scratch files" })
 vim.keymap.set({ "n", "v" }, "<leader>mS", function()
   require("memo").save_as_note()
 end, { desc = "Memo: Save as note" })
+
+vim.keymap.set("x", "<leader>ma", function()
+  require("memo").archive()
+end, { desc = "Memo: Archive selected text" })
 
 vim.keymap.set("n", "<leader>mf", function()
   require("memo.pickers.fzf_lua").files()
@@ -334,6 +347,7 @@ vim.g.memo_ignore_patterns = {
 | `:MemoNewNote`      | Create a new encrypted note in the notes dir.      |
 | `:MemoScratchFiles` | Browse and open encrypted scratch files.           |
 | `:MemoSaveAsNote`   | Save the buffer or selection as an encrypted note. |
+| `:MemoArchive`      | Move the selection into the note archive.          |
 | `:MemoFiles`        | Browse and open files in the notes directory.      |
 | `:MemoSync`         | Sync the git backend (`memo sync git`).            |
 
@@ -532,6 +546,36 @@ Turn any buffer into a note in your notes directory with `:MemoSaveAsNote` (or `
 vim.keymap.set({"n", "v"}, "<leader>mS", function()
   require("memo").save_as_note()
 end, { desc = "Memo: Save buffer as note" })
+```
+
+### Archive selected text
+
+Use a Visual-mode mapping or `require("memo").archive()` to move a selection
+into a companion archive file. Character-wise, line-wise, and block-wise
+selections are supported. The `:MemoArchive` command archives its line range.
+The buffer must be in the notes directory.
+
+For example, `projects/plan.md.asc` is archived to
+`projects/plan.archive.md.asc`, and `projects/plan.md` to
+`projects/plan.archive.md.asc`. Every archive is GPG-encrypted, including
+archives created from plaintext notes. Each entry records its timestamp and
+source path, and existing entries are retained.
+
+The operation is also available through `require("memo").archive()`.
+When called from a Visual-mode mapping, it detects the active selection, so no
+options are needed:
+
+```lua
+vim.keymap.set("x", "<leader>ma", function()
+  require("memo").archive()
+end, { desc = "Memo: Archive selected text" })
+```
+
+When calling the function outside Visual mode, pass `range = 1`, `line1`, and
+`line2` to archive a line range:
+
+```lua
+require("memo").archive({ range = 1, line1 = 2, line2 = 4 })
 ```
 
 ### Open a note
