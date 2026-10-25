@@ -138,8 +138,12 @@ function NoteBackup:protect(action)
 	if not ok then
 		-- A raise shifts the action's return values, so `result` is the error
 		-- value here and `err` is nil.
-		if self.backup_path and not self:restore() then
-			error(("the replacement raised %s and the original could not be restored"):format(tostring(result)), 0)
+		if self.backup_path then
+			if not self:restore() then
+				error(("the replacement raised %s and the original could not be restored"):format(tostring(result)), 0)
+			end
+		elseif utils.file_exists(self.path) and vim.fn.delete(self.path) ~= 0 then
+			error(("the replacement raised %s and its partial file could not be removed"):format(tostring(result)), 0)
 		end
 
 		error(result, 0)

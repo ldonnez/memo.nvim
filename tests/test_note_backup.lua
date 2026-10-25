@@ -303,6 +303,21 @@ describe("note_backup", function()
 			MiniTest.expect.equality(tostring(err):find("could not be restored") ~= nil, true)
 		end)
 
+		it("removes a partial new file when the action raises", function()
+			local note = path("new.md.asc")
+			local backup = NoteBackup.new(note)
+
+			local ok = pcall(function()
+				backup:protect(function()
+					helpers.write_file(note, "partial body\\n")
+					error("boom")
+				end)
+			end)
+
+			MiniTest.expect.equality(ok, false)
+			MiniTest.expect.equality(vim.fn.filereadable(note), 0)
+		end)
+
 		it("runs the action when there is nothing to keep", function()
 			local note = path("note.md.asc")
 
