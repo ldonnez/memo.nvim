@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/ldonnez/memo.nvim/compare/v0.20.0...v0.21.0) (2026-10-25)
+
+
+### Features
+
+* support top and bottom capture padding ([7c307e3](https://github.com/ldonnez/memo.nvim/commit/7c307e32ec70c31a7e471367655c25b4200a59c4))
+
 ## [0.20.0](https://github.com/ldonnez/memo.nvim/compare/v0.19.1...v0.20.0) (2026-10-25)
 
 
