@@ -64,20 +64,23 @@ function M.is_in_dir(path, dir)
 	return abs_path:sub(1, #prefix) == prefix
 end
 
----Checks whether a readable file exists at `path`.
+---Checks whether `path` is a regular file.
 ---@param path string
 ---@return boolean
 function M.file_exists(path)
-	return vim.fn.filereadable(path) == 1
+	local stat = vim.uv.fs_stat(path)
+
+	return stat ~= nil and stat.type == "file"
 end
 
----Checks whether a file exists at `path` and holds content. Notes are treated
----as missing while they are still empty, e.g. right after creation and before
----the first write.
+---Checks whether `path` is a non-empty regular file. Empty notes are treated
+---as missing, e.g. right after creation and before the first write.
 ---@param path string
 ---@return boolean
 function M.file_has_content(path)
-	return vim.fn.getfsize(path) > 0
+	local stat = vim.uv.fs_stat(path)
+
+	return stat ~= nil and stat.type == "file" and stat.size > 0
 end
 
 ---Checks whether `path` holds an armored PGP message, the shape notes
