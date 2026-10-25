@@ -103,7 +103,7 @@ describe("utils", function()
 	end)
 
 	describe("file_exists", function()
-		it("returns true for a readable file", function()
+		it("returns true for an existing file", function()
 			local path = vim.fn.tempname()
 			helpers.write_file(path, "content")
 
@@ -117,7 +117,12 @@ describe("utils", function()
 		end)
 
 		it("returns false for a directory", function()
-			MiniTest.expect.equality(util.file_exists(vim.fn.tempname()), false)
+			local dir = vim.fn.tempname()
+			vim.fn.mkdir(dir, "p")
+
+			MiniTest.expect.equality(util.file_exists(dir), false)
+
+			vim.fn.delete(dir, "rf")
 		end)
 	end)
 
@@ -142,6 +147,15 @@ describe("utils", function()
 
 		it("returns false for a missing file", function()
 			MiniTest.expect.equality(util.file_has_content(vim.fn.tempname()), false)
+		end)
+
+		it("returns false for a directory", function()
+			local dir = vim.fn.tempname()
+			vim.fn.mkdir(dir, "p")
+
+			MiniTest.expect.equality(util.file_has_content(dir), false)
+
+			vim.fn.delete(dir, "rf")
 		end)
 	end)
 
