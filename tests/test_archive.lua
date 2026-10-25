@@ -425,5 +425,4 @@ describe("archive", function()
 		MiniTest.expect.equality(decrypted.stdout:find("first archived entry", 1, true) ~= nil, true)
 		MiniTest.expect.equality(decrypted.stdout:find("second archived entry", 1, true) ~= nil, true)
 	end)
-
 end)
