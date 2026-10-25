@@ -4,6 +4,7 @@ local child = helpers.new_child_neovim()
 describe("archive", function()
 	setup(function()
 		helpers.setup_test_env()
+		helpers.create_gpg_key("archive-integration@example.com")
 	end)
 
 	teardown(function()
@@ -28,6 +29,10 @@ describe("archive", function()
 
 			local crypto = require("memo.crypto")
 			local gpg = require("memo.gpg")
+
+			M.real_encrypt_from_stdin = crypto.encrypt_from_stdin
+			M.real_decrypt_to_stdout = crypto.decrypt_to_stdout
+			M.real_get_file_key_ids = gpg.get_file_key_ids
 
 			crypto.encrypt_from_stdin = function(target, lines, _, opts)
 				M.encryption_modes[#M.encryption_modes + 1] = opts.mode
@@ -368,4 +373,57 @@ describe("archive", function()
 		MiniTest.expect.equality(vim.fn.readfile(path("note.archive.md.asc"))[7], "archive me")
 		MiniTest.expect.equality(child.api.nvim_buf_get_lines(bufnr, 0, -1, false), { "keep" })
 	end)
+
+	it("encrypts and decrypts a key-encrypted archive across multiple appends", function()
+		local bufnr = buffer("note.md", { "first archived entry" })
+
+		child.lua([[
+			local crypto = require("memo.crypto")
+			local gpg = require("memo.gpg")
+			crypto.encrypt_from_stdin = M.real_encrypt_from_stdin
+			crypto.decrypt_to_stdout = M.real_decrypt_to_stdout
+			gpg.get_file_key_ids = M.real_get_file_key_ids
+		]])
+
+		MiniTest.expect.equality(child.lua_get("M.archive({ range = 1, line1 = 1, line2 = 1 })"), true)
+		child.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "second archived entry" })
+		MiniTest.expect.equality(child.lua_get("M.archive({ range = 1, line1 = 1, line2 = 1 })"), true)
+
+		local decrypted = helpers.decrypt_file(path("note.archive.md.asc"))
+
+		MiniTest.expect.equality(decrypted.code, 0)
+		MiniTest.expect.equality(helpers.is_symmetric_file(path("note.archive.md.asc")), false)
+		MiniTest.expect.equality(decrypted.stdout:find("first archived entry", 1, true) ~= nil, true)
+		MiniTest.expect.equality(decrypted.stdout:find("second archived entry", 1, true) ~= nil, true)
+	end)
+
+	it("preserves symmetric encryption when appending to an archive", function()
+		local passphrase = "archive-integration-passphrase"
+		helpers.encrypt_symmetric_file(path("note.md.asc"), "source note", passphrase)
+		local bufnr = buffer("note.md.asc", { "first archived entry" })
+
+		child.lua([[
+			local crypto = require("memo.crypto")
+			local gpg = require("memo.gpg")
+			crypto.encrypt_from_stdin = M.real_encrypt_from_stdin
+			crypto.decrypt_to_stdout = M.real_decrypt_to_stdout
+			gpg.get_file_key_ids = M.real_get_file_key_ids
+			gpg.prompt_passphrase = function()
+				return "archive-integration-passphrase"
+			end
+		]])
+
+		MiniTest.expect.equality(child.lua_get("M.archive({ range = 1, line1 = 1, line2 = 1 })"), true)
+		child.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "second archived entry" })
+		MiniTest.expect.equality(child.lua_get("M.archive({ range = 1, line1 = 1, line2 = 1 })"), true)
+
+		local archive = path("note.archive.md.asc")
+		local decrypted = helpers.decrypt_symmetric_file(archive, passphrase)
+
+		MiniTest.expect.equality(decrypted.code, 0)
+		MiniTest.expect.equality(helpers.is_symmetric_file(archive), true)
+		MiniTest.expect.equality(decrypted.stdout:find("first archived entry", 1, true) ~= nil, true)
+		MiniTest.expect.equality(decrypted.stdout:find("second archived entry", 1, true) ~= nil, true)
+	end)
+
 end)
