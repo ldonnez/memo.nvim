@@ -68,12 +68,18 @@ local function append_to_note(path, lines, bufnr)
 
 	vim.list_extend(existing, lines)
 
+	local existed = utils.file_exists(path)
 	local mode = utils.file_has_content(path) and encryption_mode(path) or "key"
 	local backup = NoteBackup.new(path)
-
-	return backup:protect(function()
+	local success, write_err = backup:protect(function()
 		return crypto.encrypt_from_stdin(path, existing, bufnr, { mode = mode })
 	end)
+
+	if not success and not existed and utils.file_exists(path) then
+		vim.fn.delete(path)
+	end
+
+	return success, write_err
 end
 
 ---@param config MemoRefileOpts
