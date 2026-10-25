@@ -185,6 +185,18 @@ end, {
 	desc = "Create a new encrypted note in the notes dir",
 })
 
+vim.api.nvim_create_user_command("MemoArchive", function(opts)
+	return require("memo").archive({
+		range = opts.range,
+		line1 = opts.line1,
+		line2 = opts.line2,
+	})
+end, {
+	nargs = 0,
+	range = true,
+	desc = "Move selected lines into the note archive",
+})
+
 vim.api.nvim_create_user_command("Memo", function()
 	require("memo").open()
 end, {
