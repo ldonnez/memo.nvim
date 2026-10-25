@@ -1,5 +1,6 @@
 local crypto = require("memo.crypto")
 local utils = require("memo.utils")
+local selection = require("memo.selection")
 local memo_config = require("memo.config")
 local Template = require("memo.note_template")
 local message = require("memo.message")
@@ -204,7 +205,7 @@ function M.create(opts)
 	local template_lines = capture_template:resolve_template()
 
 	local bufnr = vim.api.nvim_get_current_buf()
-	local range_lines = utils.resolve_selection(bufnr)
+	local range_lines = selection.resolve(bufnr)
 
 	local win, buf = create_capture_window(config)
 

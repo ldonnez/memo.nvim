@@ -1,6 +1,7 @@
 local crypto = require("memo.crypto")
 local message = require("memo.message")
 local NoteBackup = require("memo.note_backup")
+local selection = require("memo.selection")
 
 local M = {}
 
@@ -50,7 +51,7 @@ function M.create(opts)
 		return false
 	end
 
-	local lines = utils.resolve_selection(bufnr, opts) or vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+	local lines = selection.resolve(bufnr, opts) or vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
 	-- The existing note is backed up while the replacement is encrypted: a
 	-- failed or cancelled encryption leaves it restorable.

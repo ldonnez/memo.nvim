@@ -47,6 +47,7 @@ function M.create(opts)
 	local config = require("memo.config")
 	local message = require("memo.message")
 	local utils = require("memo.utils")
+	local selection = require("memo.selection")
 	local NoteBackup = require("memo.note_backup")
 	local Template = require("memo.note_template")
 	local window = require("memo.window")
@@ -83,7 +84,7 @@ function M.create(opts)
 	-- check comes before the existing note is touched, so an empty selection
 	-- cannot cost the note it was meant to replace.
 	local source_bufnr = vim.api.nvim_get_current_buf()
-	local selected = utils.resolve_selection(source_bufnr, new_opts)
+	local selected = selection.resolve(source_bufnr, new_opts)
 
 	if selected and table.concat(selected, "\n"):gsub("%s+", "") == "" then
 		message.warn("MemoNewNote: aborted, selection is empty")

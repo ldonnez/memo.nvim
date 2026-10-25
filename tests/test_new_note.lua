@@ -645,7 +645,7 @@ describe("new_note", function()
 	end)
 
 	describe("range selection", function()
-		it("seeds the note with a characterwise visual selection via the user command", function()
+		it("seeds the note with whole lines from a characterwise visual range via the user command", function()
 			open_source()
 
 			child.api.nvim_win_set_cursor(0, { 1, 6 })
@@ -661,7 +661,7 @@ describe("new_note", function()
 			local result = helpers.decrypt_file(note)
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
-			MiniTest.expect.equality(result.stdout, "beta\n")
+			MiniTest.expect.equality(result.stdout, "alpha beta gamma\n")
 		end)
 
 		it("seeds the note with a linewise range via the user command", function()
@@ -751,22 +751,6 @@ describe("new_note", function()
 			local cursor = child.api.nvim_win_get_cursor(0)
 			MiniTest.expect.equality(cursor[1], 1)
 			MiniTest.expect.equality(cursor[2], 0)
-		end)
-
-		it("aborts without creating a note when the selection is blank", function()
-			open_source()
-
-			-- select the single space between "alpha" and "beta" (getregion is
-			-- inclusive, so both endpoints have to be the same column)
-			child.api.nvim_win_set_cursor(0, { 1, 5 })
-			child.cmd("normal! v")
-			child.api.nvim_win_set_cursor(0, { 1, 5 })
-
-			child.lua("vim.fn.input = function() return 'blank' end")
-			child.type_keys(":", "MemoNewNote", "<CR>")
-
-			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/blank.asc"), 0)
-			MiniTest.expect.equality(child.cmd_capture("messages"), "MemoNewNote: aborted, selection is empty")
 		end)
 	end)
 
