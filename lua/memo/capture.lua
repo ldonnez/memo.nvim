@@ -13,8 +13,7 @@ local M = {}
 ---@field capture_file? string capture file inside the notes dir, defaults to
 ---the configured `g:memo_default_capture_file`
 ---@field target_header? string header the capture is inserted under
----@field header_padding? integer blank lines kept between the header and the
----capture
+---@field padding? MemoCapturePadding blank lines above and below the capture
 ---@field template? string window template, supports `os.date` formats and a `|`
 ---cursor marker. A selection is inserted at that marker, and becomes the whole
 ---capture window when the template has none.
@@ -24,17 +23,21 @@ local M = {}
 ---when omitted; an existing capture file always keeps the way it was encrypted
 
 ---Capture config with the defaults applied, used internally.
+---@class MemoCapturePadding
+---@field top? integer blank lines between the header and the capture
+---@field bottom? integer blank lines between the capture and following content
+
 ---@class CaptureConfig
 ---@field capture_file string
 ---@field target_header? string
----@field header_padding integer
+---@field padding MemoCapturePadding
 ---@field template? string
 ---@field window MemoWindowConfig
 ---@field encryption? GpgEncryptOpts
 
 ---@type table
 local DEFAULTS = {
-	header_padding = 0,
+	padding = { top = 0, bottom = 0 },
 	window = {},
 }
 
@@ -81,7 +84,7 @@ end
 
 ---Inserts capture lines into the content of the capture file. When a
 ---`target_header` is configured the block goes right below it, otherwise the
----block is prepended to the top of the file.
+---block is prepended to the top of the file. Padding applies in either case.
 ---@param existing string[]
 ---@param new_lines string[]
 ---@param config CaptureConfig
@@ -92,12 +95,9 @@ local function insert_lines(existing, new_lines, config)
 	end
 
 	local header = config.target_header
-	local padding = config.header_padding or 0
+	local padding = config.padding or {}
 	local target_idx = find_target_header_idx(existing, header)
 
-	-- Build the "block" to insert
-	-- Build the "block" to insert. Padding only separates a header from the
-	-- capture, so it is skipped when there is no header.
 	local block = {}
 	local has_header = header ~= nil and header ~= ""
 
@@ -105,26 +105,25 @@ local function insert_lines(existing, new_lines, config)
 		table.insert(block, header)
 	end
 
-	if has_header then
-		for _ = 1, padding do
-			table.insert(block, "")
-		end
+	for _ = 1, padding.top or 0 do
+		table.insert(block, "")
 	end
 
 	vim.list_extend(block, new_lines)
 
-	-- Construct the result
+	for _ = 1, padding.bottom or 0 do
+		table.insert(block, "")
+	end
+
 	local merged = {}
 	if target_idx ~= -1 then
-		-- Insert after header: [Head] + [Block] + [Tail]
 		vim.list_extend(merged, vim.list_slice(existing, 1, target_idx))
 		vim.list_extend(merged, block)
 
-		-- Skip exactly one empty line if it follows the header to prevent gaps
+		-- Replace one existing blank line after the header with configured padding.
 		local resume_at = (existing[target_idx + 1] == "") and (target_idx + 2) or (target_idx + 1)
 		vim.list_extend(merged, vim.list_slice(existing, resume_at))
 	else
-		-- Prepend to top: [Block] + [Existing]
 		vim.list_extend(merged, block)
 		vim.list_extend(merged, existing)
 	end

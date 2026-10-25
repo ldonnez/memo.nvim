@@ -42,7 +42,7 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
       function()
         require("memo").capture({
           target_header = "# " .. os.date("%Y-%m-%d"),
-          header_padding = 1,
+          padding = { top = 1 },
         })
       end,
       desc = "Memo: Capture to braindump",
@@ -163,7 +163,7 @@ vim.pack.add({
 vim.keymap.set({ "n", "v" }, "<leader>mc", function()
   require("memo").capture({
     target_header = "# " .. os.date("%Y-%m-%d"),
-    header_padding = 1,
+    padding = { top = 1 },
   })
 end, { desc = "Memo: Capture to braindump" })
 
@@ -285,7 +285,7 @@ vim.g.memo_default_capture_file = "journal.md.asc"
 vim.keymap.set({ "n", "v" }, "<leader>mc", function()
   require("memo").capture({
     target_header = "# " .. os.date("%Y-%m-%d"),
-    header_padding = 1,
+    padding = { top = 1 },
   })
 end, { desc = "Memo: Capture to today" })
 ```
@@ -671,7 +671,7 @@ vim.keymap.set("n", "<leader>mc", function()
   require("memo").capture({
     capture_file = "inbox.md.asc",
     target_header = "# inbox", -- captures are inserted below this header
-    header_padding = 1, -- blank lines between capture content and target header
+    padding = { top = 1, bottom = 1 }, -- blank lines above and below the capture
     template = "## %Y-%m-%d %H:%M\n\n|\n", -- '|' marks the cursor
     window = {
       split = "split", -- "split" (default) | "vsplit"
@@ -702,7 +702,7 @@ Turn a capture file into a journal with dynamic headers:
 require("memo").capture({
   capture_file = "journal.md.asc",
   target_header = "# " .. os.date("%Y-%m-%d"),
-  header_padding = 1,
+  padding = { top = 1 },
 })
 ```
 
@@ -712,7 +712,7 @@ Or create a journal file for each day automatically:
 require("memo").capture({
   capture_file = "journals/" .. os.date("%Y-%m-%d") .. ".md.asc",
   target_header = "# " .. os.date("%Y-%m-%d"),
-  header_padding = 1,
+  padding = { top = 1 },
 })
 ```
 

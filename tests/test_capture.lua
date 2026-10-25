@@ -227,7 +227,7 @@ describe("capture", function()
 			helpers.encrypt_file(encrypted, "# Inbox\n\nPrevious Note\n")
 
 			child.lua(
-				[[ M.create({ capture_file = ..., target_header = "# Inbox", header_padding = 0 }) ]],
+				[[ M.create({ capture_file = ..., target_header = "# Inbox", padding = { top = 0, bottom = 0 } }) ]],
 				{ capture_file }
 			)
 
@@ -298,14 +298,14 @@ describe("capture", function()
 			MiniTest.expect.equality(lines, { "# Inbox", "New Content", "# test", "existing content", "" })
 		end)
 
-		it("keeps header_padding blank lines between the header and the capture", function()
+		it("applies top and bottom padding around the capture", function()
 			local capture_file = "capture.md.gpg"
 			local encrypted = vim.env.NOTES_DIR .. "/" .. capture_file
 
 			helpers.encrypt_file(encrypted, "# Inbox\n\nPrevious Note\n")
 
 			child.lua(
-				[[ M.create({ capture_file = ..., target_header = "# Inbox", header_padding = 2 }) ]],
+				[[ M.create({ capture_file = ..., target_header = "# Inbox", padding = { top = 2, bottom = 1 } }) ]],
 				{ capture_file }
 			)
 
@@ -316,14 +316,14 @@ describe("capture", function()
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			local lines = vim.split(result.stdout, "\n", { plain = true })
-			MiniTest.expect.equality(lines, { "# Inbox", "", "", "New Content", "Previous Note", "" })
+			MiniTest.expect.equality(lines, { "# Inbox", "", "", "New Content", "", "Previous Note", "" })
 		end)
 
-		it("does not pad blank lines when no target header is set", function()
+		it("applies padding when no target header is set", function()
 			local capture_file = "nopad.md.gpg"
 			local encrypted = vim.env.NOTES_DIR .. "/" .. capture_file
 
-			child.lua([[ M.create({ capture_file = ..., header_padding = 2 }) ]], { capture_file })
+			child.lua([[ M.create({ capture_file = ..., padding = { top = 2, bottom = 2 } }) ]], { capture_file })
 
 			child.type_keys("i", "New Content", "<Esc>")
 			child.cmd("write")
@@ -332,7 +332,7 @@ describe("capture", function()
 			MiniTest.expect.equality(result.code, 0)
 			--- @diagnostic disable-next-line: param-type-mismatch, need-check-nil
 			local lines = vim.split(result.stdout, "\n", { plain = true })
-			MiniTest.expect.equality(lines, { "New Content", "" })
+			MiniTest.expect.equality(lines, { "", "", "New Content", "", "", "" })
 		end)
 
 		it("refuses a capture file that escapes the notes directory", function()
