@@ -58,6 +58,28 @@ function M.resolve(bufnr, opts)
 end
 
 local function delete_blockwise(bufnr, start, finish)
+	if start[2] == finish[2] and start[3] == finish[3] then
+		local line = vim.api.nvim_buf_get_lines(bufnr, start[2] - 1, start[2], false)[1] or ""
+
+		if line:sub(start[3], start[3]) == "\t" and finish[4] > start[4] then
+			local tab_width = vim.fn.strdisplaywidth(line:sub(1, start[3]))
+				- vim.fn.strdisplaywidth(line:sub(1, start[3] - 1))
+			local selected_width = finish[4] - start[4]
+			local spaces = string.rep(" ", math.max(0, tab_width - selected_width))
+			local leading = string.rep(" ", math.min(start[4], #spaces))
+
+			vim.api.nvim_buf_set_text(
+				bufnr,
+				start[2] - 1,
+				start[3] - 1,
+				start[2] - 1,
+				start[3],
+				{ leading .. spaces:sub(#leading + 1) }
+			)
+			return
+		end
+	end
+
 	local regions = vim.fn.getregionpos(start, finish, { type = "\22" })
 
 	-- Delete bottom-up so each row's byte columns remain unchanged.
