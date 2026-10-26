@@ -4,7 +4,6 @@ local M = {}
 ---@field start [integer, integer, integer, integer]
 ---@field finish [integer, integer, integer, integer]
 ---@field linewise boolean
----@field blockwise? boolean
 
 ---@param bufnr integer
 ---@param line1 integer
@@ -59,33 +58,12 @@ end
 function M.delete_selection(bufnr, selection)
 	local start, finish = selection.start, selection.finish
 
-	if selection.blockwise and start[2] == finish[2] and start[3] == finish[3] and start[4] ~= finish[4] then
-		local line = vim.api.nvim_buf_get_lines(bufnr, start[2] - 1, start[2], false)[1] or ""
-
-		if line:sub(start[3], start[3]) == "\\t" then
-			local tab_width = vim.fn.strdisplaywidth(line:sub(1, start[3]))
-				- vim.fn.strdisplaywidth(line:sub(1, start[3] - 1))
-			local first, last = math.min(start[4], finish[4]), math.max(start[4], finish[4])
-
-			vim.api.nvim_buf_set_text(
-				bufnr,
-				start[2] - 1,
-				start[3] - 1,
-				start[2] - 1,
-				start[3],
-				{ string.rep(" ", first) .. string.rep(" ", math.max(0, tab_width - last)) }
-			)
-			return
-		end
-	end
-
 	if selection.linewise then
 		vim.api.nvim_buf_set_lines(bufnr, math.min(start[2], finish[2]) - 1, math.max(start[2], finish[2]), false, {})
 		return
 	end
 
-	-- Recreate the original Visual selection and let Neovim handle deletion,
-	-- including blockwise tabs, multibyte characters, and short lines.
+	-- Recreate the original characterwise Visual selection and let Neovim handle deletion.
 	vim.api.nvim_buf_call(bufnr, function()
 		vim.cmd("normal! \27")
 		vim.fn.setpos(".", start)
