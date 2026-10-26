@@ -67,7 +67,8 @@ local function delete_blockwise(bufnr, start, finish)
 
 		if first[3] <= #line then
 			local start_char = line:sub(first[3], first[3])
-			local end_char = vim.fn.strcharpart(line:sub(last[3]), 0, 1)
+			local end_byte = line:sub(last[3], last[3])
+			local end_char = end_byte == "\t" and "\t" or vim.fn.strcharpart(line:sub(last[3]), 0, 1)
 			local leading, trailing = "", ""
 
 			if start_char == "\t" and first[4] > 0 then
