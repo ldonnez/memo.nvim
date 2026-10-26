@@ -1,4 +1,5 @@
 local crypto = require("memo.crypto")
+local gpg = require("memo.gpg")
 local message = require("memo.message")
 local NoteBackup = require("memo.note_backup")
 local selection = require("memo.selection")
@@ -12,18 +13,6 @@ local M = {}
 ---@field line1? integer First line of the command range
 ---@field line2? integer Last line of the command range
 ---@field window? MemoWindowConfig Window configuration
-
----@param path string
----@return "key"|"passphrase"
-local function encryption_mode(path)
-	local gpg = require("memo.gpg")
-
-	if utils.is_armored_gpg(path) and #gpg.get_file_key_ids(path) == 0 then
-		return "passphrase"
-	end
-
-	return "key"
-end
 
 ---@param path string
 ---@param bufnr integer
@@ -69,7 +58,7 @@ local function append_to_note(path, lines, bufnr)
 	vim.list_extend(existing, lines)
 
 	local existed = utils.file_exists(path)
-	local mode = utils.file_has_content(path) and encryption_mode(path) or "key"
+	local mode = utils.file_has_content(path) and gpg.get_encryption_mode(path) or "key"
 	local backup = NoteBackup.new(path)
 	local success, write_err = backup:protect(function()
 		return crypto.encrypt_from_stdin(path, existing, bufnr, { mode = mode })
