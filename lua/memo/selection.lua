@@ -63,8 +63,8 @@ function M.delete_selection(bufnr, selection)
 		local line = vim.api.nvim_buf_get_lines(bufnr, start[2] - 1, start[2], false)[1] or ""
 
 		if line:sub(start[3], start[3]) == "\\t" then
-			local tab_width = vim.bo[bufnr].tabstop
-				- ((vim.fn.strdisplaywidth(line:sub(1, start[3] - 1))) % vim.bo[bufnr].tabstop)
+			local tab_width = vim.fn.strdisplaywidth(line:sub(1, start[3]))
+				- vim.fn.strdisplaywidth(line:sub(1, start[3] - 1))
 			local first, last = math.min(start[4], finish[4]), math.max(start[4], finish[4])
 
 			vim.api.nvim_buf_set_text(
