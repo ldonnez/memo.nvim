@@ -64,7 +64,6 @@ describe("selection", function()
 		MiniTest.expect.equality(lines, { "beta", "gamma" })
 	end)
 
-
 	it("reports the active visual selection range", function()
 		child.cmd("normal! gg")
 		child.api.nvim_win_set_cursor(0, { 1, 6 })
@@ -216,10 +215,10 @@ describe("selection", function()
 		MiniTest.expect.equality(selection.linewise, true)
 	end)
 
-	it("prefers an explicit line range over an active block-wise selection", function()
+	it("prefers an explicit line range over an active visual selection", function()
 		child.lua([[
 			vim.api.nvim_win_set_cursor(0, { 1, 0 })
-			vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-v>j", true, false, true), "nx", false)
+			vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("vj", true, false, true), "nx", false)
 		]])
 
 		local lines = child.lua_get("S.resolve(0, { range = 1, line1 = 1, line2 = 2 })")
@@ -270,8 +269,6 @@ describe("selection", function()
 		})
 	end)
 
-
-
 	it("deletes multibyte characters as a whole character", function()
 		child.lua([[
 			vim.api.nvim_buf_set_lines(0, 0, -1, false, { "a🙂bc" })
@@ -284,7 +281,6 @@ describe("selection", function()
 
 		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), { "abc" })
 	end)
-
 
 	it("deletes a linewise selection", function()
 		child.lua([[
