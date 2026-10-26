@@ -58,22 +58,25 @@ function M.resolve(bufnr, opts)
 end
 
 local function delete_blockwise(bufnr, start, finish)
-	if start[2] == finish[2] and start[3] == finish[3] then
-		local line = vim.api.nvim_buf_get_lines(bufnr, start[2] - 1, start[2], false)[1] or ""
+	local start_line, start_col = math.floor(start[2]), math.floor(start[3])
+	local start_offset, finish_offset = math.floor(start[4]), math.floor(finish[4])
 
-		if line:sub(start[3], start[3]) == "\t" and finish[4] > start[4] then
-			local tab_width = vim.fn.strdisplaywidth(line:sub(1, start[3]))
-				- vim.fn.strdisplaywidth(line:sub(1, start[3] - 1))
-			local selected_width = finish[4] - start[4]
+	if start_line == finish[2] and start_col == finish[3] then
+		local line = vim.api.nvim_buf_get_lines(bufnr, start_line - 1, start_line, false)[1] or ""
+
+		if line:sub(start_col, start_col) == "\t" and finish_offset > start_offset then
+			local tab_width = vim.fn.strdisplaywidth(line:sub(1, start_col))
+				- vim.fn.strdisplaywidth(line:sub(1, start_col - 1))
+			local selected_width = finish_offset - start_offset
 			local spaces = string.rep(" ", math.max(0, tab_width - selected_width))
-			local leading = string.rep(" ", math.min(start[4], #spaces))
+			local leading = string.rep(" ", math.min(start_offset, #spaces))
 
 			vim.api.nvim_buf_set_text(
 				bufnr,
-				start[2] - 1,
-				start[3] - 1,
-				start[2] - 1,
-				start[3],
+				start_line - 1,
+				start_col - 1,
+				start_line - 1,
+				start_col,
 				{ leading .. spaces:sub(#leading + 1) }
 			)
 			return
