@@ -1,6 +1,6 @@
-local crypto = require("memo.crypto")
+local gpg = require("memo.gpg")
 local message = require("memo.message")
-local NoteBackup = require("memo.note_backup")
+local note_io = require("memo.note_io")
 local selection = require("memo.selection")
 
 local M = {}
@@ -53,15 +53,15 @@ function M.create(opts)
 
 	local lines = selection.resolve(bufnr, opts) or vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
-	-- The existing note is backed up while the replacement is encrypted: a
-	-- failed or cancelled encryption leaves it restorable.
-	local backup = NoteBackup.new(note_path)
-	local mode = opts and opts.encryption and opts.encryption.mode
+	-- Resolve the mode before the protected write removes the original file;
+	-- failed or cancelled encryption leaves the original restorable.
+	local mode = opts and opts.encryption and opts.encryption.mode or "key"
 
-	local success, err = backup:protect(function()
-		-- No buffer: a passphrase kept here would be reused for the next note.
-		return crypto.encrypt_from_stdin(note_path, lines, nil, { mode = mode })
-	end)
+	if overwriting then
+		mode = gpg.get_encryption_mode(note_path)
+	end
+
+	local success, err = note_io.write_lines(note_path, lines, nil, { mode = mode })
 
 	if not success then
 		-- A dismissed prompt has no reason: a cancellation, nothing to report.

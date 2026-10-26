@@ -1,7 +1,6 @@
-local crypto = require("memo.crypto")
 local gpg = require("memo.gpg")
 local message = require("memo.message")
-local NoteBackup = require("memo.note_backup")
+local note_io = require("memo.note_io")
 local selection = require("memo.selection")
 local utils = require("memo.utils")
 local window = require("memo.window")
@@ -15,37 +14,12 @@ local M = {}
 ---@field window? MemoWindowConfig Window configuration
 
 ---@param path string
----@param bufnr integer
----@return string[]? lines
----@return string? err
-local function read_note(path, bufnr)
-	if not utils.file_has_content(path) then
-		return {}
-	end
-
-	local result, err = crypto.decrypt_to_stdout(path, bufnr)
-
-	if not result then
-		return nil, err
-	end
-
-	local output = result.stdout or ""
-	local lines = vim.split(output, "\n", { plain = true })
-
-	if output:sub(-1) == "\n" then
-		table.remove(lines)
-	end
-
-	return lines
-end
-
----@param path string
 ---@param lines string[]
 ---@param bufnr integer
 ---@return boolean success
 ---@return string? err
 local function append_to_note(path, lines, bufnr)
-	local existing, err = read_note(path, bufnr)
+	local existing, err = note_io.read_lines(path, bufnr)
 
 	if not existing then
 		return false, err
@@ -57,18 +31,9 @@ local function append_to_note(path, lines, bufnr)
 
 	vim.list_extend(existing, lines)
 
-	local existed = utils.file_exists(path)
 	local mode = utils.file_has_content(path) and gpg.get_encryption_mode(path) or "key"
-	local backup = NoteBackup.new(path)
-	local success, write_err = backup:protect(function()
-		return crypto.encrypt_from_stdin(path, existing, bufnr, { mode = mode })
-	end)
 
-	if not success and not existed and utils.file_exists(path) then
-		vim.fn.delete(path)
-	end
-
-	return success, write_err
+	return note_io.write_lines(path, existing, bufnr, { mode = mode })
 end
 
 ---@param config MemoRefileOpts

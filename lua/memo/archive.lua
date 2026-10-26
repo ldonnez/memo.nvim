@@ -1,6 +1,5 @@
-local crypto = require("memo.crypto")
 local message = require("memo.message")
-local NoteBackup = require("memo.note_backup")
+local note_io = require("memo.note_io")
 local utils = require("memo.utils")
 local gpg = require("memo.gpg")
 local selection = require("memo.selection")
@@ -24,31 +23,6 @@ local function archive_path(path)
 end
 
 ---@param path string
----@param bufnr integer
----@return string[]? lines
----@return string? err
-local function read_archive(path, bufnr)
-	if not utils.file_has_content(path) then
-		return {}
-	end
-
-	local result, err = crypto.decrypt_to_stdout(path, bufnr)
-
-	if not result then
-		return nil, err
-	end
-
-	local output = result.stdout or ""
-	local lines = vim.split(output, "\n", { plain = true })
-
-	if output:sub(-1) == "\n" then
-		table.remove(lines)
-	end
-
-	return lines
-end
-
----@param path string
 ---@param lines string[]
 ---@param bufnr integer
 ---@param source_path string
@@ -62,7 +36,7 @@ local function append_to_archive(path, lines, bufnr, source_path)
 		return false, ("archive path is not a file: %s"):format(path)
 	end
 
-	local existing, read_err = read_archive(path, bufnr)
+	local existing, read_err = note_io.read_lines(path, bufnr)
 
 	if not existing then
 		return false, read_err
@@ -71,20 +45,10 @@ local function append_to_archive(path, lines, bufnr, source_path)
 	vim.list_extend(existing, lines)
 
 	-- Preserve an existing archive's encryption mode. A new archive follows
-	-- the source note's mode.
+	-- the source note's mode. Resolve it before the protected write.
 	local mode = gpg.get_encryption_mode(has_content and path or source_path)
-	local backup = NoteBackup.new(path)
-	local written, write_err = backup:protect(function()
-		local encrypted, encrypt_err = crypto.encrypt_from_stdin(path, existing, bufnr, { mode = mode })
 
-		if not encrypted and not existed then
-			vim.fn.delete(path)
-		end
-
-		return encrypted, encrypt_err
-	end)
-
-	return written, write_err
+	return note_io.write_lines(path, existing, bufnr, { mode = mode })
 end
 
 ---@param opts? MemoArchiveOpts

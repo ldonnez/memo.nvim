@@ -48,7 +48,7 @@ function M.create(opts)
 	local message = require("memo.message")
 	local utils = require("memo.utils")
 	local selection = require("memo.selection")
-	local NoteBackup = require("memo.note_backup")
+	local note_io = require("memo.note_io")
 	local Template = require("memo.note_template")
 	local window = require("memo.window")
 
@@ -96,15 +96,13 @@ function M.create(opts)
 	local note_template = Template.new({ template = new_opts.template })
 	local initial_lines, cursor_pos = note_template:initial_content(selected)
 
-	-- The existing note backed up until the replacement has been written:
-	-- a cancelled passphrase prompt or a failed write leaves it restorable.
-	local backup = NoteBackup.new(note_path)
+	-- A cancelled passphrase prompt or failed write leaves the original restorable.
 
 	if not cleanup_existing_buffer(note_path) then
 		return false
 	end
 
-	local success, err = backup:protect(function()
+	local success, err = note_io.protect(note_path, function()
 		-- Opened after the selection is resolved: a split would replace the source
 		-- window.
 		local win = window.open(new_opts.window)
