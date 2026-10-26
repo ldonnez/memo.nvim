@@ -33,7 +33,7 @@ function M.resolve(bufnr, opts)
 
 	local mode = vim.fn.mode()
 
-	if not mode:match("[vV\22]") then
+	if not mode:match("[vV]") then
 		return nil
 	end
 
