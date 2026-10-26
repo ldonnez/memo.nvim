@@ -64,9 +64,32 @@ local function delete_blockwise(bufnr, start, finish)
 	for i = #regions, 1, -1 do
 		local first, last = regions[i][1], regions[i][2]
 		local line = vim.api.nvim_buf_get_lines(bufnr, first[2] - 1, first[2], false)[1] or ""
-		local end_char = vim.fn.strcharpart(line:sub(last[3]), 0, 1)
 
-		vim.api.nvim_buf_set_text(bufnr, first[2] - 1, first[3] - 1, first[2] - 1, last[3] - 1 + #end_char, { "" })
+		if first[3] <= #line then
+			local start_char = line:sub(first[3], first[3])
+			local end_char = vim.fn.strcharpart(line:sub(last[3]), 0, 1)
+			local leading, trailing = "", ""
+
+			if start_char == "\t" and first[4] > 0 then
+				leading = string.rep(" ", first[4])
+			end
+
+			if end_char == "\t" then
+				local tab_width = vim.fn.strdisplaywidth(line:sub(1, last[3]))
+					- vim.fn.strdisplaywidth(line:sub(1, last[3] - 1))
+				local end_offset = last[4] > 0 and last[4] or tab_width
+				trailing = string.rep(" ", math.max(0, tab_width - end_offset))
+			end
+
+			vim.api.nvim_buf_set_text(
+				bufnr,
+				first[2] - 1,
+				first[3] - 1,
+				first[2] - 1,
+				last[3] - 1 + #end_char,
+				{ leading .. trailing }
+			)
+		end
 	end
 end
 
