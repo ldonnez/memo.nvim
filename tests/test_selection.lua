@@ -20,6 +20,18 @@ describe("selection", function()
 		MiniTest.expect.equality(result, true)
 	end)
 
+	it("returns nil for a blockwise selection", function()
+		child.lua([[
+			vim.api.nvim_feedkeys(
+				vim.api.nvim_replace_termcodes("<C-v>", true, false, true),
+				"nx",
+				false
+			)
+		]])
+
+		MiniTest.expect.equality(child.lua_get("S.resolve()"), vim.NIL)
+	end)
+
 	it("returns the charwise selection", function()
 		child.cmd("normal! gg")
 		child.api.nvim_win_set_cursor(0, { 1, 6 })
