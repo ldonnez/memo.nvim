@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.1](https://github.com/ldonnez/memo.nvim/compare/v0.21.0...v0.21.1) (2026-10-26)
+
+
+### Code Refactoring
+
+* align archive helpers with note operations ([6fc5bd0](https://github.com/ldonnez/memo.nvim/commit/6fc5bd0bd0348d32a948185970c3d11a6412296e))
+
 ## [0.21.0](https://github.com/ldonnez/memo.nvim/compare/v0.20.0...v0.21.0) (2026-10-25)
 
 
