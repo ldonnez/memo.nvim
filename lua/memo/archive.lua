@@ -2,6 +2,7 @@ local crypto = require("memo.crypto")
 local message = require("memo.message")
 local NoteBackup = require("memo.note_backup")
 local utils = require("memo.utils")
+local gpg = require("memo.gpg")
 local selection = require("memo.selection")
 
 local M = {}
@@ -20,19 +21,6 @@ local function archive_path(path)
 	local stem, content_extension = content_path:match("^(.*)(%.[^./]+)$")
 
 	return (stem or content_path) .. ".archive" .. (content_extension or "") .. "." .. extension
-end
-
----Returns how the note at `path` is encrypted.
----@param path string
----@return "key" | "passphrase"
-local function encryption_mode(path)
-	local gpg = require("memo.gpg")
-
-	if utils.is_armored_gpg(path) and #gpg.get_file_key_ids(path) == 0 then
-		return "passphrase"
-	end
-
-	return "key"
 end
 
 ---@param path string
@@ -84,7 +72,7 @@ local function append_to_archive(path, lines, bufnr, source_path)
 
 	-- Preserve an existing archive's encryption mode. A new archive follows
 	-- the source note's mode.
-	local mode = encryption_mode(has_content and path or source_path)
+	local mode = gpg.get_encryption_mode(has_content and path or source_path)
 	local backup = NoteBackup.new(path)
 	local written, write_err = backup:protect(function()
 		local encrypted, encrypt_err = crypto.encrypt_from_stdin(path, existing, bufnr, { mode = mode })

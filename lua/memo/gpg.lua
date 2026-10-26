@@ -322,6 +322,13 @@ function M.get_file_key_ids(path)
 	return vim.deepcopy(read_packets(path).key_ids)
 end
 
+--- Returns how an encrypted note is protected.
+---@param path string
+---@return "key" | "passphrase"
+function M.get_encryption_mode(path)
+	return is_symmetric(path) and "passphrase" or "key"
+end
+
 --- Drops the cached keys, so the next attempt probes gpg-agent again.
 --- @param keyids string[]
 local function forget_unlocked_keys(keyids)
