@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.2](https://github.com/ldonnez/memo.nvim/compare/v0.21.1...v0.21.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* protect existing capture files during writes ([ee470df](https://github.com/ldonnez/memo.nvim/commit/ee470df3ddae8505f79ca98ae5da0e5a9abc045b))
+
 ## [0.21.1](https://github.com/ldonnez/memo.nvim/compare/v0.21.0...v0.21.1) (2026-10-26)
 
 
