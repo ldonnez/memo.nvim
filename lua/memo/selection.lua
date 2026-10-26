@@ -48,7 +48,6 @@ function M.resolve(bufnr, opts)
 			start = start,
 			finish = finish,
 			linewise = mode == "V",
-			blockwise = mode == "\22",
 		}
 end
 
@@ -67,7 +66,7 @@ function M.delete_selection(bufnr, selection)
 	vim.api.nvim_buf_call(bufnr, function()
 		vim.cmd("normal! \27")
 		vim.fn.setpos(".", start)
-		vim.cmd(selection.blockwise and "normal! \22" or "normal! v")
+		vim.cmd("normal! v")
 		vim.fn.setpos(".", finish)
 		vim.cmd('normal! "_d')
 	end)
