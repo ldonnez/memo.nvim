@@ -307,5 +307,4 @@ describe("selection", function()
 
 		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), { "" })
 	end)
-
 end)
