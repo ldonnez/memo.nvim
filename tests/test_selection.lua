@@ -295,6 +295,53 @@ describe("selection", function()
 		})
 	end)
 
+	it("preserves unselected cells when deleting part of a tab", function()
+		child.lua([[
+			vim.bo.tabstop = 4
+			vim.api.nvim_buf_set_lines(0, 0, -1, false, { "a\tb" })
+			S.delete_selection(0, {
+				start = { 0, 1, 2, 0 },
+				finish = { 0, 1, 2, 1 },
+				linewise = false,
+				blockwise = true,
+			})
+		]])
+
+		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), { "a  b" })
+	end)
+
+	it("deletes multibyte characters as a whole character", function()
+		child.lua([[
+			vim.api.nvim_buf_set_lines(0, 0, -1, false, { "a🙂bc" })
+			S.delete_selection(0, {
+				start = { 0, 1, 2, 0 },
+				finish = { 0, 1, 2, 0 },
+				linewise = false,
+				blockwise = true,
+			})
+		]])
+
+		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), { "abc" })
+	end)
+
+	it("ignores blockwise columns beyond the end of a short line", function()
+		child.lua([[
+			vim.api.nvim_buf_set_lines(0, 0, -1, false, { "abcdef", "xy", "ghijkl" })
+			S.delete_selection(0, {
+				start = { 0, 1, 3, 0 },
+				finish = { 0, 3, 4, 0 },
+				linewise = false,
+				blockwise = true,
+			})
+		]])
+
+		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), {
+			"abef",
+			"xy",
+			"ghkl",
+		})
+	end)
+
 	it("deletes a linewise selection", function()
 		child.lua([[
 			S.delete_selection(0, {
