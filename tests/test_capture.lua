@@ -584,6 +584,31 @@ describe("capture", function()
 			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/fail.md.gpg"), 1)
 		end)
 
+		it("restores an existing capture file when encryption fails", function()
+			local note = vim.env.NOTES_DIR .. "/failed-existing.md.gpg"
+			helpers.encrypt_file(note, "original content\n")
+
+			child.lua([[
+				crypto.encrypt_from_stdin = function()
+					return false, "boom"
+				end
+				M.create({ capture_file = "failed-existing.md.gpg" })
+			]])
+
+			child.type_keys("i", "new content", "<Esc>")
+			local buf = child.api.nvim_get_current_buf()
+			child.cmd("write")
+
+			MiniTest.expect.equality(child.api.nvim_buf_is_valid(buf), true)
+			child.wait_until(function()
+				return child.cmd_capture("messages"):find("Capture failed: boom", 1, true) ~= nil
+			end)
+
+			local result = helpers.decrypt_file(note)
+			MiniTest.expect.equality(result.code, 0)
+			MiniTest.expect.equality(result.stdout, "original content\n")
+		end)
+
 		it("creates the capture file with passphrase encryption when the passphrase mode is configured", function()
 			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "cap-sym" end ]])
 			child.lua([[ M.create({ capture_file = "sym-capture.md", encryption = { mode = "passphrase" } }) ]])

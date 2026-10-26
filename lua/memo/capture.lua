@@ -1,10 +1,12 @@
 local crypto = require("memo.crypto")
+local gpg = require("memo.gpg")
 local utils = require("memo.utils")
 local selection = require("memo.selection")
 local memo_config = require("memo.config")
 local Template = require("memo.note_template")
 local message = require("memo.message")
 local window = require("memo.window")
+local NoteBackup = require("memo.note_backup")
 
 local M = {}
 
@@ -176,9 +178,15 @@ local function append_capture(lines, config, bufnr)
 		end
 	end
 
-	local merged = insert_lines(existing, lines, config)
+	-- The backup temporarily removes the original, so preserve its encryption
+	-- mode explicitly when creating the replacement.
+	local existing_mode = gpg.get_encryption_mode(file)
 
-	return crypto.encrypt_from_stdin(file, merged, bufnr, { mode = mode })
+	local merged = insert_lines(existing, lines, config)
+	local backup = NoteBackup.new(file)
+	return backup:protect(function()
+		return crypto.encrypt_from_stdin(file, merged, bufnr, { mode = existing_mode })
+	end)
 end
 
 ---Opens a capture buffer, prefilled with the target header and the template.
