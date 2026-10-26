@@ -38,15 +38,16 @@ end
 ---@param path string
 ---@param bufnr integer
 ---@return string[]? lines
-local function read_archive_lines(path, bufnr)
+---@return string? err
+local function read_archive(path, bufnr)
+	if not utils.file_has_content(path) then
+		return {}
+	end
+
 	local result, err = crypto.decrypt_to_stdout(path, bufnr)
 
 	if not result then
-		if err then
-			message.error("MemoArchive: %s", err)
-		end
-
-		return nil
+		return nil, err
 	end
 
 	local output = result.stdout or ""
@@ -62,55 +63,40 @@ end
 ---@param path string
 ---@param lines string[]
 ---@param bufnr integer
----@return boolean
-local function update_archive(path, lines, bufnr)
-	local archive_exists = utils.file_exists(path)
-	local archive_has_content = utils.file_has_content(path)
+---@param source_path string
+---@return boolean success
+---@return string? err
+local function append_to_archive(path, lines, bufnr, source_path)
+	local existed = utils.file_exists(path)
+	local has_content = utils.file_has_content(path)
 
-	if not archive_exists and vim.fn.getftype(path) ~= "" then
-		message.error("MemoArchive: archive path is not a file: %s", path)
-		return false
+	if not existed and vim.fn.getftype(path) ~= "" then
+		return false, ("archive path is not a file: %s"):format(path)
 	end
-	-- The archive needs its own passphrase cache: it may use a different
-	-- passphrase from the source note. Reuse this buffer for decrypt + encrypt.
-	local archive_bufnr = vim.api.nvim_create_buf(false, true)
-	local ok, success = pcall(function()
-		local old_lines = archive_has_content and read_archive_lines(path, archive_bufnr)
 
-		if archive_has_content and not old_lines then
-			return false
+	local existing, read_err = read_archive(path, bufnr)
+
+	if not existing then
+		return false, read_err
+	end
+
+	vim.list_extend(existing, lines)
+
+	-- Preserve an existing archive's encryption mode. A new archive follows
+	-- the source note's mode.
+	local mode = encryption_mode(has_content and path or source_path)
+	local backup = NoteBackup.new(path)
+	local written, write_err = backup:protect(function()
+		local encrypted, encrypt_err = crypto.encrypt_from_stdin(path, existing, bufnr, { mode = mode })
+
+		if not encrypted and not existed then
+			vim.fn.delete(path)
 		end
 
-		local archive_lines = vim.list_extend(old_lines or {}, lines)
-
-		-- Preserve an existing archive's encryption mode. A new archive follows
-		-- the source note's mode.
-		local mode_path = archive_has_content and path or vim.api.nvim_buf_get_name(bufnr)
-		local mode = encryption_mode(mode_path)
-		local backup = NoteBackup.new(path)
-		local written, protect_err = backup:protect(function()
-			local encrypted, write_err = crypto.encrypt_from_stdin(path, archive_lines, archive_bufnr, { mode = mode })
-
-			if not encrypted and not archive_exists then
-				vim.fn.delete(path)
-			end
-
-			return encrypted, write_err
-		end)
-
-		if not written and protect_err then
-			message.error("MemoArchive: %s", protect_err)
-		end
-
-		return written
+		return encrypted, encrypt_err
 	end)
-	vim.api.nvim_buf_delete(archive_bufnr, { force = true })
 
-	if not ok then
-		error(success, 0)
-	end
-
-	return success
+	return written, write_err
 end
 
 ---@param opts? MemoArchiveOpts
@@ -161,9 +147,13 @@ function M.archive(opts)
 	}
 	vim.list_extend(entry, selected_lines)
 
-	local success = update_archive(archive_file, entry, bufnr)
+	local success, err = append_to_archive(archive_file, entry, bufnr, path)
 
 	if not success then
+		if err then
+			message.error("MemoArchive: %s", err)
+		end
+
 		return false
 	end
 

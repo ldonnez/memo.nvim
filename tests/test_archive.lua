@@ -218,7 +218,7 @@ describe("archive", function()
 		MiniTest.expect.equality(vim.fn.readfile(archive_path), { "older entry" })
 	end)
 
-	it("keeps the archive passphrase cache separate from the source note", function()
+	it("uses the source buffer for archive passphrase caching", function()
 		local bufnr = buffer("note.md", { "keep", "archive me" })
 		helpers.write_file(path("note.archive.md.asc"), "older entry\n")
 		child.lua(
@@ -226,7 +226,7 @@ describe("archive", function()
 			local crypto = require("memo.crypto")
 			local bufnr = ...
 			vim.b[bufnr].memo_symmetric_passphrase = "source-passphrase"
-			crypto.decrypt_to_stdout = function(target, archive_bufnr)
+			crypto.decrypt_to_stdout = function(_, archive_bufnr)
 				M.decrypt_bufnr = archive_bufnr
 				return { stdout = "older entry\n" }
 			end
@@ -238,9 +238,8 @@ describe("archive", function()
 			{ bufnr }
 		)
 		MiniTest.expect.equality(child.lua_get("M.archive({ range = 1, line1 = 2, line2 = 2 })"), true)
-		MiniTest.expect.equality(child.lua_get("M.decrypt_bufnr ~= ...", { bufnr }), true)
-		MiniTest.expect.equality(child.lua_get("M.encrypt_bufnr == M.decrypt_bufnr"), true)
-		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_is_valid(M.decrypt_bufnr)"), false)
+		MiniTest.expect.equality(child.lua_get("M.decrypt_bufnr == ...", { bufnr }), true)
+		MiniTest.expect.equality(child.lua_get("M.encrypt_bufnr == ...", { bufnr }), true)
 		MiniTest.expect.equality(
 			child.lua("local bufnr = ...; return vim.b[bufnr].memo_symmetric_passphrase", { bufnr }),
 			"source-passphrase"
