@@ -367,4 +367,23 @@ describe("selection", function()
 
 		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), { "" })
 	end)
+
+	it("deletes a backwards blockwise selection using Neovim's visual operator", function()
+		child.lua("vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'abcdef', 'ghijkl', 'mnopqr' })")
+		child.lua([[
+			S.delete_selection(0, {
+				start = { 0, 2, 4, 0 },
+				finish = { 0, 1, 2, 0 },
+				linewise = false,
+				blockwise = true,
+			})
+		]])
+
+		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), {
+			"aef",
+			"gkl",
+			"mnopqr",
+		})
+	end)
+
 end)

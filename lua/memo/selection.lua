@@ -9,16 +9,12 @@ local M = {}
 ---@param bufnr integer
 ---@param line1 integer
 ---@param line2 integer
-local function range_selection(bufnr, line1, line2)
-	local start_line = line1 - 1
-	---@cast start_line integer
-
-	return vim.api.nvim_buf_get_lines(bufnr, start_line, line2, false),
-		{
-			start = { 0, line1, 1, 0 },
-			finish = { 0, line2, 1, 0 },
-			linewise = true,
-		}
+local function resolve_range(bufnr, line1, line2)
+	return vim.api.nvim_buf_get_lines(bufnr, line1 - 1, line2, false), {
+		start = { 0, line1, 1, 0 },
+		finish = { 0, line2, 1, 0 },
+		linewise = true,
+	}
 end
 
 ---Resolves a visual selection or a command range, or nil when neither applies.
@@ -32,7 +28,7 @@ function M.resolve(bufnr, opts)
 			return nil
 		end
 
-		return range_selection(bufnr, opts.line1, opts.line2)
+		return resolve_range(bufnr, opts.line1, opts.line2)
 	end
 
 	local mode = vim.fn.mode()
@@ -41,82 +37,18 @@ function M.resolve(bufnr, opts)
 		return nil
 	end
 
-	local start = vim.fn.getpos("v")
-	local finish = vim.fn.getpos(".")
+	local start, finish = vim.fn.getpos("v"), vim.fn.getpos(".")
 
 	if start[2] == 0 or finish[2] == 0 then
 		return nil
 	end
 
-	return vim.fn.getregion(start, finish, { type = mode }),
-		{
-			start = start,
-			finish = finish,
-			linewise = mode == "V",
-			blockwise = mode == "\22",
-		}
-end
-
-local function delete_blockwise(bufnr, start, finish)
-	local start_line, start_col = math.floor(start[2]), math.floor(start[3])
-	local start_offset, finish_offset = math.floor(start[4]), math.floor(finish[4])
-
-	if start_line == finish[2] and start_col == finish[3] then
-		local line = vim.api.nvim_buf_get_lines(bufnr, start_line - 1, start_line, false)[1] or ""
-
-		if line:sub(start_col, start_col) == "\t" and finish_offset > start_offset then
-			local tab_width = vim.fn.strdisplaywidth(line:sub(1, start_col))
-				- vim.fn.strdisplaywidth(line:sub(1, start_col - 1))
-			local selected_width = finish_offset - start_offset
-			local spaces = string.rep(" ", math.max(0, tab_width - selected_width))
-			local leading = string.rep(" ", math.min(start_offset, #spaces))
-
-			vim.api.nvim_buf_set_text(
-				bufnr,
-				start_line - 1,
-				start_col - 1,
-				start_line - 1,
-				start_col,
-				{ leading .. spaces:sub(#leading + 1) }
-			)
-			return
-		end
-	end
-
-	local regions = vim.fn.getregionpos(start, finish, { type = "\22" })
-
-	-- Delete bottom-up so each row's byte columns remain unchanged.
-	for i = #regions, 1, -1 do
-		local first, last = regions[i][1], regions[i][2]
-		local line = vim.api.nvim_buf_get_lines(bufnr, first[2] - 1, first[2], false)[1] or ""
-
-		if first[3] <= #line then
-			local start_char = line:sub(first[3], first[3])
-			local end_byte = line:sub(last[3], last[3])
-			local end_char = end_byte == "\t" and "\t" or vim.fn.strcharpart(line:sub(last[3]), 0, 1)
-			local leading, trailing = "", ""
-
-			if start_char == "\t" and first[4] > 0 then
-				leading = string.rep(" ", first[4])
-			end
-
-			if end_char == "\t" then
-				local tab_width = vim.fn.strdisplaywidth(line:sub(1, last[3]))
-					- vim.fn.strdisplaywidth(line:sub(1, last[3] - 1))
-				local end_offset = last[4] > 0 and last[4] or tab_width
-				trailing = string.rep(" ", math.max(0, tab_width - end_offset))
-			end
-
-			vim.api.nvim_buf_set_text(
-				bufnr,
-				first[2] - 1,
-				first[3] - 1,
-				first[2] - 1,
-				last[3] - 1 + #end_char,
-				{ leading .. trailing }
-			)
-		end
-	end
+	return vim.fn.getregion(start, finish, { type = mode }), {
+		start = start,
+		finish = finish,
+		linewise = mode == "V",
+		blockwise = mode == "\22",
+	}
 end
 
 ---Removes a resolved selection from the buffer.
@@ -125,24 +57,20 @@ end
 function M.delete_selection(bufnr, selection)
 	local start, finish = selection.start, selection.finish
 
-	if selection.blockwise then
-		delete_blockwise(bufnr, start, finish)
-		return
-	end
-
 	if selection.linewise then
-		local first, last = math.min(start[2], finish[2]), math.max(start[2], finish[2])
-		vim.api.nvim_buf_set_lines(bufnr, first - 1, last, false, {})
+		vim.api.nvim_buf_set_lines(bufnr, math.min(start[2], finish[2]) - 1, math.max(start[2], finish[2]), false, {})
 		return
 	end
 
-	if start[2] > finish[2] or (start[2] == finish[2] and start[3] > finish[3]) then
-		start, finish = finish, start
-	end
-
-	local line = vim.api.nvim_buf_get_lines(bufnr, finish[2] - 1, finish[2], false)[1] or ""
-	local end_char = vim.fn.strcharpart(line:sub(finish[3]), 0, 1)
-	vim.api.nvim_buf_set_text(bufnr, start[2] - 1, start[3] - 1, finish[2] - 1, finish[3] - 1 + #end_char, { "" })
+	-- Recreate the original Visual selection and let Neovim handle deletion,
+	-- including blockwise tabs, multibyte characters, and short lines.
+	vim.api.nvim_buf_call(bufnr, function()
+		vim.cmd("normal! \\27")
+		vim.fn.setpos(".", start)
+		vim.cmd(selection.blockwise and "normal! \\22" or "normal! v")
+		vim.fn.setpos(".", finish)
+		vim.cmd('normal! "_d')
+	end)
 end
 
 return M
