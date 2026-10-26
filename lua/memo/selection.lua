@@ -10,11 +10,12 @@ local M = {}
 ---@param line1 integer
 ---@param line2 integer
 local function resolve_range(bufnr, line1, line2)
-	return vim.api.nvim_buf_get_lines(bufnr, line1 - 1, line2, false), {
-		start = { 0, line1, 1, 0 },
-		finish = { 0, line2, 1, 0 },
-		linewise = true,
-	}
+	return vim.api.nvim_buf_get_lines(bufnr, line1 - 1, line2, false),
+		{
+			start = { 0, line1, 1, 0 },
+			finish = { 0, line2, 1, 0 },
+			linewise = true,
+		}
 end
 
 ---Resolves a visual selection or a command range, or nil when neither applies.
@@ -43,12 +44,13 @@ function M.resolve(bufnr, opts)
 		return nil
 	end
 
-	return vim.fn.getregion(start, finish, { type = mode }), {
-		start = start,
-		finish = finish,
-		linewise = mode == "V",
-		blockwise = mode == "\22",
-	}
+	return vim.fn.getregion(start, finish, { type = mode }),
+		{
+			start = start,
+			finish = finish,
+			linewise = mode == "V",
+			blockwise = mode == "\22",
+		}
 end
 
 ---Removes a resolved selection from the buffer.
@@ -65,9 +67,9 @@ function M.delete_selection(bufnr, selection)
 	-- Recreate the original Visual selection and let Neovim handle deletion,
 	-- including blockwise tabs, multibyte characters, and short lines.
 	vim.api.nvim_buf_call(bufnr, function()
-		vim.cmd("normal! \\27")
+		vim.cmd("normal! \27")
 		vim.fn.setpos(".", start)
-		vim.cmd(selection.blockwise and "normal! \\22" or "normal! v")
+		vim.cmd(selection.blockwise and "normal! \22" or "normal! v")
 		vim.fn.setpos(".", finish)
 		vim.cmd('normal! "_d')
 	end)
