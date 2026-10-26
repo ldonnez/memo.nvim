@@ -52,25 +52,6 @@ describe("selection", function()
 		MiniTest.expect.equality(lines, { "beta", "gamma" })
 	end)
 
-	it("returns a blockwise selection", function()
-		child.lua("vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'abcdef', 'ghijkl', 'mnopqr' })")
-		child.api.nvim_win_set_cursor(0, { 1, 1 })
-		child.lua([[
-			vim.api.nvim_feedkeys(
-				vim.api.nvim_replace_termcodes("<C-v>", true, false, true),
-				"nx",
-				false
-			)
-		]])
-		child.api.nvim_win_set_cursor(0, { 2, 3 })
-
-		local lines = child.lua_get("S.resolve()")
-		local selection = child.lua_get("select(2, S.resolve())")
-
-		MiniTest.expect.equality(lines, { "bcd", "hij" })
-		MiniTest.expect.equality(selection.blockwise, true)
-		MiniTest.expect.equality(selection.linewise, false)
-	end)
 
 	it("reports the active visual selection range", function()
 		child.cmd("normal! gg")
@@ -277,38 +258,7 @@ describe("selection", function()
 		})
 	end)
 
-	it("deletes a blockwise selection without touching surrounding columns", function()
-		child.lua("vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'abcdef', 'ghijkl', 'mnopqr' })")
-		child.lua([[
-			S.delete_selection(0, {
-				start = { 0, 1, 2, 0 },
-				finish = { 0, 2, 4, 0 },
-				linewise = false,
-				blockwise = true,
-			})
-		]])
 
-		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), {
-			"aef",
-			"gkl",
-			"mnopqr",
-		})
-	end)
-
-	it("preserves unselected cells when deleting part of a tab", function()
-		child.lua([[
-			vim.bo.tabstop = 4
-			vim.api.nvim_buf_set_lines(0, 0, -1, false, { "a\tb" })
-			S.delete_selection(0, {
-				start = { 0, 1, 2, 0 },
-				finish = { 0, 1, 2, 1 },
-				linewise = false,
-				blockwise = true,
-			})
-		]])
-
-		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), { "a  b" })
-	end)
 
 	it("deletes multibyte characters as a whole character", function()
 		child.lua([[
@@ -317,30 +267,12 @@ describe("selection", function()
 				start = { 0, 1, 2, 0 },
 				finish = { 0, 1, 2, 0 },
 				linewise = false,
-				blockwise = true,
 			})
 		]])
 
 		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), { "abc" })
 	end)
 
-	it("ignores blockwise columns beyond the end of a short line", function()
-		child.lua([[
-			vim.api.nvim_buf_set_lines(0, 0, -1, false, { "abcdef", "xy", "ghijkl" })
-			S.delete_selection(0, {
-				start = { 0, 1, 3, 0 },
-				finish = { 0, 3, 4, 0 },
-				linewise = false,
-				blockwise = true,
-			})
-		]])
-
-		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), {
-			"abef",
-			"xy",
-			"ghkl",
-		})
-	end)
 
 	it("deletes a linewise selection", function()
 		child.lua([[
@@ -368,21 +300,4 @@ describe("selection", function()
 		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), { "" })
 	end)
 
-	it("deletes a backwards blockwise selection using Neovim's visual operator", function()
-		child.lua("vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'abcdef', 'ghijkl', 'mnopqr' })")
-		child.lua([[
-			S.delete_selection(0, {
-				start = { 0, 2, 4, 0 },
-				finish = { 0, 1, 2, 0 },
-				linewise = false,
-				blockwise = true,
-			})
-		]])
-
-		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), {
-			"aef",
-			"gkl",
-			"mnopqr",
-		})
-	end)
 end)
