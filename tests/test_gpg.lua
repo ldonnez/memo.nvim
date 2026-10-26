@@ -79,6 +79,21 @@ describe("gpg", function()
 		MiniTest.expect.equality(result, { key_id })
 	end)
 
+	it("gets the key encryption mode from an encrypted file", function()
+		local encrypted = "/tmp/gpg_encryption_mode_key.txt.gpg"
+		helpers.create_gpg_key("mode-key@example.com")
+		helpers.encrypt_file(encrypted, "key encrypted")
+
+		MiniTest.expect.equality(child.lua_get("M.get_encryption_mode(...)", { encrypted }), "key")
+	end)
+
+	it("gets the passphrase encryption mode from a symmetric file", function()
+		local encrypted = "/tmp/gpg_encryption_mode_passphrase.txt.gpg"
+		helpers.encrypt_symmetric_file(encrypted, "passphrase encrypted", "mode-pass")
+
+		MiniTest.expect.equality(child.lua_get("M.get_encryption_mode(...)", { encrypted }), "passphrase")
+	end)
+
 	it("does not get key from file when its not encrypted", function()
 		local encrypted = "/tmp/plain.txt.gpg"
 		helpers.create_gpg_key("mock@example.com")

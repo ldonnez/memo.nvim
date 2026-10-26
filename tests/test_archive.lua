@@ -32,7 +32,7 @@ describe("archive", function()
 
 			M.real_encrypt_from_stdin = crypto.encrypt_from_stdin
 			M.real_decrypt_to_stdout = crypto.decrypt_to_stdout
-			M.real_get_file_key_ids = gpg.get_file_key_ids
+			M.real_get_encryption_mode = gpg.get_encryption_mode
 
 			crypto.encrypt_from_stdin = function(target, lines, _, opts)
 				M.encryption_modes[#M.encryption_modes + 1] = opts.mode
@@ -42,8 +42,8 @@ describe("archive", function()
 			crypto.decrypt_to_stdout = function(target)
 				return { stdout = table.concat(vim.fn.readfile(target), "\n") .. "\n" }
 			end
-			gpg.get_file_key_ids = function(target)
-				return target:match("%.asc$") and { "TESTKEY" } or {}
+			gpg.get_encryption_mode = function()
+				return "key"
 			end
 		]])
 	end)
@@ -363,8 +363,8 @@ describe("archive", function()
 			crypto.decrypt_to_stdout = function(target)
 				return { stdout = table.concat(vim.fn.readfile(target), "\n") .. "\n" }
 			end
-			gpg.get_file_key_ids = function()
-				return { "TESTKEY" }
+			gpg.get_encryption_mode = function()
+				return "key"
 			end
 		]])
 
@@ -381,7 +381,7 @@ describe("archive", function()
 			local gpg = require("memo.gpg")
 			crypto.encrypt_from_stdin = M.real_encrypt_from_stdin
 			crypto.decrypt_to_stdout = M.real_decrypt_to_stdout
-			gpg.get_file_key_ids = M.real_get_file_key_ids
+			gpg.get_encryption_mode = M.real_get_encryption_mode
 		]])
 
 		MiniTest.expect.equality(child.lua_get("M.archive({ range = 1, line1 = 1, line2 = 1 })"), true)
@@ -407,7 +407,7 @@ describe("archive", function()
 			local gpg = require("memo.gpg")
 			crypto.encrypt_from_stdin = M.real_encrypt_from_stdin
 			crypto.decrypt_to_stdout = M.real_decrypt_to_stdout
-			gpg.get_file_key_ids = M.real_get_file_key_ids
+			gpg.get_encryption_mode = M.real_get_encryption_mode
 			gpg.prompt_passphrase = function()
 				return "archive-integration-passphrase"
 			end
