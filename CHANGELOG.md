@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.21.3](https://github.com/ldonnez/memo.nvim/compare/v0.21.2...v0.21.3) (2026-10-26)
+
+
+### Bug Fixes
+
+* handle tabs in blockwise deletion ([64afd49](https://github.com/ldonnez/memo.nvim/commit/64afd496548f60d88683bac68d84f9b6b7e0870c))
+* preserve tab cells in blockwise deletion ([9b32b86](https://github.com/ldonnez/memo.nvim/commit/9b32b86f63f988e5421fc1135fdf9e1534e4fce9))
+* preserve tab cells when deleting block selections ([d46a579](https://github.com/ldonnez/memo.nvim/commit/d46a579dadef70be5132ba100dd518570e9ac0cb))
+* satisfy selection position integer types ([3a1b023](https://github.com/ldonnez/memo.nvim/commit/3a1b023dcca1bde5dd52257978903e8da0d0cef4))
+
 ## [0.21.2](https://github.com/ldonnez/memo.nvim/compare/v0.21.1...v0.21.2) (2026-10-26)
 
 
