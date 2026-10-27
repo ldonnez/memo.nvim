@@ -191,24 +191,24 @@ describe("note_backup", function()
 	end)
 
 	describe("protect", function()
-		it("removes the note, runs the action and drops the copy", function()
+		it("keeps the note in place while the action runs", function()
 			local note = path("note.md.asc")
 			helpers.write_file(note, "original body\n")
 
 			local backup = NoteBackup.new(note)
 			local kept ---@type string
-			local removed ---@type boolean
+			local present ---@type boolean
 
 			local success, err = backup:protect(function()
 				kept = backup.backup_path --[[@as string]]
-				removed = vim.fn.filereadable(note) == 0
+				present = vim.fn.filereadable(note) == 1
 				helpers.write_file(note, "replacement body\n")
 				return true
 			end)
 
 			MiniTest.expect.equality(success, true)
 			MiniTest.expect.equality(err, nil)
-			MiniTest.expect.equality(removed, true)
+			MiniTest.expect.equality(present, true)
 			MiniTest.expect.equality(vim.fn.filereadable(kept), 0)
 			MiniTest.expect.equality(read(note), { "replacement body" })
 		end)
@@ -219,6 +219,7 @@ describe("note_backup", function()
 
 			local backup = NoteBackup.new(note)
 			local success, err = backup:protect(function()
+				helpers.write_file(note, "partial replacement\n")
 				return false, "encryption failed"
 			end)
 
@@ -242,28 +243,6 @@ describe("note_backup", function()
 			MiniTest.expect.equality(ok, false)
 			MiniTest.expect.equality(tostring(err):find("boom") ~= nil, true)
 			MiniTest.expect.equality(read(note), { "original body" })
-		end)
-
-		it("keeps the note and drops the copy when it cannot be removed", function()
-			local note = path("note.md.asc")
-			helpers.write_file(note, "original body\n")
-
-			local backup = NoteBackup.new(note)
-			backup:save()
-			local kept = backup.backup_path --[[@as string]]
-
-			-- A directory cannot be removed by the plain delete protect uses.
-			vim.fn.delete(note)
-			vim.fn.mkdir(note, "p")
-
-			local success, err = backup:protect(function()
-				error("should not run")
-			end)
-
-			MiniTest.expect.equality(success, false)
-			MiniTest.expect.equality(err, ("could not remove existing note (%s)"):format(note))
-			MiniTest.expect.equality(vim.fn.isdirectory(note), 1)
-			MiniTest.expect.equality(vim.fn.filereadable(kept), 0)
 		end)
 
 		it("reports a failed recovery in place of the operation's error", function()
