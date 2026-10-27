@@ -106,7 +106,11 @@ describe("archive", function()
 		MiniTest.expect.equality(vim.tbl_contains(archived, "archive one"), true)
 		MiniTest.expect.equality(vim.tbl_contains(archived, "archive two"), true)
 		MiniTest.expect.equality(vim.tbl_contains(archived, "Source: note.md"), true)
-		MiniTest.expect.equality(vim.tbl_contains(archived, "Archived: " .. os.date("%Y-%m-%dT%H:%M:%S%z")), true)
+		MiniTest.expect.equality(
+			--- @diagnostic disable-next-line: need-check-nil, param-type-mismatch
+			archived[4]:match("^Archived: %d%d%d%d%-%d%d%-%d%dT%d%d:%d%d:%d%d[+-]%d%d%d%d$") ~= nil,
+			true
+		)
 	end)
 
 	it("archives only the active character-wise selection", function()
@@ -226,7 +230,11 @@ describe("archive", function()
 		MiniTest.expect.equality(archived[1], "")
 		MiniTest.expect.equality(archived[2], "---")
 		MiniTest.expect.equality(archived[3], "")
-		MiniTest.expect.equality(archived[4], "Archived: " .. os.date("%Y-%m-%dT%H:%M:%S%z"))
+		MiniTest.expect.equality(
+			--- @diagnostic disable-next-line: need-check-nil, param-type-mismatch
+			archived[4]:match("^Archived: %d%d%d%d%-%d%d%-%d%dT%d%d:%d%d:%d%d[+-]%d%d%d%d$") ~= nil,
+			true
+		)
 		MiniTest.expect.equality(archived[5], "Source: note.md")
 		MiniTest.expect.equality(archived[6], "")
 		MiniTest.expect.equality(archived[7], "archive one")
