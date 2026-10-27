@@ -11,6 +11,7 @@ local M = {}
 ---@field range? integer Command range indicator
 ---@field line1? integer First line of the command range
 ---@field line2? integer Last line of the command range
+---@field target_file? string destination note path, absolute or relative to the notes directory
 ---@field window? MemoWindowConfig Window configuration
 
 ---@param path string
@@ -146,7 +147,8 @@ function M.create(opts)
 				return
 			end
 
-			local target = utils.prompt_note_path(require("memo.config").notes_dir .. "/", "MemoRefile")
+			local target = opts and opts.target_file
+				or utils.prompt_note_path(require("memo.config").notes_dir .. "/", "MemoRefile")
 
 			if not target then
 				return
