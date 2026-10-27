@@ -27,6 +27,13 @@ function M.save_as_note(opts)
 	return require("memo.save_as_note").create(opts)
 end
 
+--Opens an editable window for a selection and appends it to a chosen note.
+---@param opts? MemoRefileOpts
+---@return boolean success
+function M.refile(opts)
+	return require("memo.refile").create(opts)
+end
+
 --Moves the selected lines into the current note's companion archive file.
 ---@param opts? MemoArchiveOpts
 ---@return boolean success

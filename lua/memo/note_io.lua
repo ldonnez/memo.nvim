@@ -32,20 +32,44 @@ function M.read_lines(path, bufnr)
 	return lines
 end
 
----Runs an operation while keeping an existing note recoverable if it fails.
----The operation writes directly to the destination and returns the same
----success, error pair as a note write.
----@param path string
----@param action fun(): boolean, string?
----@return boolean success
----@return string? err
-function M.protect(path, action)
+local function protect(path, action)
 	return NoteBackup.new(path):protect(action)
 end
 
+---Runs an action after removing the destination, restoring the original note
+---if the action fails. Use this when preparing the replacement requires more
+---than writing lines directly.
+---@param path string
+---@param action fun(encrypt: fun(lines: string[], bufnr: integer?, opts: GpgEncryptOpts?): boolean, string?): boolean, string?
+---@return boolean success
+---@return string? err
+function M.replace(path, action)
+	return protect(path, function()
+		if utils.file_exists(path) and vim.fn.delete(path) ~= 0 then
+			return false, "could not remove existing note"
+		end
+
+		return action(function(lines, bufnr, opts)
+			return crypto.encrypt_from_stdin(path, lines, bufnr, opts)
+		end)
+	end)
+end
+
 ---Encrypts and writes lines, restoring the original note if the write fails.
----Resolve the encryption mode before calling this function when it depends on
----the existing file, since the write may change its contents.
+---Pass a mode when creating a file or intentionally choosing its encryption.
+---Existing files retain their mode through `gpg.encrypt`.
+---@param path string
+---@param lines string[]
+---@param opts? GpgEncryptOpts
+---@return boolean success
+---@return string? err
+function M.overwrite(path, lines, opts)
+	return M.replace(path, function()
+		return crypto.encrypt_from_stdin(path, lines, nil, opts)
+	end)
+end
+
+---Encrypts and writes lines, restoring the original note if the write fails.
 ---@param path string
 ---@param lines string[]
 ---@param bufnr integer?
@@ -53,7 +77,7 @@ end
 ---@return boolean success
 ---@return string? err
 function M.write_lines(path, lines, bufnr, opts)
-	return M.protect(path, function()
+	return protect(path, function()
 		return crypto.encrypt_from_stdin(path, lines, bufnr, opts)
 	end)
 end

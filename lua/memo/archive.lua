@@ -44,9 +44,9 @@ local function append_to_archive(path, lines, bufnr, source_path)
 
 	vim.list_extend(existing, lines)
 
-	-- Preserve an existing archive's encryption mode. A new archive follows
-	-- the source note's mode. Resolve it before the protected write.
-	local mode = gpg.get_encryption_mode(has_content and path or source_path)
+	-- A new archive follows the source note's mode. Existing archives retain
+	-- their mode in gpg.encrypt, which detects it before replacing the file.
+	local mode = not has_content and gpg.get_encryption_mode(source_path) or nil
 
 	return note_io.write_lines(path, existing, bufnr, { mode = mode })
 end

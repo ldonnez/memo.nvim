@@ -578,6 +578,24 @@ When calling the function outside Visual mode, pass `range = 1`, `line1`, and
 require("memo").archive({ range = 1, line1 = 2, line2 = 4 })
 ```
 
+### Refile selected text
+
+Move a selection into another note with `:MemoRefile` or
+`require("memo").refile()`. An editable window opens with the selected text.
+Write the window to choose a destination note path; the text is appended to
+that note, and the original selection is removed only after the write succeeds.
+If the destination does not exist, it is created. Existing notes keep their
+encryption mode.
+
+```lua
+vim.keymap.set("x", "<leader>mr", function()
+  require("memo").refile()
+end, { desc = "Memo: Refile selected text" })
+```
+
+The command also accepts a line range, e.g. `:'<,'>MemoRefile`. Paths are
+resolved relative to the notes directory and cannot escape it.
+
 ### Open a note
 
 Open a note by path, with the same `window` options as a new note. Paths are

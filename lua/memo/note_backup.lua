@@ -151,9 +151,7 @@ function NoteBackup:protect(action)
 		return false, err
 	end
 
-	if not self:discard() then
-		return true, "note was written but its backup could not be removed"
-	end
+	self:discard()
 
 	return true
 end

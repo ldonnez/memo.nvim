@@ -1,4 +1,3 @@
-local gpg = require("memo.gpg")
 local note_io = require("memo.note_io")
 local utils = require("memo.utils")
 local selection = require("memo.selection")
@@ -166,8 +165,7 @@ local function append_capture(lines, config, bufnr)
 		return false, read_err
 	end
 
-	-- Resolve the mode before the protected write removes the original file.
-	local existing_mode = utils.file_has_content(file) and gpg.get_encryption_mode(file) or mode
+	local existing_mode = not utils.file_has_content(file) and mode or nil
 	local merged = insert_lines(existing, lines, config)
 
 	return note_io.write_lines(file, merged, bufnr, { mode = existing_mode })

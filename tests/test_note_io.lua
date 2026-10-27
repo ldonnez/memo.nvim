@@ -228,15 +228,15 @@ describe("note_io", function()
 			MiniTest.expect.equality(vim.fn.readfile(path), { "original" })
 		end)
 
-		it("prepares the buffer after removing the old file", function()
+		it("runs replacement after removing the old file", function()
 			local path = vim.env.NOTES_DIR .. "/prepared.md.asc"
 			helpers.write_file(path, "original\n")
 			local result = child.lua_get(
 				[[
 				(function(path)
-					return M.overwrite(path, { "replacement" }, { mode = "passphrase" }, function()
+					return M.replace(path, function(encrypt)
 						MiniTest.expect.equality(vim.fn.filereadable(path), 0)
-						return 17
+						return encrypt({ "replacement" }, 17, { mode = "passphrase" })
 					end)
 				end)(...)
 			]],

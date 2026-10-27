@@ -96,19 +96,15 @@ function M.create(opts)
 	local note_template = Template.new({ template = new_opts.template })
 	local initial_lines, cursor_pos = note_template:initial_content(selected)
 
-	-- A cancelled passphrase prompt or failed write leaves the original restorable.
+	-- Use the requested mode, defaulting to key-based encryption.
+	local mode = new_opts.encryption and new_opts.encryption.mode or "key"
 
 	if not cleanup_existing_buffer(note_path) then
 		return false
 	end
 
-	local success, err = note_io.protect(note_path, function()
-		-- Remove the old ciphertext only after its backup is secured. Editing
-		-- the now-missing path lets the normal note autocmd prepare the buffer.
-		if utils.file_exists(note_path) and vim.fn.delete(note_path) ~= 0 then
-			return false, "could not remove existing note"
-		end
-
+	local success, err = note_io.replace(note_path, function(encrypt)
+		-- Open a fresh, modifiable buffer rather than reading the old ciphertext.
 		local win = window.open(new_opts.window)
 
 		vim.api.nvim_win_call(win, function()
@@ -121,26 +117,19 @@ function M.create(opts)
 			vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
 		end
 
-		-- The requested mode determines a new note's encryption.
-		local crypto = require("memo.crypto")
-		local mode = new_opts.encryption and new_opts.encryption.mode
-		local written, write_err = crypto.encrypt_from_stdin(note_path, initial_lines, bufnr, {
-			mode = mode,
-			confirm = overwriting,
-		})
+		local encrypted, encrypt_err = encrypt(initial_lines, bufnr, { mode = mode })
 
-		if not written then
+		if not encrypted then
 			if vim.api.nvim_buf_is_valid(bufnr) then
 				vim.api.nvim_buf_delete(bufnr, { force = true })
 			end
-
-			return false, write_err
+			return false, encrypt_err
 		end
 
 		vim.bo[bufnr].modified = false
 
-		-- Record the content just written so the first `:w` is a no-op instead
-		-- of re-encrypting the note it was created from.
+		-- Record the content just written so the first `:w` is a no-op
+		-- instead of re-encrypting the note it was created from.
 		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 		vim.b[bufnr].hash = vim.fn.sha256(table.concat(lines, "\n"))
 

@@ -339,7 +339,6 @@ end
 ---@class GpgEncryptOpts
 ---@field mode? "passphrase"|"key" how to encrypt a new note, "key" when
 ---omitted; an existing note always keeps the way it was encrypted
----@field confirm? boolean confirm a passphrase when replacing an existing note
 
 ---@class GpgEncryptRequest: GpgEncryptOpts
 ---@field bufnr? integer buffer holding the passphrase of a passphrase note
@@ -356,15 +355,14 @@ function M.encrypt(path, input, opts)
 	-- existing note keeps the encryption its file already uses. "Has content"
 	-- rather than "exists" matches how the plugin treats a zero-byte file as
 	-- not yet written.
-	local new_passphrase = opts.mode == "passphrase"
-		and (opts.confirm or not require("memo.utils").file_has_content(path))
+	local new_passphrase = opts.mode == "passphrase" and not require("memo.utils").file_has_content(path)
 	local passphrase_mode = new_passphrase or is_symmetric(path)
 
 	if not passphrase_mode then
 		return vim.system({ "memo", "encrypt", path }, { stdin = input }):wait()
 	end
 
-	local passphrase, err = get_symmetric_passphrase(path, opts.bufnr, new_passphrase or opts.confirm)
+	local passphrase, err = get_symmetric_passphrase(path, opts.bufnr, new_passphrase)
 
 	if not passphrase then
 		-- A dismissed prompt is a cancellation; a mismatch is a failure the
