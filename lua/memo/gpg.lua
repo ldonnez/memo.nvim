@@ -161,7 +161,7 @@ end
 local function get_symmetric_passphrase(path, bufnr, confirm)
 	local cached = cached_passphrase(bufnr)
 
-	if cached then
+	if cached and not confirm then
 		return cached
 	end
 
@@ -337,8 +337,8 @@ end
 
 --- Encrypts content into a note.
 ---@class GpgEncryptOpts
----@field mode? "passphrase"|"key" how to encrypt a new note, "key" when
----omitted; an existing note always keeps the way it was encrypted
+---@field mode? "passphrase"|"key" how to encrypt a new note, "key" when omitted
+---@field force_mode? boolean use `mode` even when replacing an existing note
 
 ---@class GpgEncryptRequest: GpgEncryptOpts
 ---@field bufnr? integer buffer holding the passphrase of a passphrase note
@@ -351,12 +351,13 @@ end
 function M.encrypt(path, input, opts)
 	opts = opts or {}
 
-	-- A note with no content is new, so `mode` decides its encryption; an
-	-- existing note keeps the encryption its file already uses. "Has content"
-	-- rather than "exists" matches how the plugin treats a zero-byte file as
-	-- not yet written.
-	local new_passphrase = opts.mode == "passphrase" and not require("memo.utils").file_has_content(path)
-	local passphrase_mode = new_passphrase or is_symmetric(path)
+	-- By default, an existing note keeps its encryption mode. A caller replacing
+	-- the whole note can force the requested mode without removing the original
+	-- file first; the backup layer restores it if encryption fails.
+	local has_content = require("memo.utils").file_has_content(path)
+	local new_passphrase = opts.mode == "passphrase" and (opts.force_mode or not has_content)
+	local passphrase_mode = opts.force_mode and opts.mode == "passphrase"
+		or not opts.force_mode and (is_symmetric(path) or new_passphrase)
 
 	if not passphrase_mode then
 		return vim.system({ "memo", "encrypt", path }, { stdin = input }):wait()

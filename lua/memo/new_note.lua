@@ -24,7 +24,7 @@ end
 local function cleanup_existing_buffer(path)
 	local bufnr = vim.fn.bufnr(path)
 
-	if bufnr == -1 or not vim.api.nvim_buf_is_loaded(bufnr) then
+	if bufnr == -1 then
 		return true
 	end
 
@@ -38,6 +38,29 @@ local function cleanup_existing_buffer(path)
 	return true
 end
 
+---@param path string
+---@param opts MemoWindowConfig?
+---@return integer win
+---@return integer buf
+local function create_window(path, opts)
+	local bufnr = vim.api.nvim_create_buf(true, false)
+
+	vim.api.nvim_exec_autocmds("BufReadPre", { buffer = bufnr, modeline = false })
+
+	local win = require("memo.window").open(opts)
+
+	vim.api.nvim_buf_set_name(bufnr, path)
+	vim.api.nvim_win_set_buf(win, bufnr)
+	vim.bo[bufnr].swapfile = false
+	vim.bo[bufnr].undofile = false
+	vim.bo[bufnr].modifiable = true
+	vim.bo[bufnr].fileencoding = "utf-8"
+	vim.bo[bufnr].buftype = "acwrite"
+	vim.bo[bufnr].filetype = require("memo.utils").get_filetype(path) or ""
+
+	vim.api.nvim_exec_autocmds("BufReadPost", { buffer = bufnr, modeline = false })
+	return win, bufnr
+end
 ---Creates a new encrypted note and opens it in the current window.
 ---A range or visual selection is inserted at the template's `|` marker.
 ---@param opts? MemoNewNoteOpts
@@ -50,7 +73,6 @@ function M.create(opts)
 	local selection = require("memo.selection")
 	local note_io = require("memo.note_io")
 	local Template = require("memo.note_template")
-	local window = require("memo.window")
 
 	local path = new_opts.path
 
@@ -103,51 +125,37 @@ function M.create(opts)
 		return false
 	end
 
-	local success, err = note_io.replace(note_path, function(encrypt)
-		-- Open a fresh, modifiable buffer rather than reading the old ciphertext.
-		local win = window.open(new_opts.window)
+	local win, bufnr = create_window(note_path, new_opts.window)
 
-		vim.api.nvim_win_call(win, function()
-			vim.cmd("edit " .. vim.fn.fnameescape(note_path))
-		end)
+	if #initial_lines > 0 then
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
+	end
 
-		local bufnr = vim.api.nvim_win_get_buf(win)
-
-		if #initial_lines > 0 then
-			vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
-		end
-
-		local encrypted, encrypt_err = encrypt(initial_lines, bufnr, { mode = mode })
-
-		if not encrypted then
-			if vim.api.nvim_buf_is_valid(bufnr) then
-				vim.api.nvim_buf_delete(bufnr, { force = true })
-			end
-			return false, encrypt_err
-		end
-
-		vim.bo[bufnr].modified = false
-
-		-- Record the content just written so the first `:w` is a no-op
-		-- instead of re-encrypting the note it was created from.
-		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-		vim.b[bufnr].hash = vim.fn.sha256(table.concat(lines, "\n"))
-
-		-- Only when the note is still in `win`: an autocmd may have moved it.
-		if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == bufnr then
-			vim.api.nvim_win_set_cursor(win, cursor_pos)
-		end
-
-		return true
-	end)
+	local success, err = note_io.write_lines(note_path, initial_lines, bufnr, { mode = mode, force_mode = true })
 
 	if not success then
+		if vim.api.nvim_buf_is_valid(bufnr) then
+			vim.api.nvim_buf_delete(bufnr, { force = true })
+		end
+
 		-- A dismissed prompt has no reason: a cancellation, nothing to report.
 		if err then
 			message.error("MemoNewNote: %s", err)
 		end
 
 		return false
+	end
+
+	vim.bo[bufnr].modified = false
+
+	-- Record the content just written so the first `:w` is a no-op
+	-- instead of re-encrypting the note it was created from.
+	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+	vim.b[bufnr].hash = vim.fn.sha256(table.concat(lines, "\n"))
+
+	-- Only when the note is still in `win`: an autocmd may have moved it.
+	if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == bufnr then
+		vim.api.nvim_win_set_cursor(win, cursor_pos)
 	end
 
 	return true

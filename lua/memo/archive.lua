@@ -26,9 +26,10 @@ end
 ---@param lines string[]
 ---@param bufnr integer
 ---@param source_path string
+---@param after fun(): boolean, string?
 ---@return boolean success
 ---@return string? err
-local function append_to_archive(path, lines, bufnr, source_path)
+local function append_to_archive(path, lines, bufnr, source_path, after)
 	local existed = utils.file_exists(path)
 	local has_content = utils.file_has_content(path)
 
@@ -48,7 +49,7 @@ local function append_to_archive(path, lines, bufnr, source_path)
 	-- their mode in gpg.encrypt, which detects it before replacing the file.
 	local mode = not has_content and gpg.get_encryption_mode(source_path) or nil
 
-	return note_io.write_lines(path, existing, bufnr, { mode = mode })
+	return note_io.write_lines(path, existing, bufnr, { mode = mode }, after)
 end
 
 ---@param opts? MemoArchiveOpts
@@ -99,7 +100,11 @@ function M.archive(opts)
 	}
 	vim.list_extend(entry, selected_lines)
 
-	local success, err = append_to_archive(archive_file, entry, bufnr, path)
+	local success, err = append_to_archive(archive_file, entry, bufnr, path, function()
+		vim.cmd("normal! \27")
+		selection.delete_selection(bufnr, selection_range)
+		return true
+	end)
 
 	if not success then
 		if err then
@@ -109,10 +114,6 @@ function M.archive(opts)
 		return false
 	end
 
-	selection.delete_selection(bufnr, selection_range)
-	-- A Visual-mode mapping does not leave Visual mode on its own, and the
-	-- selection would otherwise stay active after its lines are gone.
-	vim.cmd("normal! \27")
 	message.info("Archived lines to %s", archive_file)
 	return true
 end

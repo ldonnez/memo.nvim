@@ -50,13 +50,8 @@ function M.create(opts)
 	end
 
 	local lines = selection.resolve(bufnr, opts) or vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-
 	local mode = opts and opts.encryption and opts.encryption.mode or "key"
-
-	local success, err = note_io.overwrite(note_path, lines, {
-		-- Use the requested mode, not the old file's mode.
-		mode = mode,
-	})
+	local success, err = note_io.write_lines(note_path, lines, nil, { mode = mode, force_mode = true })
 
 	if not success then
 		-- A dismissed prompt has no reason: a cancellation, nothing to report.
