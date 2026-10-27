@@ -1,7 +1,5 @@
-local gpg = require("memo.gpg")
 local message = require("memo.message")
 local note_io = require("memo.note_io")
-local crypto = require("memo.crypto")
 local selection = require("memo.selection")
 
 local M = {}
@@ -15,8 +13,7 @@ local M = {}
 ---@field range? integer
 ---@field line1? integer
 ---@field line2? integer
----@field encryption? GpgEncryptOpts how to encrypt a new note, "key" when
----omitted; an existing note keeps the way it was encrypted
+---@field encryption? GpgEncryptOpts how to encrypt the note, "key" when omitted
 
 ---@param opts? MemoSaveAsNoteOpts
 ---@return boolean success
@@ -54,25 +51,12 @@ function M.create(opts)
 
 	local lines = selection.resolve(bufnr, opts) or vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
-	-- Resolve the mode before the protected write removes the original file;
-	-- failed or cancelled encryption leaves the original restorable.
 	local mode = opts and opts.encryption and opts.encryption.mode or "key"
 
-	if overwriting then
-		mode = gpg.get_encryption_mode(note_path)
-	end
-
-	local success, err = note_io.protect(note_path, function()
-		-- The original is backed up by protect before this replacement.
-		if utils.file_exists(note_path) and vim.fn.delete(note_path) ~= 0 then
-			return false, "could not remove existing note"
-		end
-
-		return crypto.encrypt_from_stdin(note_path, lines, nil, {
-			mode = mode,
-			confirm = overwriting,
-		})
-	end)
+	local success, err = note_io.overwrite(note_path, lines, {
+		-- Use the requested mode, not the old file's mode.
+		mode = mode,
+	})
 
 	if not success then
 		-- A dismissed prompt has no reason: a cancellation, nothing to report.

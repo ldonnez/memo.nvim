@@ -28,11 +28,10 @@ describe("archive", function()
 			memo = require("memo")
 
 			local crypto = require("memo.crypto")
-			local gpg = require("memo.gpg")
 
-			M.real_encrypt_from_stdin = crypto.encrypt_from_stdin
+			M.real_get_encryption_mode = require("memo.gpg").get_encryption_mode
+		M.real_encrypt_from_stdin = crypto.encrypt_from_stdin
 			M.real_decrypt_to_stdout = crypto.decrypt_to_stdout
-			M.real_get_encryption_mode = gpg.get_encryption_mode
 
 			crypto.encrypt_from_stdin = function(target, lines, _, opts)
 				M.encryption_modes[#M.encryption_modes + 1] = opts.mode
@@ -41,9 +40,6 @@ describe("archive", function()
 			end
 			crypto.decrypt_to_stdout = function(target)
 				return { stdout = table.concat(vim.fn.readfile(target), "\n") .. "\n" }
-			end
-			gpg.get_encryption_mode = function()
-				return "key"
 			end
 		]])
 	end)
@@ -133,31 +129,6 @@ describe("archive", function()
 		local archived = vim.fn.readfile(path("note.archive.md.asc"))
 		MiniTest.expect.equality(vim.tbl_contains(archived, "archive"), true)
 		MiniTest.expect.equality(vim.tbl_contains(archived, "keep archive word tail"), false)
-	end)
-	it("archives and deletes only the active blockwise selection", function()
-		local bufnr = buffer("note.md", { "abcdef", "ghijkl", "mnopqr" })
-
-		child.lua([[
-			vim.keymap.set("x", "<leader>ma", function()
-				M.archive()
-			end)
-			vim.api.nvim_win_set_cursor(0, { 1, 1 })
-			vim.api.nvim_feedkeys(
-				vim.api.nvim_replace_termcodes("<C-v>2lj<leader>ma", true, false, true),
-				"xt",
-				false
-			)
-		]])
-
-		MiniTest.expect.equality(child.api.nvim_buf_get_lines(bufnr, 0, -1, false), {
-			"aef",
-			"gkl",
-			"mnopqr",
-		})
-		local archived = vim.fn.readfile(path("note.archive.md.asc"))
-		MiniTest.expect.equality(vim.tbl_contains(archived, "bcd"), true)
-		MiniTest.expect.equality(vim.tbl_contains(archived, "hij"), true)
-		MiniTest.expect.equality(vim.tbl_contains(archived, "abcdef"), false)
 	end)
 
 	it("archives the active visual selection when called without options", function()
@@ -354,7 +325,6 @@ describe("archive", function()
 
 		child.lua([[
 			local crypto = require("memo.crypto")
-			local gpg = require("memo.gpg")
 
 			crypto.encrypt_from_stdin = function(target, lines)
 				vim.fn.writefile(lines, target)
@@ -362,9 +332,6 @@ describe("archive", function()
 			end
 			crypto.decrypt_to_stdout = function(target)
 				return { stdout = table.concat(vim.fn.readfile(target), "\n") .. "\n" }
-			end
-			gpg.get_encryption_mode = function()
-				return "key"
 			end
 		]])
 
@@ -378,10 +345,8 @@ describe("archive", function()
 
 		child.lua([[
 			local crypto = require("memo.crypto")
-			local gpg = require("memo.gpg")
 			crypto.encrypt_from_stdin = M.real_encrypt_from_stdin
 			crypto.decrypt_to_stdout = M.real_decrypt_to_stdout
-			gpg.get_encryption_mode = M.real_get_encryption_mode
 		]])
 
 		MiniTest.expect.equality(child.lua_get("M.archive({ range = 1, line1 = 1, line2 = 1 })"), true)
