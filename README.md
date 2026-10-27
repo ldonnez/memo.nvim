@@ -585,7 +585,9 @@ Move a selection into another note with `:MemoRefile` or
 Write the window to choose a destination note path; the text is appended to
 that note, and the original selection is removed only after the write succeeds.
 If the destination does not exist, it is created. Existing notes keep their
-encryption mode.
+encryption mode. Pass `target_file` to skip the prompt; absolute paths and
+paths relative to the notes directory are supported, with the note extension
+optional.
 
 ```lua
 vim.keymap.set("x", "<leader>mr", function()

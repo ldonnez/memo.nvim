@@ -114,6 +114,45 @@ describe("refile", function()
 		MiniTest.expect.equality(child.api.nvim_get_current_buf(), source)
 	end)
 
+	it("uses a relative target_file without prompting", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "move me" })
+
+		child.lua([[
+			require("memo.utils").prompt_note_path = function()
+				error("should not prompt")
+			end
+			M.create({ range = 1, line1 = 1, line2 = 1, target_file = "nested/target.md" })
+		]])
+
+		child.cmd("write")
+
+		local destination = vim.env.NOTES_DIR .. "/nested/target.md.asc"
+		MiniTest.expect.equality(vim.fn.readfile(destination), { "move me" })
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(source, 0, -1, false), { "" })
+	end)
+
+	it("uses an absolute target_file without prompting", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "move me" })
+
+		local destination = vim.env.NOTES_DIR .. "/absolute-target.md.asc"
+		child.lua(
+			[[
+			require("memo.utils").prompt_note_path = function()
+				error("should not prompt")
+			end
+			M.create({ range = 1, line1 = 1, line2 = 1, target_file = ... })
+		]],
+			{ destination }
+		)
+
+		child.cmd("write")
+
+		MiniTest.expect.equality(vim.fn.readfile(destination), { "move me" })
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(source, 0, -1, false), { "" })
+	end)
+
 	it("does not write when the source buffer is not modifiable", function()
 		local source = child.api.nvim_get_current_buf()
 		child.api.nvim_buf_set_lines(source, 0, -1, false, { "keep me" })
