@@ -59,13 +59,10 @@ function NoteBackup:save()
 
 	local target = backup_path_for(self.path)
 
-	if not vim.uv.fs_copyfile(self.path, target) then
-		-- A partial target can be left behind; drop it so it is not mistaken
-		-- for a note. The original is still in place at this point.
-		if utils.file_exists(target) and vim.fn.delete(target) ~= 0 then
-			message.warn("Memo: could not remove incomplete backup %s", target)
-		end
-
+	-- UV_FS_COPYFILE_EXCL (1) fails if the destination already exists.
+	-- Do not remove the target on failure: it may be a pre-existing file that
+	-- caused the exclusive copy to fail.
+	if not vim.uv.fs_copyfile(self.path, target, 1) then
 		message.error("Memo: could not back up %s", self.path)
 		return false
 	end

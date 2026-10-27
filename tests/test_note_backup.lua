@@ -91,6 +91,30 @@ describe("note_backup", function()
 
 			MiniTest.expect.equality(first.backup_path ~= second.backup_path, true)
 		end)
+
+		it("does not overwrite or remove an existing backup path", function()
+			local note = path("note.md.asc")
+			local target = path("note.md.memo-backup-123.asc")
+			helpers.write_file(note, "original body\n")
+			helpers.write_file(target, "keep me\n")
+
+			local hrtime = vim.uv.hrtime
+			vim.uv.hrtime = function()
+				return 123
+			end
+
+			local backup = NoteBackup.new(note)
+			local ok, saved = pcall(function()
+				return backup:save()
+			end)
+
+			vim.uv.hrtime = hrtime
+
+			MiniTest.expect.equality(ok, true)
+			MiniTest.expect.equality(saved, false)
+			MiniTest.expect.equality(read(target), { "keep me" })
+			MiniTest.expect.equality(backup.backup_path, nil)
+		end)
 	end)
 
 	describe("restore", function()
