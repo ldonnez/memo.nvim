@@ -23,7 +23,8 @@ describe("refile", function()
 			crypto.decrypt_to_stdout = function(path)
 				return { code = 0, stdout = table.concat(vim.fn.readfile(path), "\n") .. "\n" }
 			end
-			crypto.encrypt_from_stdin = function(path, lines)
+			crypto.encrypt_from_stdin = function(path, lines, _, opts)
+				last_encrypt_opts = opts
 				vim.fn.writefile(lines, path)
 				return true
 			end
@@ -134,6 +135,33 @@ describe("refile", function()
 			"move me",
 			"",
 		})
+	end)
+
+	it("uses passphrase encryption for a new destination when configured", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "move me" })
+
+		child.lua([[ M.create({
+			range = 1, line1 = 1, line2 = 1,
+			encryption = { mode = "passphrase" },
+		}) ]])
+		child.cmd("write")
+
+		MiniTest.expect.equality(child.lua_get("last_encrypt_opts.mode"), "passphrase")
+	end)
+
+	it("preserves the encryption mode of an existing destination", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "move me" })
+		vim.fn.writefile({ "existing" }, vim.env.NOTES_DIR .. "/destination.md.asc")
+
+		child.lua([[ M.create({
+			range = 1, line1 = 1, line2 = 1,
+			encryption = { mode = "passphrase" },
+		}) ]])
+		child.cmd("write")
+
+		MiniTest.expect.equality(child.lua_get("last_encrypt_opts.mode") == vim.NIL, true)
 	end)
 
 	it("uses a relative target_file without prompting", function()

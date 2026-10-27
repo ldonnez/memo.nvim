@@ -1,4 +1,3 @@
-local gpg = require("memo.gpg")
 local message = require("memo.message")
 local note_io = require("memo.note_io")
 local selection = require("memo.selection")
@@ -13,6 +12,7 @@ local M = {}
 ---@field line2? integer Last line of the command range
 ---@field target_file? string destination note path, absolute or relative to the notes directory
 ---@field padding? MemoRefilePadding blank lines above and below the refiled content
+---@field encryption? GpgEncryptOpts how to encrypt a new destination, "key" when omitted; existing destinations keep their mode
 ---@field window? MemoWindowConfig Window configuration
 
 ---@class MemoRefilePadding
@@ -38,10 +38,12 @@ end
 ---@param path string
 ---@param lines string[]
 ---@param bufnr integer
+---@param padding MemoRefilePadding
+---@param encryption GpgEncryptOpts?
 ---@param after fun(): boolean, string?
 ---@return boolean success
 ---@return string? err
-local function append_to_note(path, lines, bufnr, padding, after)
+local function append_to_note(path, lines, bufnr, padding, encryption, after)
 	local valid, validation_err = validate_destination(path)
 
 	if not valid then
@@ -54,7 +56,7 @@ local function append_to_note(path, lines, bufnr, padding, after)
 		return false, err
 	end
 
-	local mode = utils.file_has_content(path) and gpg.get_encryption_mode(path) or "key"
+	local mode = not utils.file_has_content(path) and encryption and encryption.mode or nil
 
 	local top_padding = padding.top or 0
 
@@ -194,7 +196,7 @@ function M.create(opts)
 				return
 			end
 
-			local saved, err = append_to_note(path, content, buf, config.padding, function()
+			local saved, err = append_to_note(path, content, buf, config.padding, config.encryption, function()
 				if source_changed() then
 					return false, "source changed while writing"
 				end

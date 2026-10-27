@@ -588,12 +588,15 @@ If the destination does not exist, it is created. Existing notes keep their
 encryption mode. Pass `target_file` to skip the prompt; absolute paths and
 paths relative to the notes directory are supported, with the note extension
 optional. Use `padding` to configure blank lines before and after the moved
-content, just as with capture:
+content, just as with capture. New destinations use key encryption by default;
+set `encryption.mode = "passphrase"` to use passphrase encryption. Existing
+destinations keep their current encryption mode.
 
 ```lua
 require("memo").refile({
   target_file = "projects/plan.md",
   padding = { top = 1, bottom = 1 },
+  encryption = { mode = "passphrase" },
 })
 ```
 
