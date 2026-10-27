@@ -609,6 +609,19 @@ describe("capture", function()
 			MiniTest.expect.equality(result.stdout, "original content\n")
 		end)
 
+		it("keeps the capture buffer when passphrase entry is cancelled", function()
+			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "" end ]])
+			child.lua([[ M.create({ capture_file = "cancelled.md", encryption = { mode = "passphrase" } }) ]])
+			child.type_keys("i", "pending capture", "<Esc>")
+
+			local buf = child.api.nvim_get_current_buf()
+			child.cmd("write")
+
+			MiniTest.expect.equality(child.api.nvim_buf_is_valid(buf), true)
+			MiniTest.expect.equality(child.cmd_capture("messages"), "")
+			MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/cancelled.md.asc"), 0)
+		end)
+
 		it("creates the capture file with passphrase encryption when the passphrase mode is configured", function()
 			child.lua([[ require("memo.gpg").prompt_passphrase = function() return "cap-sym" end ]])
 			child.lua([[ M.create({ capture_file = "sym-capture.md", encryption = { mode = "passphrase" } }) ]])

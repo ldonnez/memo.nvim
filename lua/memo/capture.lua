@@ -222,8 +222,12 @@ function M.create(opts)
 				local saved, err = append_capture(lines, config, buf)
 
 				if not saved then
+					-- Dismissing a passphrase prompt is cancellation, not a failure.
+					if err then
+						message.defer_error("Capture failed: %s", err)
+					end
+
 					-- Keep the buffer so the content is not silently lost.
-					message.defer_error("Capture failed: %s", err)
 					return
 				end
 			end
