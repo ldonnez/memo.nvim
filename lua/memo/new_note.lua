@@ -48,7 +48,7 @@ function M.create(opts)
 	local message = require("memo.message")
 	local utils = require("memo.utils")
 	local selection = require("memo.selection")
-	local NoteBackup = require("memo.note_backup")
+	local note_io = require("memo.note_io")
 	local Template = require("memo.note_template")
 	local window = require("memo.window")
 
@@ -96,17 +96,19 @@ function M.create(opts)
 	local note_template = Template.new({ template = new_opts.template })
 	local initial_lines, cursor_pos = note_template:initial_content(selected)
 
-	-- The existing note backed up until the replacement has been written:
-	-- a cancelled passphrase prompt or a failed write leaves it restorable.
-	local backup = NoteBackup.new(note_path)
+	-- A cancelled passphrase prompt or failed write leaves the original restorable.
 
 	if not cleanup_existing_buffer(note_path) then
 		return false
 	end
 
-	local success, err = backup:protect(function()
-		-- Opened after the selection is resolved: a split would replace the source
-		-- window.
+	local success, err = note_io.protect(note_path, function()
+		-- Remove the old ciphertext only after its backup is secured. Editing
+		-- the now-missing path lets the normal note autocmd prepare the buffer.
+		if utils.file_exists(note_path) and vim.fn.delete(note_path) ~= 0 then
+			return false, "could not remove existing note"
+		end
+
 		local win = window.open(new_opts.window)
 
 		vim.api.nvim_win_call(win, function()
@@ -119,11 +121,13 @@ function M.create(opts)
 			vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
 		end
 
-		-- A new note has no file to read the mode from, so the requested mode is
-		-- used directly. The replacement is written before the buffer is settled.
+		-- The requested mode determines a new note's encryption.
 		local crypto = require("memo.crypto")
 		local mode = new_opts.encryption and new_opts.encryption.mode
-		local written, write_err = crypto.encrypt_from_stdin(note_path, initial_lines, bufnr, { mode = mode })
+		local written, write_err = crypto.encrypt_from_stdin(note_path, initial_lines, bufnr, {
+			mode = mode,
+			confirm = overwriting,
+		})
 
 		if not written then
 			if vim.api.nvim_buf_is_valid(bufnr) then

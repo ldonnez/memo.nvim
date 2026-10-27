@@ -20,18 +20,6 @@ describe("selection", function()
 		MiniTest.expect.equality(result, true)
 	end)
 
-	it("returns nil for a blockwise selection", function()
-		child.lua([[
-			vim.api.nvim_feedkeys(
-				vim.api.nvim_replace_termcodes("<C-v>", true, false, true),
-				"nx",
-				false
-			)
-		]])
-
-		MiniTest.expect.equality(child.lua_get("S.resolve()"), vim.NIL)
-	end)
-
 	it("returns the charwise selection", function()
 		child.cmd("normal! gg")
 		child.api.nvim_win_set_cursor(0, { 1, 6 })
@@ -62,6 +50,26 @@ describe("selection", function()
 
 		local lines = child.lua_get("S.resolve()")
 		MiniTest.expect.equality(lines, { "beta", "gamma" })
+	end)
+
+	it("returns a blockwise selection", function()
+		child.lua("vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'abcdef', 'ghijkl', 'mnopqr' })")
+		child.api.nvim_win_set_cursor(0, { 1, 1 })
+		child.lua([[
+			vim.api.nvim_feedkeys(
+				vim.api.nvim_replace_termcodes("<C-v>", true, false, true),
+				"nx",
+				false
+			)
+		]])
+		child.api.nvim_win_set_cursor(0, { 2, 3 })
+
+		local lines = child.lua_get("S.resolve()")
+		local selection = child.lua_get("select(2, S.resolve())")
+
+		MiniTest.expect.equality(lines, { "bcd", "hij" })
+		MiniTest.expect.equality(selection.blockwise, true)
+		MiniTest.expect.equality(selection.linewise, false)
 	end)
 
 	it("reports the active visual selection range", function()
@@ -215,10 +223,10 @@ describe("selection", function()
 		MiniTest.expect.equality(selection.linewise, true)
 	end)
 
-	it("prefers an explicit line range over an active visual selection", function()
+	it("prefers an explicit line range over an active block-wise selection", function()
 		child.lua([[
 			vim.api.nvim_win_set_cursor(0, { 1, 0 })
-			vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("vj", true, false, true), "nx", false)
+			vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-v>j", true, false, true), "nx", false)
 		]])
 
 		local lines = child.lua_get("S.resolve(0, { range = 1, line1 = 1, line2 = 2 })")
@@ -269,17 +277,22 @@ describe("selection", function()
 		})
 	end)
 
-	it("deletes multibyte characters as a whole character", function()
+	it("deletes a blockwise selection without touching surrounding columns", function()
+		child.lua("vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'abcdef', 'ghijkl', 'mnopqr' })")
 		child.lua([[
-			vim.api.nvim_buf_set_lines(0, 0, -1, false, { "a🙂bc" })
 			S.delete_selection(0, {
 				start = { 0, 1, 2, 0 },
-				finish = { 0, 1, 2, 0 },
+				finish = { 0, 2, 4, 0 },
 				linewise = false,
+				blockwise = true,
 			})
 		]])
 
-		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), { "abc" })
+		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), {
+			"aef",
+			"gkl",
+			"mnopqr",
+		})
 	end)
 
 	it("deletes a linewise selection", function()
