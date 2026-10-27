@@ -109,28 +109,18 @@ function NoteBackup:discard()
 	return true
 end
 
----Keeps the note, removes it, then runs `action` in its place, so the
----destructive part of a replacement can raise without leaving the note
----missing. Removing the note first is also what makes a passphrase-protected
----overwrite use the fresh-note confirmation flow. `action` returns the same
----`success, err` pair as the write it performs: an ordinary failure puts the
----original back before the failure is returned, an exception puts it back
+---Keeps a copy of the note while `action` replaces it. `action` returns the
+---same `success, err` pair as the write it performs: an ordinary failure puts
+---the original back before the failure is returned, an exception puts it back
 ---before being re-raised, and a success drops the kept copy. A recovery that
 ---itself fails is reported in place of the operation's own error, which
----`restore` has already logged. Reports `false` when the note cannot be kept
----or removed.
+---`restore` has already logged. Reports `false` when the note cannot be kept.
 ---@param action fun(): boolean, string?
 ---@return boolean success
 ---@return string? err
 function NoteBackup:protect(action)
 	if not self:save() then
 		return false
-	end
-
-	if self.backup_path and vim.fn.delete(self.path) ~= 0 then
-		-- The note is still on disk, so the kept copy is redundant.
-		self:discard()
-		return false, ("could not remove existing note (%s)"):format(self.path)
 	end
 
 	local ok, result, err = pcall(action)
@@ -150,14 +140,20 @@ function NoteBackup:protect(action)
 	end
 
 	if not result then
-		if self.backup_path and not self:restore() then
-			return false, "the replacement failed and the original could not be restored"
+		if self.backup_path then
+			if not self:restore() then
+				return false, "the replacement failed and the original could not be restored"
+			end
+		elseif utils.file_exists(self.path) and vim.fn.delete(self.path) ~= 0 then
+			return false, err or ("could not remove partial file (%s)"):format(self.path)
 		end
 
 		return false, err
 	end
 
-	self:discard()
+	if not self:discard() then
+		return true, "note was written but its backup could not be removed"
+	end
 
 	return true
 end
