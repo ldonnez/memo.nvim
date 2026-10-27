@@ -587,11 +587,19 @@ that note, and the original selection is removed only after the write succeeds.
 If the destination does not exist, it is created. Existing notes keep their
 encryption mode. Pass `target_file` to skip the prompt; absolute paths and
 paths relative to the notes directory are supported, with the note extension
-optional.
+optional. Use `padding` to configure blank lines before and after the moved
+content, just as with capture:
+
+```lua
+require("memo").refile({
+  target_file = "projects/plan.md",
+  padding = { top = 1, bottom = 1 },
+})
+```
 
 ```lua
 vim.keymap.set("x", "<leader>mr", function()
-  require("memo").refile()
+  require("memo").refile({ padding = { top = 1, bottom = 1 } })
 end, { desc = "Memo: Refile selected text" })
 ```
 

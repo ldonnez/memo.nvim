@@ -114,6 +114,28 @@ describe("refile", function()
 		MiniTest.expect.equality(child.api.nvim_get_current_buf(), source)
 	end)
 
+	it("applies top and bottom padding to refiled content", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "move me" })
+
+		local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
+		vim.fn.writefile({ "existing" }, destination)
+
+		child.lua([[ M.create({
+			range = 1, line1 = 1, line2 = 1,
+			padding = { top = 2, bottom = 1 },
+		}) ]])
+		child.cmd("write")
+
+		MiniTest.expect.equality(vim.fn.readfile(destination), {
+			"existing",
+			"",
+			"",
+			"move me",
+			"",
+		})
+	end)
+
 	it("uses a relative target_file without prompting", function()
 		local source = child.api.nvim_get_current_buf()
 		child.api.nvim_buf_set_lines(source, 0, -1, false, { "move me" })

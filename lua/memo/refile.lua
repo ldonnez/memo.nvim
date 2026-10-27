@@ -12,7 +12,12 @@ local M = {}
 ---@field line1? integer First line of the command range
 ---@field line2? integer Last line of the command range
 ---@field target_file? string destination note path, absolute or relative to the notes directory
+---@field padding? MemoRefilePadding blank lines above and below the refiled content
 ---@field window? MemoWindowConfig Window configuration
+
+---@class MemoRefilePadding
+---@field top? integer blank lines before the refiled content
+---@field bottom? integer blank lines after the refiled content
 
 ---@param path string
 ---@return boolean valid
@@ -36,7 +41,7 @@ end
 ---@param after fun(): boolean, string?
 ---@return boolean success
 ---@return string? err
-local function append_to_note(path, lines, bufnr, after)
+local function append_to_note(path, lines, bufnr, padding, after)
 	local valid, validation_err = validate_destination(path)
 
 	if not valid then
@@ -51,11 +56,21 @@ local function append_to_note(path, lines, bufnr, after)
 
 	local mode = utils.file_has_content(path) and gpg.get_encryption_mode(path) or "key"
 
+	local top_padding = padding.top or 0
+
 	if #existing > 0 and #lines > 0 then
-		vim.list_extend(existing, { "" })
+		top_padding = math.max(1, top_padding)
+	end
+
+	for _ = 1, top_padding do
+		table.insert(existing, "")
 	end
 
 	vim.list_extend(existing, lines)
+
+	for _ = 1, padding.bottom or 0 do
+		table.insert(existing, "")
+	end
 
 	return note_io.write_lines(path, existing, bufnr, { mode = mode }, after)
 end
@@ -125,7 +140,7 @@ function M.create(opts)
 		return false
 	end
 
-	local config = vim.tbl_deep_extend("force", { window = {} }, opts or {})
+	local config = vim.tbl_deep_extend("force", { window = {}, padding = { top = 0, bottom = 0 } }, opts or {})
 	local buf, refile_win = create_refile_window(config, filetype)
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 	vim.bo[buf].modified = false
@@ -179,7 +194,7 @@ function M.create(opts)
 				return
 			end
 
-			local saved, err = append_to_note(path, content, buf, function()
+			local saved, err = append_to_note(path, content, buf, config.padding, function()
 				if source_changed() then
 					return false, "source changed while writing"
 				end
