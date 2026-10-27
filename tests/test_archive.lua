@@ -134,6 +134,31 @@ describe("archive", function()
 		MiniTest.expect.equality(vim.tbl_contains(archived, "archive"), true)
 		MiniTest.expect.equality(vim.tbl_contains(archived, "keep archive word tail"), false)
 	end)
+	it("archives and deletes only the active blockwise selection", function()
+		local bufnr = buffer("note.md", { "abcdef", "ghijkl", "mnopqr" })
+
+		child.lua([[
+			vim.keymap.set("x", "<leader>ma", function()
+				M.archive()
+			end)
+			vim.api.nvim_win_set_cursor(0, { 1, 1 })
+			vim.api.nvim_feedkeys(
+				vim.api.nvim_replace_termcodes("<C-v>2lj<leader>ma", true, false, true),
+				"xt",
+				false
+			)
+		]])
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(bufnr, 0, -1, false), {
+			"aef",
+			"gkl",
+			"mnopqr",
+		})
+		local archived = vim.fn.readfile(path("note.archive.md.asc"))
+		MiniTest.expect.equality(vim.tbl_contains(archived, "bcd"), true)
+		MiniTest.expect.equality(vim.tbl_contains(archived, "hij"), true)
+		MiniTest.expect.equality(vim.tbl_contains(archived, "abcdef"), false)
+	end)
 
 	it("archives the active visual selection when called without options", function()
 		local bufnr = buffer("note.md", { "keep", "archive one", "archive two", "keep too" })
