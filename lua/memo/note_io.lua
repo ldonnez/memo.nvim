@@ -36,9 +36,9 @@ local function protect(path, action)
 	return NoteBackup.new(path):protect(action)
 end
 
----Runs an action after removing the destination, restoring the original note
----if the action fails. Use this when preparing the replacement requires more
----than writing lines directly.
+---Runs an action while keeping a copy of the destination, restoring the original
+---note if the action fails. Use this when preparing the replacement requires
+---more than writing lines directly.
 ---@param path string
 ---@param action fun(encrypt: fun(lines: string[], bufnr: integer?, opts: GpgEncryptOpts?): boolean, string?): boolean, string?
 ---@return boolean success
