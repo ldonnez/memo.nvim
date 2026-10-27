@@ -1,12 +1,10 @@
-local crypto = require("memo.crypto")
-local gpg = require("memo.gpg")
+local note_io = require("memo.note_io")
 local utils = require("memo.utils")
 local selection = require("memo.selection")
 local memo_config = require("memo.config")
 local Template = require("memo.note_template")
 local message = require("memo.message")
 local window = require("memo.window")
-local NoteBackup = require("memo.note_backup")
 
 local M = {}
 
@@ -158,35 +156,19 @@ local function append_capture(lines, config, bufnr)
 		end
 
 		local merged = insert_lines({}, lines, config)
-		return crypto.encrypt_from_stdin(file, merged, bufnr, { mode = mode })
+		return note_io.write_lines(file, merged, bufnr, { mode = mode })
 	end
 
-	local result, read_err = crypto.decrypt_to_stdout(file, bufnr)
+	local existing, read_err = note_io.read_lines(file, bufnr)
 
-	-- A dismissed prompt has no reason: a cancellation. A failure carries its
-	-- reason. Deferred: this runs inside a BufWriteCmd autocmd, where a direct
-	-- ERROR-level notify fails the write.
-	if not result then
+	if not existing then
 		return false, read_err
 	end
 
-	local existing = vim.split(result.stdout or "", "\n", { plain = true })
-
-	if result.stdout and result.stdout:sub(-1, -1) == "\n" then
-		if #existing > 0 and existing[#existing] == "" then
-			table.remove(existing)
-		end
-	end
-
-	-- The backup temporarily removes the original, so preserve its encryption
-	-- mode explicitly when creating the replacement.
-	local existing_mode = gpg.get_encryption_mode(file)
-
+	local existing_mode = not utils.file_has_content(file) and mode or nil
 	local merged = insert_lines(existing, lines, config)
-	local backup = NoteBackup.new(file)
-	return backup:protect(function()
-		return crypto.encrypt_from_stdin(file, merged, bufnr, { mode = existing_mode })
-	end)
+
+	return note_io.write_lines(file, merged, bufnr, { mode = existing_mode })
 end
 
 ---Opens a capture buffer, prefilled with the target header and the template.

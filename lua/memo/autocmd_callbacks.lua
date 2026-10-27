@@ -161,7 +161,7 @@ end
 function M.on_write(args)
 	local bufnr = args.buf
 	local utils = require("memo.utils")
-	local crypto = require("memo.crypto")
+	local note_io = require("memo.note_io")
 	local message = require("memo.message")
 	local file = vim.fn.fnamemodify(args.file, ":p")
 
@@ -192,7 +192,7 @@ function M.on_write(args)
 		return
 	end
 
-	local result, err = crypto.encrypt_from_stdin(note_path, lines, bufnr)
+	local result, err = note_io.write_lines(note_path, lines, bufnr)
 
 	if not result then
 		-- A dismissed prompt has no reason: a cancellation, nothing to report.

@@ -1,6 +1,5 @@
-local crypto = require("memo.crypto")
 local message = require("memo.message")
-local NoteBackup = require("memo.note_backup")
+local note_io = require("memo.note_io")
 local selection = require("memo.selection")
 
 local M = {}
@@ -14,8 +13,7 @@ local M = {}
 ---@field range? integer
 ---@field line1? integer
 ---@field line2? integer
----@field encryption? GpgEncryptOpts how to encrypt a new note, "key" when
----omitted; an existing note keeps the way it was encrypted
+---@field encryption? GpgEncryptOpts how to encrypt the note, "key" when omitted
 
 ---@param opts? MemoSaveAsNoteOpts
 ---@return boolean success
@@ -52,15 +50,9 @@ function M.create(opts)
 	end
 
 	local lines = selection.resolve(bufnr, opts) or vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-
-	-- The existing note is backed up while the replacement is encrypted: a
-	-- failed or cancelled encryption leaves it restorable.
-	local backup = NoteBackup.new(note_path)
-	local mode = opts and opts.encryption and opts.encryption.mode
-
-	local success, err = backup:protect(function()
-		-- No buffer: a passphrase kept here would be reused for the next note.
-		return crypto.encrypt_from_stdin(note_path, lines, nil, { mode = mode })
+	local mode = opts and opts.encryption and opts.encryption.mode or "key"
+	local success, err = note_io.replace(note_path, function(encrypt)
+		return encrypt(lines, nil, { mode = mode })
 	end)
 
 	if not success then
