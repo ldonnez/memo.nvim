@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.22.0](https://github.com/ldonnez/memo.nvim/compare/v0.21.2...v0.22.0) (2026-10-27)
+
+
+### Features
+
+* add refile selection workflow ([a7932b4](https://github.com/ldonnez/memo.nvim/commit/a7932b4cb596fc27031c97d269631d022780adaa))
+* allow refile target_file ([4c04658](https://github.com/ldonnez/memo.nvim/commit/4c046580c55d357e0d19d9163ae94156eb9c3a22))
+* support refile encryption mode ([1bbc42e](https://github.com/ldonnez/memo.nvim/commit/1bbc42e889c10272fcbc5ecbe2a574e14d854576))
+* support refile padding ([bc84ef4](https://github.com/ldonnez/memo.nvim/commit/bc84ef4d16d2b2fdc6bd484ca9caa188838b2c3c))
+
+
+### Bug Fixes
+
+* create note backups exclusively ([1b75ed5](https://github.com/ldonnez/memo.nvim/commit/1b75ed536cff9ffdb5292e1fdc1f2b5dfe22f556))
+* handle cancelled capture passphrase ([4fe8f7a](https://github.com/ldonnez/memo.nvim/commit/4fe8f7aa5b50139749042219e8a1edfc1916fbd5))
+* preserve notes when replacement fails ([441ee0b](https://github.com/ldonnez/memo.nvim/commit/441ee0b2beaab60562df557fa9edeef288268b68))
+
 ## [0.21.2](https://github.com/ldonnez/memo.nvim/compare/v0.21.1...v0.21.2) (2026-10-26)
 
 
