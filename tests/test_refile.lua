@@ -4,6 +4,11 @@ local child = helpers.new_child_neovim()
 describe("refile", function()
 	before_each(function()
 		vim.fn.delete(vim.env.NOTES_DIR .. "/destination.md.asc", "rf")
+
+		for _, backup in ipairs(vim.fn.glob(vim.env.NOTES_DIR .. "/destination.md.memo-backup-*.asc", false, true)) do
+			vim.fn.delete(backup)
+		end
+
 		child.restart({
 			"-u",
 			"scripts/minimal_init.lua",
@@ -23,9 +28,7 @@ describe("refile", function()
 				return true
 			end
 
-			prompt_default = nil
-			require("memo.utils").prompt_note_path = function(default_path)
-				prompt_default = default_path
+			require("memo.utils").prompt_note_path = function()
 				return "destination.md"
 			end
 
@@ -167,6 +170,64 @@ describe("refile", function()
 
 		MiniTest.expect.equality(child.api.nvim_buf_get_lines(source, 0, -1, false), { "changed during write" })
 		MiniTest.expect.equality(vim.fn.readfile(destination), { "existing" })
+		MiniTest.expect.equality(child.fn.glob(vim.env.NOTES_DIR .. "/destination.md.memo-backup-*.asc"), "")
+	end)
+
+	it("reports an explicit warning when destination rollback fails", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "keep me" })
+
+		local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
+		vim.fn.writefile({ "existing" }, destination)
+
+		child.lua([[
+			local rename = vim.uv.fs_rename
+			vim.uv.fs_rename = function(from, to)
+				if from:find(".memo-backup-", 1, true) then
+					return nil, "rename failed"
+				end
+				return rename(from, to)
+			end
+			require("memo.crypto").encrypt_from_stdin = function(path, lines)
+				vim.api.nvim_buf_set_lines(1, 0, -1, false, { "changed during write" })
+				vim.fn.writefile(lines, path)
+				return true
+			end
+			M.create({ range = 1, line1 = 1, line2 = 1 })
+		]])
+		child.cmd("write")
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(source, 0, -1, false), { "changed during write" })
+		MiniTest.expect.equality(vim.fn.readfile(destination), { "existing", "", "keep me" })
+
+		child.wait_until(function()
+			return child.cmd_capture("messages"):find("could not be restored", 1, true) ~= nil
+		end)
+
+		local messages = child.cmd_capture("messages")
+		MiniTest.expect.equality(messages:find("source changed while writing", 1, true) ~= nil, true)
+	end)
+
+	it("restores an empty destination as a zero-byte file when the source changes", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "keep me" })
+
+		local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
+		helpers.write_file(destination, "")
+
+		child.lua([[
+			require("memo.crypto").encrypt_from_stdin = function(path, lines)
+				vim.api.nvim_buf_set_lines(1, 0, -1, false, { "changed during write" })
+				vim.fn.writefile(lines, path)
+				return true
+			end
+			M.create({ range = 1, line1 = 1, line2 = 1 })
+		]])
+		child.cmd("write")
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(source, 0, -1, false), { "changed during write" })
+		MiniTest.expect.equality(vim.fn.filereadable(destination), 1)
+		MiniTest.expect.equality(vim.fn.getfsize(destination), 0)
 	end)
 
 	it("does not remove the source selection when the destination write fails", function()

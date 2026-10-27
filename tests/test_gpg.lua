@@ -922,6 +922,25 @@ describe("gpg", function()
 		MiniTest.expect.equality(vim.trim(decrypted.stdout or ""), "Hello world!")
 	end)
 
+	it("uses the requested key mode when replacing a passphrase note", function()
+		local note = "/tmp/gpg_force_key_mode.txt.gpg"
+		local passphrase = "sym-pass"
+		helpers.create_gpg_key("mock@example.com")
+
+		helpers.encrypt_symmetric_file(note, "Hello world!", passphrase)
+		local result = child.lua(
+			[[
+        local note = ...
+        return M.encrypt(note, { "Rewritten" }, { mode = "key", force_mode = true })
+    ]],
+			{ note }
+		)
+
+		MiniTest.expect.equality(result.code, 0)
+		MiniTest.expect.equality(helpers.is_symmetric_file(note), false)
+		MiniTest.expect.equality(vim.trim(helpers.decrypt_file(note).stdout or ""), "Rewritten")
+	end)
+
 	it("keeps an existing passphrase note symmetric when a key mode", function()
 		local note = "/tmp/gpg_encrypt_existing_symmetric.txt.gpg"
 		local passphrase = "sym-pass"

@@ -32,53 +32,32 @@ function M.read_lines(path, bufnr)
 	return lines
 end
 
-local function protect(path, action)
-	return NoteBackup.new(path):protect(action)
-end
-
----Runs an action after removing the destination, restoring the original note
----if the action fails. Use this when preparing the replacement requires more
----than writing lines directly.
----@param path string
----@param action fun(encrypt: fun(lines: string[], bufnr: integer?, opts: GpgEncryptOpts?): boolean, string?): boolean, string?
----@return boolean success
----@return string? err
-function M.replace(path, action)
-	return protect(path, function()
-		if utils.file_exists(path) and vim.fn.delete(path) ~= 0 then
-			return false, "could not remove existing note"
-		end
-
-		return action(function(lines, bufnr, opts)
-			return crypto.encrypt_from_stdin(path, lines, bufnr, opts)
-		end)
-	end)
-end
-
----Encrypts and writes lines, restoring the original note if the write fails.
----Pass a mode when creating a file or intentionally choosing its encryption.
----Existing files retain their mode through `gpg.encrypt`.
----@param path string
----@param lines string[]
----@param opts? GpgEncryptOpts
----@return boolean success
----@return string? err
-function M.overwrite(path, lines, opts)
-	return M.replace(path, function()
-		return crypto.encrypt_from_stdin(path, lines, nil, opts)
-	end)
-end
-
----Encrypts and writes lines, restoring the original note if the write fails.
+---Encrypts and writes lines, restoring the original note if anything fails.
+---`after` runs before the kept copy is dropped; returning false or raising
+---restores the original note instead. Existing files retain their encryption
+---mode through gpg.encrypt unless `force_mode` is set.
 ---@param path string
 ---@param lines string[]
 ---@param bufnr integer?
 ---@param opts? GpgEncryptOpts
+---@param after? fun(): boolean, string?
 ---@return boolean success
 ---@return string? err
-function M.write_lines(path, lines, bufnr, opts)
-	return protect(path, function()
-		return crypto.encrypt_from_stdin(path, lines, bufnr, opts)
+function M.write_lines(path, lines, bufnr, opts, after)
+	local backup = NoteBackup.new(path)
+
+	return backup:protect(function()
+		local written, err = crypto.encrypt_from_stdin(path, lines, bufnr, opts)
+
+		if not written then
+			return false, err
+		end
+
+		if after then
+			return after()
+		end
+
+		return true
 	end)
 end
 

@@ -3,11 +3,18 @@ local utils = require("memo.utils")
 
 local M = {}
 
+---@param reason string
+---@param err string?
+---@return string
+local function with_error(reason, err)
+	return err and ("%s: %s"):format(reason, err) or reason
+end
+
 ---A note backed up while a replacement is prepared.
 ---The copy lives next to the note and keeps the note extension.
 ---@class MemoNoteBackup
 ---@field path string the note being replaced
----@field backup_path? string where the note is saved, nil until `protect` runs
+---@field backup_path? string the kept copy, nil before `protect` or after it finishes
 local NoteBackup = {}
 
 NoteBackup.__index = NoteBackup
@@ -75,14 +82,14 @@ end
 ---nothing to restore or the rename cannot land.
 ---@private
 ---@return boolean restored
+---@return string? err
 function NoteBackup:restore()
 	if not self.backup_path then
-		return false
+		return false, "there is no backup to restore"
 	end
 
 	if not vim.uv.fs_rename(self.backup_path, self.path) then
-		message.error("Memo: could not restore %s; original remains at %s", self.path, self.backup_path)
-		return false
+		return false, ("the original remains at %s"):format(self.backup_path)
 	end
 
 	self.backup_path = nil
@@ -100,7 +107,6 @@ function NoteBackup:discard()
 	end
 
 	if utils.file_exists(self.backup_path) and vim.fn.delete(self.backup_path) ~= 0 then
-		message.warn("Memo: could not remove backup %s", self.backup_path)
 		return false
 	end
 
@@ -109,28 +115,30 @@ function NoteBackup:discard()
 	return true
 end
 
----Keeps a copy of the note while `action` replaces it. `action` returns the
----same `success, err` pair as the write it performs: an ordinary failure puts
----the original back before the failure is returned, an exception puts it back
----before being re-raised, and a success drops the kept copy. A recovery that
----itself fails is reported in place of the operation's own error, which
----`restore` has already logged. Reports `false` when the note cannot be kept.
+---Runs `action` while the note is kept. A failure puts the original back before
+---being returned; a raise puts it back before being re-raised. On success the
+---kept note stays for the caller to commit or roll back.
+---@private
 ---@param action fun(): boolean, string?
 ---@return boolean success
 ---@return string? err
-function NoteBackup:protect(action)
-	if not self:save() then
-		return false
-	end
-
+function NoteBackup:run(action)
 	local ok, result, err = pcall(action)
 
 	if not ok then
 		-- A raise shifts the action's return values, so `result` is the error
 		-- value here and `err` is nil.
 		if self.backup_path then
-			if not self:restore() then
-				error(("the replacement raised %s and the original could not be restored"):format(tostring(result)), 0)
+			local restored, restore_err = self:restore()
+
+			if not restored then
+				error(
+					with_error(
+						("the replacement raised %s and the original could not be restored"):format(tostring(result)),
+						restore_err
+					),
+					0
+				)
 			end
 		elseif utils.file_exists(self.path) and vim.fn.delete(self.path) ~= 0 then
 			error(("the replacement raised %s and its partial file could not be removed"):format(tostring(result)), 0)
@@ -141,8 +149,16 @@ function NoteBackup:protect(action)
 
 	if not result then
 		if self.backup_path then
-			if not self:restore() then
-				return false, "the replacement failed and the original could not be restored"
+			local restored, restore_err = self:restore()
+
+			if not restored then
+				return false,
+					with_error(
+						("the replacement failed (%s) and the original could not be restored"):format(
+							err or "unknown error"
+						),
+						restore_err
+					)
 			end
 		elseif utils.file_exists(self.path) and vim.fn.delete(self.path) ~= 0 then
 			return false, err or ("could not remove partial file (%s)"):format(self.path)
@@ -151,7 +167,33 @@ function NoteBackup:protect(action)
 		return false, err
 	end
 
-	self:discard()
+	return true
+end
+
+---Keeps a copy of the note while `action` replaces it. `action` returns the
+---same `success, err` pair as the write it performs: an ordinary failure puts
+---the original back before the failure is returned, an exception puts it back
+---before being re-raised, and a success drops the kept copy. A recovery that
+---itself fails is reported in place of the operation's own error. Reports
+---`false` when the note cannot be kept.
+---@param action fun(): boolean, string?
+---@return boolean success
+---@return string? err
+function NoteBackup:protect(action)
+	if not self:save() then
+		return false
+	end
+
+	local success, err = self:run(action)
+
+	if not success then
+		return false, err
+	end
+
+	if not self:discard() then
+		message.warn("Memo: note was written but its backup could not be removed: %s", self.backup_path)
+		return true, "note was written but its backup could not be removed"
+	end
 
 	return true
 end

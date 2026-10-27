@@ -391,4 +391,23 @@ describe("archive", function()
 		MiniTest.expect.equality(stdout:find("first archived entry", 1, true) ~= nil, true)
 		MiniTest.expect.equality(stdout:find("second archived entry", 1, true) ~= nil, true)
 	end)
+
+	it("restores the archive when removing the source selection fails", function()
+		local bufnr = buffer("note.md", { "keep", "archive me" })
+		local archive_file = path("note.archive.md.asc")
+		helpers.write_file(archive_file, "original archive\n")
+
+		child.lua([[
+			require("memo.selection").delete_selection = function()
+				error("source deletion failed")
+			end
+			M.archive_raised = not pcall(function()
+				M.archive({ range = 1, line1 = 2, line2 = 2 })
+			end)
+		]])
+
+		MiniTest.expect.equality(child.lua_get("M.archive_raised"), true)
+		MiniTest.expect.equality(vim.fn.readfile(archive_file), { "original archive" })
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(bufnr, 0, -1, false), { "keep", "archive me" })
+	end)
 end)

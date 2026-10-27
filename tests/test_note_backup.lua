@@ -211,6 +211,7 @@ describe("note_backup", function()
 			MiniTest.expect.equality(present, true)
 			MiniTest.expect.equality(vim.fn.filereadable(kept), 0)
 			MiniTest.expect.equality(read(note), { "replacement body" })
+			MiniTest.expect.equality(backup.backup_path, nil)
 		end)
 
 		it("puts the original back when the action fails", function()
@@ -259,7 +260,10 @@ describe("note_backup", function()
 			end)
 
 			MiniTest.expect.equality(success, false)
-			MiniTest.expect.equality(err, "the replacement failed and the original could not be restored")
+			MiniTest.expect.equality(
+				err,
+				"the replacement failed (encryption failed) and the original could not be restored"
+			)
 		end)
 
 		it("keeps the original exception when the recovery fails", function()

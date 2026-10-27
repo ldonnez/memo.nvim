@@ -30,6 +30,7 @@ describe("note_io", function()
 				vim.g.write_lines = lines
 				vim.g.write_bufnr = bufnr
 				vim.g.write_mode = opts and opts.mode
+				vim.g.write_force_mode = opts and opts.force_mode
 				if vim.g.write_error then
 					return false, vim.g.write_error
 				end
@@ -182,12 +183,98 @@ describe("note_io", function()
 		end)
 	end)
 
-	describe("overwrite and write protection", function()
+	describe("follow-up writes", function()
+		it("keeps the write when the follow-up succeeds", function()
+			local path = vim.env.NOTES_DIR .. "/follow-up.md.asc"
+			helpers.write_file(path, "original\n")
+
+			local success = child.lua_get(
+				[[
+				(function(path)
+					return M.write_lines(path, { "replacement" }, nil, { mode = "key" }, function()
+						vim.g.follow_up_ran = true
+						return true
+					end)
+				end)(...)
+			]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(success, true)
+			MiniTest.expect.equality(child.lua_get("vim.g.follow_up_ran"), true)
+			MiniTest.expect.equality(vim.fn.readfile(path), { "replacement" })
+			MiniTest.expect.equality(child.fn.glob(path:gsub("%.asc$", ".memo-backup-*.asc")), "")
+		end)
+
+		it("restores the original when the follow-up fails", function()
+			local path = vim.env.NOTES_DIR .. "/follow-up-fail.md.asc"
+			helpers.write_file(path, "original\n")
+
+			local result = child.lua_get(
+				[[
+				(function(path)
+					local success, err = M.write_lines(path, { "replacement" }, nil, { mode = "key" }, function()
+						return false, "follow-up failed"
+					end)
+					return { success, err or vim.NIL, vim.fn.readfile(path) }
+				end)(...)
+			]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(result, { false, "follow-up failed", { "original" } })
+			MiniTest.expect.equality(child.fn.glob(path:gsub("%.asc$", ".memo-backup-*.asc")), "")
+		end)
+
+		it("removes a note it created when the follow-up fails", function()
+			local path = vim.env.NOTES_DIR .. "/follow-up-new.md.asc"
+
+			local result = child.lua_get(
+				[[
+				(function(path)
+					local success, err = M.write_lines(path, { "replacement" }, nil, { mode = "key" }, function()
+						return false, "follow-up failed"
+					end)
+					return { success, err or vim.NIL, vim.fn.filereadable(path) }
+				end)(...)
+			]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(result, { false, "follow-up failed", 0 })
+		end)
+
+		it("restores the original when the follow-up raises", function()
+			local path = vim.env.NOTES_DIR .. "/follow-up-raise.md.asc"
+			helpers.write_file(path, "original\n")
+
+			local result = child.lua_get(
+				[[
+				(function(path)
+					local ok, err = pcall(function()
+						M.write_lines(path, { "replacement" }, nil, { mode = "key" }, function()
+							error("boom")
+						end)
+					end)
+					return { ok, tostring(err), vim.fn.readfile(path) }
+				end)(...)
+			]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(result[1], false)
+			MiniTest.expect.equality(result[2]:find("boom", 1, true) ~= nil, true)
+			MiniTest.expect.equality(result[3], { "original" })
+		end)
+	end)
+
+	describe("write protection", function()
 		it("restores the original when replacement encryption fails", function()
 			local path = vim.env.NOTES_DIR .. "/protected.md.asc"
 			helpers.write_file(path, "original\n")
 			child.lua([[ vim.g.write_error = "failed" ]])
-			local result = child.lua_get([[ { M.overwrite(..., { "replacement" }, { mode = "key" }) } ]], { path })
+			local result =
+				child.lua_get([[ { M.write_lines(..., { "replacement" }, nil, { mode = "key" }) } ]], { path })
 			MiniTest.expect.equality(result, { false, "failed" })
 			MiniTest.expect.equality(vim.fn.readfile(path), { "original" })
 		end)
@@ -228,34 +315,70 @@ describe("note_io", function()
 			MiniTest.expect.equality(vim.fn.readfile(path), { "original" })
 		end)
 
-		it("runs replacement after removing the old file", function()
-			local path = vim.env.NOTES_DIR .. "/prepared.md.asc"
-			helpers.write_file(path, "original\n")
-			local result = child.lua_get(
-				[[
-				(function(path)
-					return M.replace(path, function(encrypt)
-						MiniTest.expect.equality(vim.fn.filereadable(path), 0)
-						return encrypt({ "replacement" }, 17, { mode = "passphrase" })
-					end)
-				end)(...)
-			]],
-				{ path }
-			)
-			MiniTest.expect.equality(result, true)
-			MiniTest.expect.equality(child.lua_get("vim.g.write_bufnr"), 17)
-			MiniTest.expect.equality(child.lua_get("vim.g.write_mode"), "passphrase")
-		end)
-
 		it("keeps the replacement and discards the backup after success", function()
 			local path = vim.env.NOTES_DIR .. "/protected-success.md.asc"
 			helpers.write_file(path, "original\n")
 
-			local success = child.lua_get([[ M.overwrite(..., { "replacement" }, { mode = "key" }) ]], { path })
+			local success = child.lua_get([[ M.write_lines(..., { "replacement" }, nil, { mode = "key" }) ]], { path })
 
 			MiniTest.expect.equality(success, true)
 			MiniTest.expect.equality(vim.fn.readfile(path), { "replacement" })
 			MiniTest.expect.equality(child.fn.glob(path:gsub("%.asc$", ".memo-backup-*.asc")), "")
+		end)
+
+		it("keeps the original in place when forcing the encryption mode", function()
+			local path = vim.env.NOTES_DIR .. "/force-mode.md.asc"
+			helpers.write_file(path, "original\n")
+			child.lua([[
+				local crypto = require("memo.crypto")
+				local encrypt = crypto.encrypt_from_stdin
+
+				crypto.encrypt_from_stdin = function(path, ...)
+					vim.g.existed_during_encrypt = vim.fn.filereadable(path)
+					return encrypt(path, ...)
+				end
+			]])
+
+			local success = child.lua_get(
+				[[ M.write_lines(..., { "replacement" }, nil, { mode = "key", force_mode = true }) ]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(success, true)
+			MiniTest.expect.equality(child.lua_get("vim.g.existed_during_encrypt"), 1)
+			MiniTest.expect.equality(child.lua_get("vim.g.write_force_mode"), true)
+			MiniTest.expect.equality(vim.fn.readfile(path), { "replacement" })
+		end)
+
+		it("reports backup cleanup failure without reporting the write as failed", function()
+			local path = vim.env.NOTES_DIR .. "/backup-cleanup.md.asc"
+			helpers.write_file(path, "original\n")
+			child.lua([[
+				local delete = vim.fn.delete
+				local message = require("memo.message")
+				message.warn = function(fmt, ...)
+					vim.g.backup_warning = fmt:format(...)
+				end
+				vim.fn.delete = function(path)
+					if path:find(".memo-backup-", 1, true) then
+						return -1
+					end
+					return delete(path)
+				end
+			]])
+
+			local result =
+				child.lua_get([[ { M.write_lines(..., { "replacement" }, nil, { mode = "key" }) } ]], { path })
+
+			MiniTest.expect.equality(result[1], true)
+			MiniTest.expect.equality(result[2], "note was written but its backup could not be removed")
+			local backup_path = child.fn.glob(path:gsub("%.asc$", ".memo-backup-*.asc"))
+			MiniTest.expect.equality(
+				child.lua_get("vim.g.backup_warning"),
+				"Memo: note was written but its backup could not be removed: " .. backup_path
+			)
+			MiniTest.expect.equality(vim.fn.readfile(path), { "replacement" })
+			MiniTest.expect.equality(child.fn.glob(path:gsub("%.asc$", ".memo-backup-*.asc")) ~= "", true)
 		end)
 	end)
 end)
