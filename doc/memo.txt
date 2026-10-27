@@ -1,5 +1,5 @@
 *memo.txt* Seamless Neovim interface for memo, a CLI-based encrypted notes system
-                              For NVIM v0.11.5    Last change: 2026 October 26
+                              For NVIM v0.11.5    Last change: 2026 October 27
 
 ==============================================================================
 Table of Contents                                     *memo-table-of-contents*
@@ -627,6 +627,38 @@ When calling the function outside Visual mode, pass `range = 1`, `line1`, and
 >lua
     require("memo").archive({ range = 1, line1 = 2, line2 = 4 })
 <
+
+
+REFILE SELECTED TEXT ~
+
+Move a selection into another note with `:MemoRefile` or
+`require("memo").refile()`. An editable window opens with the selected text.
+Write the window to choose a destination note path; the text is appended to
+that note, and the original selection is removed only after the write succeeds.
+If the destination does not exist, it is created. Existing notes keep their
+encryption mode. Pass `target_file` to skip the prompt; absolute paths and
+paths relative to the notes directory are supported, with the note extension
+optional. Use `padding` to configure blank lines before and after the moved
+content, just as with capture. New destinations use key encryption by default;
+set `encryption.mode = "passphrase"` to use passphrase encryption. Existing
+destinations keep their current encryption mode.
+
+>lua
+    require("memo").refile({
+      target_file = "projects/plan.md",
+      padding = { top = 1, bottom = 1 },
+      encryption = { mode = "passphrase" },
+    })
+<
+
+>lua
+    vim.keymap.set("x", "<leader>mr", function()
+      require("memo").refile({ padding = { top = 1, bottom = 1 } })
+    end, { desc = "Memo: Refile selected text" })
+<
+
+The command also accepts a line range, e.g. `:'<,'>MemoRefile`. Paths are
+resolved relative to the notes directory and cannot escape it.
 
 
 OPEN A NOTE ~
