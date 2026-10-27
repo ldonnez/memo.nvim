@@ -20,16 +20,21 @@ describe("selection", function()
 		MiniTest.expect.equality(result, true)
 	end)
 
-	it("returns nil for a blockwise selection", function()
+	it("returns a blockwise selection", function()
 		child.lua([[
+			vim.api.nvim_win_set_cursor(0, { 1, 6 })
 			vim.api.nvim_feedkeys(
 				vim.api.nvim_replace_termcodes("<C-v>", true, false, true),
 				"nx",
 				false
 			)
+			vim.api.nvim_win_set_cursor(0, { 2, 9 })
 		]])
 
-		MiniTest.expect.equality(child.lua_get("S.resolve()"), vim.NIL)
+		local result = child.lua("return { S.resolve() }")
+		MiniTest.expect.equality(result[1], { "beta", "epsi" })
+		MiniTest.expect.equality(result[2].linewise, false)
+		MiniTest.expect.equality(result[2].blockwise, true)
 	end)
 
 	it("returns the charwise selection", function()
@@ -280,6 +285,24 @@ describe("selection", function()
 		]])
 
 		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), { "abc" })
+	end)
+
+	it("deletes a blockwise selection", function()
+		child.lua([[
+			vim.api.nvim_buf_set_lines(0, 0, -1, false, { "abcdef", "123456", "uvwxyz" })
+			S.delete_selection(0, {
+				start = { 0, 1, 3, 0 },
+				finish = { 0, 3, 5, 0 },
+				linewise = false,
+				blockwise = true,
+			})
+		]])
+
+		MiniTest.expect.equality(child.lua_get("vim.api.nvim_buf_get_lines(0, 0, -1, false)"), {
+			"abf",
+			"126",
+			"uvz",
+		})
 	end)
 
 	it("deletes a linewise selection", function()

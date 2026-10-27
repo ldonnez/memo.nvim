@@ -4,6 +4,7 @@ local M = {}
 ---@field start [integer, integer, integer, integer]
 ---@field finish [integer, integer, integer, integer]
 ---@field linewise boolean
+---@field blockwise? boolean
 
 ---@param bufnr integer
 ---@param line1 integer
@@ -33,7 +34,7 @@ function M.resolve(bufnr, opts)
 
 	local mode = vim.fn.mode()
 
-	if not mode:match("[vV]") then
+	if mode ~= "v" and mode ~= "V" and mode ~= "\22" then
 		return nil
 	end
 
@@ -48,6 +49,7 @@ function M.resolve(bufnr, opts)
 			start = start,
 			finish = finish,
 			linewise = mode == "V",
+			blockwise = mode == "\22",
 		}
 end
 
@@ -62,11 +64,11 @@ function M.delete_selection(bufnr, selection)
 		return
 	end
 
-	-- Recreate the original characterwise Visual selection and let Neovim handle deletion.
+	-- Recreate the original Visual selection type and let Neovim handle deletion.
 	vim.api.nvim_buf_call(bufnr, function()
 		vim.cmd("normal! \27")
 		vim.fn.setpos(".", start)
-		vim.cmd("normal! v")
+		vim.cmd("normal! " .. (selection.blockwise and "\22" or "v"))
 		vim.fn.setpos(".", finish)
 		vim.cmd('normal! "_d')
 	end)
