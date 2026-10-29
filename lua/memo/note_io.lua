@@ -61,7 +61,8 @@ function M.write_lines(path, lines, bufnr, opts, after)
 	end)
 end
 
----@class MemoNoteInsertOpts: GpgEncryptOpts
+---@class MemoNoteInsertOpts
+---@field mode? "passphrase"|"key" encryption mode for a missing or empty destination
 ---@field prepend? boolean Insert before existing content instead of after it
 ---@field padding? MemoRefilePadding Blank lines around the inserted content
 ---@field after? fun(): boolean, string? Called after writing, before finalizing the write
@@ -114,9 +115,7 @@ function M.insert_lines(path, lines, bufnr, opts)
 		vim.list_extend(inserted, existing)
 		existing = inserted
 	else
-		for _, line in ipairs(inserted) do
-			existing[#existing + 1] = line
-		end
+		vim.list_extend(existing, inserted)
 	end
 
 	return M.write_lines(path, existing, bufnr, { mode = mode }, opts.after)
