@@ -183,6 +183,207 @@ describe("note_io", function()
 		end)
 	end)
 
+	describe("insert_lines", function()
+		it("appends by default with a blank separator", function()
+			local path = vim.env.NOTES_DIR .. "/append.md.asc"
+			helpers.write_file(path, "ciphertext")
+			child.lua([[ vim.g.decrypt_output = "existing" ]])
+
+			local success = child.lua_get([[ M.insert_lines(..., { "new" }, 17) ]], { path })
+
+			MiniTest.expect.equality(success, true)
+			MiniTest.expect.equality(child.lua_get("vim.g.write_lines"), { "existing", "", "new" })
+			MiniTest.expect.equality(child.lua_get("vim.g.write_bufnr"), 17)
+		end)
+
+		it("prepends lines when requested", function()
+			local path = vim.env.NOTES_DIR .. "/prepend.md.asc"
+			helpers.write_file(path, "ciphertext")
+			child.lua([[ vim.g.decrypt_output = "existing\nline" ]])
+
+			local success =
+				child.lua_get([[ M.insert_lines(..., { "first", "second" }, nil, { prepend = true }) ]], { path })
+
+			MiniTest.expect.equality(success, true)
+			MiniTest.expect.equality(child.lua_get("vim.g.write_lines"), { "first", "second", "", "existing", "line" })
+		end)
+
+		it("keeps a blank line between a header entry and existing content", function()
+			local source = child.api.nvim_get_current_buf()
+			child.api.nvim_buf_set_lines(source, 0, -1, false, { "new entry" })
+			local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
+			vim.fn.writefile({ "# inbox", "", "old entry" }, destination)
+
+			child.lua(
+				[[
+				vim.g.decrypt_output = "# inbox\n\nold entry"
+				local destination, source = ...
+				M.insert_lines(destination, { "new entry" }, source, { target_header = "# inbox" })
+			
+			]],
+				{ destination, source }
+			)
+
+			MiniTest.expect.equality(vim.fn.readfile(destination), { "# inbox", "new entry", "", "old entry" })
+		end)
+
+		it("separates a header entry when the existing content has no blank line", function()
+			local source = child.api.nvim_get_current_buf()
+			child.api.nvim_buf_set_lines(source, 0, -1, false, { "new entry" })
+			local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
+			vim.fn.writefile({ "# inbox", "old entry" }, destination)
+
+			child.lua(
+				[[
+				vim.g.decrypt_output = "# inbox\nold entry"
+				local destination, source = ...
+				M.insert_lines(destination, { "new entry" }, source, { target_header = "# inbox" })
+			
+			]],
+				{ destination, source }
+			)
+
+			MiniTest.expect.equality(vim.fn.readfile(destination), { "# inbox", "new entry", "", "old entry" })
+		end)
+
+		it("does not add padding already present in the selected source", function()
+			local source = child.api.nvim_get_current_buf()
+			child.api.nvim_buf_set_lines(source, 0, -1, false, { "", "new entry", "" })
+			local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
+			vim.fn.writefile({ "# inbox", "old entry" }, destination)
+
+			child.lua(
+				[[
+				vim.g.decrypt_output = "# inbox\nold entry"
+				local destination, source = ...
+				M.insert_lines(destination, { "", "new entry", "" }, source, {
+					target_header = "# inbox", padding = { top = 1, bottom = 1 },
+				})
+			
+			]],
+				{ destination, source }
+			)
+
+			MiniTest.expect.equality(vim.fn.readfile(destination), { "# inbox", "", "new entry", "", "old entry" })
+		end)
+
+		it("separates a newly created target header from existing content", function()
+			local source = child.api.nvim_get_current_buf()
+			child.api.nvim_buf_set_lines(source, 0, -1, false, { "new entry" })
+			local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
+			vim.fn.writefile({ "old entry" }, destination)
+
+			child.lua(
+				[[
+				vim.g.decrypt_output = "old entry"
+				local destination, source = ...
+				M.insert_lines(destination, { "new entry" }, source, { target_header = "# inbox" })
+			
+			]],
+				{ destination, source }
+			)
+
+			MiniTest.expect.equality(vim.fn.readfile(destination), { "# inbox", "new entry", "", "old entry" })
+		end)
+
+		it("applies top and bottom padding to refiled content", function()
+			local source = child.api.nvim_get_current_buf()
+			child.api.nvim_buf_set_lines(source, 0, -1, false, { "move me" })
+
+			local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
+			vim.fn.writefile({ "existing" }, destination)
+
+			child.lua(
+				[[
+				vim.g.decrypt_output = "existing"
+				local destination, source = ...
+				M.insert_lines(destination, { "move me" }, source, { padding = { top = 2, bottom = 1 } })
+			
+			]],
+				{ destination, source }
+			)
+
+			MiniTest.expect.equality(vim.fn.readfile(destination), {
+				"existing",
+				"",
+				"",
+				"move me",
+				"",
+			})
+		end)
+		it("uses the requested encryption mode for an empty destination", function()
+			local path = vim.env.NOTES_DIR .. "/empty-destination.md.asc"
+			helpers.write_file(path, "")
+
+			local success = child.lua_get([[ M.insert_lines(..., { "new" }, nil, { mode = "passphrase" }) ]], { path })
+
+			MiniTest.expect.equality(success, true)
+			MiniTest.expect.equality(child.lua_get("vim.g.write_mode"), "passphrase")
+		end)
+
+		it("does not overwrite a destination when reading fails", function()
+			local path = vim.env.NOTES_DIR .. "/read-failure.md.asc"
+			helpers.write_file(path, "ciphertext")
+			child.lua([[ vim.g.decrypt_error = "bad passphrase" ]])
+
+			local result = child.lua_get(
+				[[
+				(function(path)
+					local success, err = M.insert_lines(path, { "new" })
+					return { success, err }
+				end)(...)
+				]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(result, { false, "bad passphrase" })
+			MiniTest.expect.equality(child.lua_get("vim.g.write_path or vim.NIL"), vim.NIL)
+			MiniTest.expect.equality(vim.fn.readfile(path), { "ciphertext" })
+		end)
+
+		it("rejects a directory destination", function()
+			local path = vim.env.NOTES_DIR .. "/destination-directory"
+			vim.fn.mkdir(path)
+
+			local result = child.lua_get(
+				[[
+				(function(path)
+					local success, err = M.insert_lines(path, { "new" })
+					return { success, err }
+				end)(...)
+				]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(result[1], false)
+			MiniTest.expect.equality(result[2]:find("destination is not a regular file", 1, true) ~= nil, true)
+			MiniTest.expect.equality(child.lua_get("vim.g.write_path or vim.NIL"), vim.NIL)
+		end)
+
+		it("restores the destination when the follow-up fails", function()
+			local path = vim.env.NOTES_DIR .. "/insert-follow-up.md.asc"
+			helpers.write_file(path, "ciphertext")
+			child.lua([[ vim.g.decrypt_output = "original" ]])
+
+			local result = child.lua_get(
+				[[
+				(function(path)
+					local success, err = M.insert_lines(path, { "new" }, nil, {
+						after = function()
+							return false, "follow-up failed"
+						end,
+					})
+					return { success, err }
+				end)(...)
+				]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(result, { false, "follow-up failed" })
+			MiniTest.expect.equality(vim.fn.readfile(path), { "ciphertext" })
+		end)
+	end)
+
 	describe("follow-up writes", function()
 		it("keeps the write when the follow-up succeeds", function()
 			local path = vim.env.NOTES_DIR .. "/follow-up.md.asc"
