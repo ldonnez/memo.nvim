@@ -41,7 +41,7 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
       "<leader>mc",
       function()
         require("memo").refile({
-          template = "## %Y-%m-%d %H:%M\n\n|\n",
+          template = "## ${date:%Y-%m-%d} ${time:%H:%M}\n\n${cursor}\n",
           padding = { top = 1, bottom = 1 },
         })
       end,
@@ -581,17 +581,42 @@ Move or copy a selection into another note, or create a new entry, with `:MemoRe
 Write the window to save to `g:memo_default_refile_target`; set `prompt_path = true` to choose a different destination. Content is appended by default, or prepended with `prepend = true`. The original selection is kept by default. Set `remove_from_source = true` to remove it after a successful write instead of copying.
 If the destination does not exist, it is created. Existing notes keep their
 encryption mode. The configured default destination is used unless `prompt_path = true`. Use `padding` to configure blank lines before and after the moved
-content. A `template` can add context around new or selected
-content; it supports `os.date` formats and a `|` marker where the selection is
-inserted. Without a marker, the selection becomes the entire initial content.
-New destinations use key encryption by default;
-set `encryption.mode = "passphrase"` to use passphrase encryption. Existing
-destinations keep their current encryption mode.
+content. A `template` can add context around new or selected content. Templates support
+the placeholders listed below, including a `${cursor}` marker where selected
+content is inserted. Without a cursor marker, a selection becomes the entire
+initial content.
+
+#### Template placeholders
+
+Templates are supported by refile()`, `new_note()` and `archive()`. Placeholders are
+written as `${name}` or `${name:format}` and are expanded when the template
+is opened.
+
+| Placeholder | Expands to |
+| --- | --- |
+| `${cursor}` | An empty insertion point. The first occurrence is removed and sets the cursor; with a selection, the selection is inserted there. Later occurrences remain literal. |
+| `${date}` | The current local date in `YYYY-MM-DD` format. |
+| `${datetime}` | The current local date and time in `YYYY-MM-DD HH:MM` format. |
+| `${timestamp}` | The current local date in `<YYYY-MM-DD Day>` format, e.g. `<2026-10-29 Thu>`. |
+| `${timestamp:time}` | The current local date and time in `<YYYY-MM-DD Day HH:MM>` format. |
+| `${date:FORMAT}` | The current local date formatted with Lua's `os.date()` format string. For example, `${date:%Y-%m-%d}`. |
+| `${time:FORMAT}` | The current local time formatted with Lua's `os.date()` format string. For example, `${time:%H:%M}`. |
+| `${clipboard}` | Clipboard contents, preferring the `*` register and falling back to the `+` register when empty. |
+| `${yank}` | Contents of Neovim's unnamed register (`"`). |
+| `${filename}` | The source file's name, including its extension. Empty when no source file is available. |
+| `${filepath}` | The source file's path. Empty when no source file is available. |
+| `${capture}` | A Markdown link to the source file at the source line. Empty when source information is unavailable. |
+
+For custom date/time formats, use Lua's `os.date()` format specifiers, such
+as `%Y` (year), `%m` (month), `%d` (day), `%H` (hour), and `%M`
+(minute). Unknown placeholders are left unchanged. Escape a placeholder with
+a backslash to keep it literal, for example `\\${date}` produces
+`${date}`; a doubled backslash (`\\\\`) produces one literal backslash.
 
 ```lua
 require("memo").refile({
   prompt_path = true,
-  template = "## %Y-%m-%d\n\n- |\n",
+  template = "## ${date:%Y-%m-%d}\n\n- ${cursor}\n",
   padding = { top = 1, bottom = 1 },
   encryption = { mode = "passphrase" },
 })
@@ -645,19 +670,19 @@ Start an empty encrypted note with `:MemoNewNote` (or
   Relative paths resolve against `<notes_dir>` and may contain subdirectories.
   Paths must stay inside `<notes_dir>`.
 - With a visual selection or a range, e.g. `:'<,'>MemoNewNote`, the selected
-  lines are inserted at the template's `|` marker. A template without a marker
+  lines are inserted at the template's `${cursor}` marker. A template without a marker
   has nowhere to insert, so the selection becomes the whole note.
 - Missing parent directories are created. An existing note is only replaced
   after you confirm the overwrite.
   `:MemoFiles` right away.
 
-A template can be passed to prefill the refile window. Templates accept `os.date`
-formats and a `|` marker that is removed and used as the cursor position:
+A template can be passed to prefill the refile window. Templates accept `${date:...}` and `${time:...}`
+format placeholders and a `${cursor}` marker that is removed and used as the cursor position:
 
 ```lua
 require("memo").new_note({
   path = "meetings/2026-01-01.md",
-  template = "# %Y-%m-%d\n\nAttendees:\n- |\n\nNotes:\n",
+  template = "# ${date:%Y-%m-%d}\n\nAttendees:\n- ${cursor}\n\nNotes:\n",
 })
 ```
 
@@ -680,7 +705,7 @@ A `tab` is opened after the current one and takes the whole screen, so `size`
 and `position` do not apply to it.
 
 When a template and a selection are both given, the selection is inserted at
-the `|` marker and the cursor lands right after it. For example, selecting
+the `${cursor}` marker and the cursor lands right after the inserted selection. For example, selecting
 `Ada Lovelace` with `"## Agenda\n- | (carried over)"` produces
 `## Agenda` followed by `- Ada Lovelace (carried over)`. Without a marker there
 is nowhere to insert, so the selection becomes the whole note.
@@ -697,7 +722,7 @@ vim.keymap.set("n", "<leader>mc", function()
   require("memo").refile({
     target_header = "# inbox", -- content is inserted below this header
     padding = { top = 1, bottom = 1 }, -- blank lines above and below the content
-    template = "## %Y-%m-%d %H:%M\n\n|\n", -- '|' marks the cursor
+    template = "## ${date:%Y-%m-%d} ${time:%H:%M}\n\n${cursor}\n", -- ${cursor} marks the insertion point
     window = {
       split = "split", -- "split" (default) | "vsplit"
       size = 0.5, -- a share of the screen, 0 to 1; defaults to 0.5
@@ -716,7 +741,7 @@ vim.keymap.set("v", "<leader>mc", function()
 end, { desc = "Memo: Quick refile selection" })
 ```
 
-With a template that has a `|`, the selection is inserted at that marker instead of replacing the template. A template without a marker has nowhere to insert, so the selection becomes the whole initial content. Without a selection, the template is used as-is.
+With a template that has `${cursor}`, the selection is inserted at that marker instead of replacing the template. A template without a marker has nowhere to insert, so the selection becomes the whole initial content. Without a selection, the template is used as-is.
 
 Turn the default refile target into a journal with dynamic headers:
 
