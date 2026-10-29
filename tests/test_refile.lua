@@ -69,6 +69,25 @@ describe("refile", function()
 		MiniTest.expect.equality(child.api.nvim_buf_get_name(refile_buf), "MemoRefile://destination.md")
 	end)
 
+	it("opens the refile window with the expected buffer options", function()
+		helpers.track_autocmds(child, { "BufReadPre", "BufReadPost" })
+
+		child.lua([[
+			vim.o.undofile = true
+			M.create({ template = "${cursor}" })
+		]])
+
+		local buf = child.api.nvim_get_current_buf()
+		MiniTest.expect.equality(child.api.nvim_get_option_value("buftype", { buf = buf }), "acwrite")
+		MiniTest.expect.equality(child.api.nvim_get_option_value("bufhidden", { buf = buf }), "wipe")
+		MiniTest.expect.equality(child.api.nvim_get_option_value("swapfile", { buf = buf }), false)
+		MiniTest.expect.equality(child.api.nvim_get_option_value("undofile", { buf = buf }), false)
+		MiniTest.expect.equality(child.api.nvim_get_option_value("fileencoding", { buf = buf }), "utf-8")
+		MiniTest.expect.equality(child.api.nvim_get_option_value("modified", { buf = buf }), false)
+		MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPre"), true)
+		MiniTest.expect.equality(helpers.autocmd_fired(child, "BufReadPost"), true)
+	end)
+
 	it("prompts for a destination when the default target is empty", function()
 		local source = child.api.nvim_get_current_buf()
 		child.api.nvim_buf_set_lines(source, 0, -1, false, { "selected" })
@@ -174,6 +193,45 @@ describe("refile", function()
 		MiniTest.expect.equality(vim.fn.readfile(vim.env.NOTES_DIR .. "/destination.md.asc"), { "New entry" })
 	end)
 
+	it("reports no changes when an untouched template is written", function()
+		child.lua([[ M.create({ template = "draft\n\n${cursor}" }) ]])
+		local buf = child.api.nvim_get_current_buf()
+
+		child.cmd("write")
+
+		MiniTest.expect.equality(child.cmd_capture("messages"), "MemoRefile: no changes")
+		MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/destination.md.asc"), 0)
+		MiniTest.expect.equality(child.api.nvim_buf_is_valid(buf), false)
+	end)
+
+	it("creates a new entry when the current buffer is the target", function()
+		local target = vim.env.NOTES_DIR .. "/destination.md.asc"
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_name(source, target)
+		child.lua([[ M.create({ template = "${cursor}" }) ]])
+
+		local refile_buf = child.api.nvim_get_current_buf()
+		MiniTest.expect.equality(refile_buf ~= source, true)
+		child.api.nvim_buf_set_lines(refile_buf, 0, -1, false, { "new entry" })
+		child.cmd("write")
+
+		MiniTest.expect.equality(vim.fn.readfile(target), { "new entry" })
+		MiniTest.expect.equality(child.api.nvim_get_current_buf(), source)
+	end)
+
+	it("does not move a selection into its source buffer", function()
+		local target = vim.env.NOTES_DIR .. "/destination.md.asc"
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_name(source, target)
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "keep me" })
+
+		child.lua([[ M.create({ range = 1, line1 = 1, line2 = 1, remove_from_source = true }) ]])
+		child.cmd("write")
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(source, 0, -1, false), { "keep me" })
+		MiniTest.expect.equality(child.fn.filereadable(target), 0)
+	end)
+
 	it("prepends content when requested", function()
 		local source = child.api.nvim_get_current_buf()
 		child.api.nvim_buf_set_lines(source, 0, -1, false, { "move me" })
@@ -224,6 +282,25 @@ describe("refile", function()
 		child.cmd("write")
 
 		MiniTest.expect.equality(child.lua_get("last_encrypt_opts.mode") == vim.NIL, true)
+	end)
+
+	it("keeps the refile buffer when encryption is cancelled", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "keep me" })
+
+		child.lua([[
+			require("memo.crypto").encrypt_from_stdin = function()
+				return false
+			end
+			M.create({ range = 1, line1 = 1, line2 = 1, encryption = { mode = "passphrase" } })
+		]])
+
+		local buf = child.api.nvim_get_current_buf()
+		child.cmd("write")
+
+		MiniTest.expect.equality(child.api.nvim_buf_is_valid(buf), true)
+		MiniTest.expect.equality(child.cmd_capture("messages"), "")
+		MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/destination.md.asc"), 0)
 	end)
 
 	it("uses the configured target without prompting", function()

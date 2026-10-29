@@ -176,7 +176,12 @@ function M.create(opts)
 				return
 			end
 
-			if source_path ~= "" and vim.fn.fnamemodify(source_path, ":p") == path then
+			if
+				selected
+				and config.remove_from_source
+				and source_path ~= ""
+				and vim.fn.fnamemodify(source_path, ":p") == path
+			then
 				message.defer_error("MemoRefile: destination must differ from the source buffer")
 				return
 			end
