@@ -201,7 +201,8 @@ describe("note_io", function()
 			helpers.write_file(path, "ciphertext")
 			child.lua([[ vim.g.decrypt_output = "existing\nline" ]])
 
-			local success = child.lua_get([[ M.insert_lines(..., { "first", "second" }, nil, { prepend = true }) ]], { path })
+			local success =
+				child.lua_get([[ M.insert_lines(..., { "first", "second" }, nil, { prepend = true }) ]], { path })
 
 			MiniTest.expect.equality(success, true)
 			MiniTest.expect.equality(child.lua_get("vim.g.write_lines"), { "first", "second", "existing", "line" })
@@ -239,10 +240,7 @@ describe("note_io", function()
 			local path = vim.env.NOTES_DIR .. "/empty-destination.md.asc"
 			helpers.write_file(path, "")
 
-			local success = child.lua_get(
-				[[ M.insert_lines(..., { "new" }, nil, { mode = "passphrase" }) ]],
-				{ path }
-			)
+			local success = child.lua_get([[ M.insert_lines(..., { "new" }, nil, { mode = "passphrase" }) ]], { path })
 
 			MiniTest.expect.equality(success, true)
 			MiniTest.expect.equality(child.lua_get("vim.g.write_mode"), "passphrase")
