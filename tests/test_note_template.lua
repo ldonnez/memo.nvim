@@ -40,24 +40,25 @@ describe("note_template", function()
 	end)
 
 	it("leaves ordinary pipes and percent signs literal", function()
-			local lines = Template.new({ template = "a | %Y ${cursor}" }):resolve_template()
-			MiniTest.expect.equality(lines, { "a | %Y " })
-		end)
+		local lines = Template.new({ template = "a | %Y ${cursor}" }):resolve_template()
+		MiniTest.expect.equality(lines, { "a | %Y " })
+	end)
 
-		it("expands date/time and source placeholders and supports escaping", function()
-			local lines = Template.new({
-				template = "${date:%Y} ${time:%H:%M} ${filename} ${filepath} ${capture} \\${date}",
-				source_path = "/tmp/source file.md",
-				source_line = 12,
-			}):resolve_template()
-			MiniTest.expect.equality(lines[1]:find(os.date("%Y"), 1, true) ~= nil, true)
-			MiniTest.expect.equality(lines[1]:find(os.date("%H:%M"), 1, true) ~= nil, true)
-			MiniTest.expect.equality(lines[1]:find("source file.md", 1, true) ~= nil, true)
-			MiniTest.expect.equality(lines[1]:find("#L12", 1, true) ~= nil, true)
-			MiniTest.expect.equality(lines[1]:find("${date}", 1, true) ~= nil, true)
-		end)
+	it("expands date/time and source placeholders and supports escaping", function()
+		local lines = Template.new({
+			template = "${date:%Y} ${time:%H:%M} ${filename} ${filepath} ${capture} \\${date}",
+			source_path = "/tmp/source file.md",
+			source_line = 12,
+		}):resolve_template()
+		local line = assert(lines[1])
+		MiniTest.expect.equality(line:find(os.date("%Y"), 1, true) ~= nil, true)
+		MiniTest.expect.equality(line:find(os.date("%H:%M"), 1, true) ~= nil, true)
+		MiniTest.expect.equality(line:find("source file.md", 1, true) ~= nil, true)
+		MiniTest.expect.equality(line:find("#L12", 1, true) ~= nil, true)
+		MiniTest.expect.equality(line:find("${date}", 1, true) ~= nil, true)
+	end)
 
-		describe("insert_at_cursor", function()
+	describe("insert_at_cursor", function()
 		it("inserts a single line where the marker was", function()
 			local note_template = Template.new({ template = "## Agenda\n- ${cursor}" })
 			local lines, cursor = note_template:insert_at_cursor({ "todo item" })

@@ -5,6 +5,12 @@ local M = {}
 ---@field source_path string?
 ---@field source_line integer?
 
+---@class MemoNoteTemplate
+---@field config MemoNoteTemplateConfig
+---@field resolve_template fun(self: MemoNoteTemplate): string[], [integer, integer], boolean
+---@field insert_at_cursor fun(self: MemoNoteTemplate, content: string[]): string[], integer[]
+---@field initial_content fun(self: MemoNoteTemplate, selection?: string[]): string[], [integer, integer]
+
 local DEFAULTS = { template = "" }
 local Template = {}
 Template.__index = Template
@@ -23,6 +29,7 @@ end
 ---@return boolean has_cursor_marker
 local function expand(template, source_path, source_line)
 	local output = {}
+	---@type integer?
 	local cursor_offset
 	local index = 1
 
@@ -60,6 +67,10 @@ local function expand(template, source_path, source_line)
 					value = os.date("%Y-%m-%d")
 				elseif token == "datetime" then
 					value = os.date("%Y-%m-%d %H:%M")
+				elseif token == "timestamp" then
+					value = os.date("<%Y-%m-%d %a>")
+				elseif token == "timestamp:time" then
+					value = os.date("<%Y-%m-%d %a %H:%M>")
 				elseif token:sub(1, 5) == "date:" or token:sub(1, 5) == "time:" then
 					value = os.date(token:sub(6))
 				elseif token == "clipboard" then
@@ -74,10 +85,9 @@ local function expand(template, source_path, source_line)
 				elseif token == "filepath" then
 					value = source_path or ""
 				elseif token == "capture" then
-					value = source_path and (
-						"[" .. vim.fn.fnamemodify(source_path, ":t") .. "](" ..
-						vim.uri_from_fname(source_path) .. "#L" .. (source_line or 1) .. ")"
-					) or ""
+					value = source_path
+							and ("[" .. vim.fn.fnamemodify(source_path, ":t") .. "](" .. vim.uri_from_fname(source_path) .. "#L" .. (source_line or 1) .. ")")
+						or ""
 				end
 				append(value == nil and template:sub(index, finish) or value)
 				index = finish + 1
