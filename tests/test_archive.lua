@@ -105,12 +105,71 @@ describe("archive", function()
 		local archived = vim.fn.readfile(path("note.archive.md.asc"))
 		MiniTest.expect.equality(vim.tbl_contains(archived, "archive one"), true)
 		MiniTest.expect.equality(vim.tbl_contains(archived, "archive two"), true)
-		MiniTest.expect.equality(vim.tbl_contains(archived, "Source: note.md"), true)
+		MiniTest.expect.equality(archived, { "archive one", "archive two" })
+	end)
+
+	it("uses a custom template and inserts archived lines at its cursor marker", function()
+		local bufnr = buffer("note.md", { "# Note", "archive me", "keep me" })
+
 		MiniTest.expect.equality(
-			--- @diagnostic disable-next-line: need-check-nil, param-type-mismatch
-			archived[4]:match("^Archived: %d%d%d%d%-%d%d%-%d%dT%d%d:%d%d:%d%d[+-]%d%d%d%d$") ~= nil,
+			child.lua_get([[M.archive({
+				range = 1, line1 = 2, line2 = 2,
+				template = "## Archived ${date:%Y-%m-%d}\nSource: ${filename}\n\n- ${cursor}",
+			})]]),
 			true
 		)
+
+		local archived = vim.fn.readfile(path("note.archive.md.asc"))
+		MiniTest.expect.equality(archived[1], "## Archived " .. os.date("%Y-%m-%d"))
+		MiniTest.expect.equality(archived[2], "Source: note.md")
+		MiniTest.expect.equality(archived[4], "- archive me")
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(bufnr, 0, -1, false), { "# Note", "keep me" })
+	end)
+
+	it("keeps one blank line between repeated templated archive entries", function()
+		local bufnr = buffer("inbox.md", { "first archived entry" })
+		local template = "\n---\n\nArchived ${date:%Y-%m-%d}\nSource: ${filename}\n\n${cursor}"
+
+		MiniTest.expect.equality(
+			child.lua_get("M.archive({ range = 1, line1 = 1, line2 = 1, template = ... })", { template }),
+			true
+		)
+
+		child.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "second archived entry" })
+		MiniTest.expect.equality(
+			child.lua_get("M.archive({ range = 1, line1 = 1, line2 = 1, template = ... })", { template }),
+			true
+		)
+
+		MiniTest.expect.equality(vim.fn.readfile(path("inbox.archive.md.asc")), {
+			"",
+			"---",
+			"",
+			"Archived " .. os.date("%Y-%m-%d"),
+			"Source: inbox.md",
+			"",
+			"first archived entry",
+			"",
+			"---",
+			"",
+			"Archived " .. os.date("%Y-%m-%d"),
+			"Source: inbox.md",
+			"",
+			"second archived entry",
+		})
+	end)
+
+	it("appends archived lines when a custom template has no cursor marker", function()
+		buffer("note.md", { "archive me" })
+
+		MiniTest.expect.equality(
+			child.lua_get([[M.archive({
+				range = 1, line1 = 1, line2 = 1, template = "## Archived\n",
+			})]]),
+			true
+		)
+
+		MiniTest.expect.equality(vim.fn.readfile(path("note.archive.md.asc")), { "## Archived", "", "archive me" })
 	end)
 
 	it("archives only the active character-wise selection", function()
@@ -171,10 +230,7 @@ describe("archive", function()
 		MiniTest.expect.equality(child.lua_get("M.archive({ range = 1, line1 = 1, line2 = 1 })"), true)
 
 		local archived = vim.fn.readfile(path("note.archive.md.asc"))
-		MiniTest.expect.equality(archived[1], "older entry")
-		MiniTest.expect.equality(archived[2], "")
-		MiniTest.expect.equality(archived[3], "---")
-		MiniTest.expect.equality(archived[4], "")
+		MiniTest.expect.equality(archived, { "older entry", "", "first" })
 		MiniTest.expect.equality(child.api.nvim_buf_get_lines(bufnr, 0, -1, false), { "second" })
 	end)
 
@@ -221,24 +277,12 @@ describe("archive", function()
 		)
 	end)
 
-	it("writes entries in the archive layout", function()
+	it("appends selected text as-is when no template is given", function()
 		buffer("note.md", { "archive one" })
 
 		MiniTest.expect.equality(child.lua_get("M.archive({ range = 1, line1 = 1, line2 = 1 })"), true)
 
-		local archived = vim.fn.readfile(path("note.archive.md.asc"))
-		MiniTest.expect.equality(archived[1], "")
-		MiniTest.expect.equality(archived[2], "---")
-		MiniTest.expect.equality(archived[3], "")
-		MiniTest.expect.equality(
-			--- @diagnostic disable-next-line: need-check-nil, param-type-mismatch
-			archived[4]:match("^Archived: %d%d%d%d%-%d%d%-%d%dT%d%d:%d%d:%d%d[+-]%d%d%d%d$") ~= nil,
-			true
-		)
-		MiniTest.expect.equality(archived[5], "Source: note.md")
-		MiniTest.expect.equality(archived[6], "")
-		MiniTest.expect.equality(archived[7], "archive one")
-		MiniTest.expect.equality(archived[#archived], "archive one")
+		MiniTest.expect.equality(vim.fn.readfile(path("note.archive.md.asc")), { "archive one" })
 	end)
 
 	it("does not remove source lines when the archive cannot be written", function()
@@ -344,7 +388,7 @@ describe("archive", function()
 		]])
 
 		MiniTest.expect.equality(child.lua_get("M.archive({ range = 1, line1 = 2, line2 = 2 })"), true)
-		MiniTest.expect.equality(vim.fn.readfile(path("note.archive.md.asc"))[7], "archive me")
+		MiniTest.expect.equality(vim.fn.readfile(path("note.archive.md.asc"))[1], "archive me")
 		MiniTest.expect.equality(child.api.nvim_buf_get_lines(bufnr, 0, -1, false), { "keep" })
 	end)
 
