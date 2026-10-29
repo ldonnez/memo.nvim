@@ -61,4 +61,65 @@ function M.write_lines(path, lines, bufnr, opts, after)
 	end)
 end
 
+---@class MemoNoteInsertOpts: GpgEncryptOpts
+---@field prepend? boolean Insert before existing content instead of after it
+---@field padding? MemoRefilePadding Blank lines around the inserted content
+---@field after? fun(): boolean, string? Called after writing, before finalizing the write
+
+---Inserts lines into a note and restores the original if writing or `after`
+---fails. A requested encryption mode is used only for a missing or empty note.
+---@param path string
+---@param lines string[]
+---@param bufnr integer?
+---@param opts? MemoNoteInsertOpts
+---@return boolean success
+---@return string? err
+function M.insert_lines(path, lines, bufnr, opts)
+	opts = opts or {}
+
+	local stat = vim.uv.fs_stat(path)
+
+	if (stat and stat.type ~= "file") or (not stat and vim.fn.getftype(path) ~= "") then
+		return false, ("destination is not a regular file: %s"):format(path)
+	end
+
+	local existing, err = M.read_lines(path, bufnr)
+
+	if not existing then
+		return false, err
+	end
+
+	local mode = not utils.file_has_content(path) and opts.mode or nil
+	local padding = opts.padding or {}
+	local top_padding = padding.top or 0
+	local bottom_padding = padding.bottom or 0
+
+	if not opts.prepend and #existing > 0 and #lines > 0 then
+		top_padding = math.max(1, top_padding)
+	end
+
+	local inserted = {}
+
+	for _ = 1, top_padding do
+		inserted[#inserted + 1] = ""
+	end
+
+	vim.list_extend(inserted, lines)
+
+	for _ = 1, bottom_padding do
+		inserted[#inserted + 1] = ""
+	end
+
+	if opts.prepend then
+		vim.list_extend(inserted, existing)
+		existing = inserted
+	else
+		for _, line in ipairs(inserted) do
+			existing[#existing + 1] = line
+		end
+	end
+
+	return M.write_lines(path, existing, bufnr, { mode = mode }, opts.after)
+end
+
 return M
