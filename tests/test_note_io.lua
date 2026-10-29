@@ -219,7 +219,6 @@ describe("note_io", function()
 				vim.g.decrypt_output = "# inbox\n\nold entry"
 				local destination, source = ...
 				M.insert_lines(destination, { "new entry" }, source, { target_header = "# inbox" })
-			
 			]],
 				{ destination, source }
 			)
@@ -238,12 +237,53 @@ describe("note_io", function()
 				vim.g.decrypt_output = "# inbox\nold entry"
 				local destination, source = ...
 				M.insert_lines(destination, { "new entry" }, source, { target_header = "# inbox" })
-			
 			]],
 				{ destination, source }
 			)
 
 			MiniTest.expect.equality(vim.fn.readfile(destination), { "# inbox", "new entry", "", "old entry" })
+		end)
+
+		it("inserts below the first of two target headers", function()
+			local source = child.api.nvim_get_current_buf()
+			child.api.nvim_buf_set_lines(source, 0, -1, false, { "new entry" })
+			local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
+			vim.fn.writefile({ "# inbox", "", "second", "# inbox", "", "first" }, destination)
+
+			child.lua(
+				[[
+				vim.g.decrypt_output = "# inbox\n\nsecond\n# inbox\n\nfirst"
+				local destination, source = ...
+				M.insert_lines(destination, { "new entry" }, source, { target_header = "# inbox" })
+			]],
+				{ destination, source }
+			)
+
+			MiniTest.expect.equality(
+				vim.fn.readfile(destination),
+				{ "# inbox", "new entry", "", "second", "# inbox", "", "first" }
+			)
+		end)
+
+		it("ignores partial target header matches", function()
+			local source = child.api.nvim_get_current_buf()
+			child.api.nvim_buf_set_lines(source, 0, -1, false, { "new entry" })
+			local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
+			vim.fn.writefile({ "# inbox is here", "", "old entry" }, destination)
+
+			child.lua(
+				[[
+				vim.g.decrypt_output = "# inbox is here\n\nold entry"
+				local destination, source = ...
+				M.insert_lines(destination, { "new entry" }, source, { target_header = "# inbox" })
+			]],
+				{ destination, source }
+			)
+
+			MiniTest.expect.equality(
+				vim.fn.readfile(destination),
+				{ "# inbox", "new entry", "", "# inbox is here", "", "old entry" }
+			)
 		end)
 
 		it("does not add padding already present in the selected source", function()
@@ -278,7 +318,6 @@ describe("note_io", function()
 				vim.g.decrypt_output = "old entry"
 				local destination, source = ...
 				M.insert_lines(destination, { "new entry" }, source, { target_header = "# inbox" })
-			
 			]],
 				{ destination, source }
 			)
@@ -316,7 +355,6 @@ describe("note_io", function()
 				vim.g.decrypt_output = "existing"
 				local destination, source = ...
 				M.insert_lines(destination, { "move me" }, source, { padding = { top = 2, bottom = 1 } })
-			
 			]],
 				{ destination, source }
 			)
@@ -337,6 +375,16 @@ describe("note_io", function()
 
 			MiniTest.expect.equality(success, true)
 			MiniTest.expect.equality(child.lua_get("vim.g.write_mode"), "passphrase")
+		end)
+
+		it("keeps the encryption mode of an existing destination", function()
+			local path = vim.env.NOTES_DIR .. "/existing-destination.md.asc"
+			helpers.write_file(path, "ciphertext")
+
+			local success = child.lua_get([[ M.insert_lines(..., { "new" }) ]], { path })
+
+			MiniTest.expect.equality(success, true)
+			MiniTest.expect.equality(child.lua_get("vim.g.write_mode == nil"), true)
 		end)
 
 		it("does not overwrite a destination when reading fails", function()
