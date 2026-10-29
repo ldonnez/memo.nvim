@@ -94,7 +94,7 @@ function M.insert_lines(path, lines, bufnr, opts)
 	local top_padding = padding.top or 0
 	local bottom_padding = padding.bottom or 0
 
-	if not opts.prepend and #existing > 0 and #lines > 0 then
+	if not opts.prepend and opts.padding and #existing > 0 and #lines > 0 then
 		top_padding = math.max(1, top_padding)
 	end
 
