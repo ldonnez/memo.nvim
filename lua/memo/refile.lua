@@ -142,13 +142,13 @@ function M.create(opts)
 				padding = config.padding,
 				mode = config.encryption and config.encryption.mode,
 				after = function()
-				if source_changed() then
-					return false, "source changed while writing"
-				end
+					if source_changed() then
+						return false, "source changed while writing"
+					end
 
-				selection.delete_selection(source_buf, selected)
+					selection.delete_selection(source_buf, selected)
 
-				return true, nil
+					return true
 				end,
 			})
 
