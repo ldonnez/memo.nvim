@@ -194,7 +194,7 @@ vim.api.nvim_create_user_command("MemoRefile", function(opts)
 end, {
 	nargs = 0,
 	range = true,
-	desc = "Move selected text to another note",
+	desc = "Refile selected text or create a new entry",
 })
 
 vim.api.nvim_create_user_command("MemoArchive", function(opts)
@@ -213,7 +213,7 @@ vim.api.nvim_create_user_command("Memo", function()
 	require("memo").open()
 end, {
 	nargs = 0,
-	desc = "Open the default capture file",
+	desc = "Open the default refile target",
 })
 
 vim.api.nvim_create_user_command("MemoSync", function(opts)
