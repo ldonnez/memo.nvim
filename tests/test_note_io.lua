@@ -187,7 +187,7 @@ describe("note_io", function()
 		it("appends by default without adding padding", function()
 			local path = vim.env.NOTES_DIR .. "/append.md.asc"
 			helpers.write_file(path, "ciphertext")
-			child.lua([[ vim.g.decrypt_output = "existing\\nline" ]])
+			child.lua([[ vim.g.decrypt_output = "existing\nline" ]])
 
 			local success = child.lua_get([[ M.insert_lines(..., { "new" }, 17) ]], { path })
 
@@ -199,7 +199,7 @@ describe("note_io", function()
 		it("prepends lines when requested", function()
 			local path = vim.env.NOTES_DIR .. "/prepend.md.asc"
 			helpers.write_file(path, "ciphertext")
-			child.lua([[ vim.g.decrypt_output = "existing\\nline" ]])
+			child.lua([[ vim.g.decrypt_output = "existing\nline" ]])
 
 			local success = child.lua_get([[ M.insert_lines(..., { "first", "second" }, nil, { prepend = true }) ]], { path })
 
