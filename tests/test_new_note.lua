@@ -262,7 +262,7 @@ describe("new_note", function()
 			local created = child.lua_get([[
 		new_note.create({
 			path = "split.md",
-			template = "## Notes | (kept)",
+			template = "## Notes ${cursor} (kept)",
 			window = { split = "vsplit", size = 0.5, position = "botright" },
 		})
 	]])
@@ -351,7 +351,7 @@ describe("new_note", function()
 			local created = child.lua_get([[
 		new_note.create({
 			path = "split-selection.md",
-			template = "## Notes\n- |",
+			template = "## Notes\n- ${cursor}",
 			window = { split = "split", size = 0.5, position = "botright" },
 		})
 	]])
@@ -372,7 +372,7 @@ describe("new_note", function()
 		end)
 
 		it("fills the note with the template", function()
-			child.lua_get([[ new_note.create({ path = "templated.md", template = "# %Y\n\n|" }) ]])
+			child.lua_get([[ new_note.create({ path = "templated.md", template = "# ${date:%Y}\n\n${cursor}" }) ]])
 
 			MiniTest.expect.equality(helpers.decrypt_file(vim.env.NOTES_DIR .. "/templated.md.asc").code, 0)
 
@@ -385,7 +385,7 @@ describe("new_note", function()
 		end)
 
 		it("places the cursor at the template marker", function()
-			child.lua_get([[ new_note.create({ path = "cursor.md", template = "# title\nbody| here\n" }) ]])
+			child.lua_get([[ new_note.create({ path = "cursor.md", template = "# title\nbody${cursor} here\n" }) ]])
 
 			local cursor = child.api.nvim_win_get_cursor(0)
 			MiniTest.expect.equality(cursor[1], 2)
@@ -393,7 +393,7 @@ describe("new_note", function()
 		end)
 
 		it("uses the template passed to the call", function()
-			child.lua_get([[ new_note.create({ path = "configured.md", template = "from call| here" }) ]])
+			child.lua_get([[ new_note.create({ path = "configured.md", template = "from call${cursor} here" }) ]])
 
 			local cursor = child.api.nvim_win_get_cursor(0)
 			MiniTest.expect.equality(cursor[1], 1)
@@ -424,7 +424,7 @@ describe("new_note", function()
 			child.lua("vim.fn.confirm = function() return 1 end")
 
 			MiniTest.expect.equality(
-				child.lua_get([[ new_note.create({ path = "legacy.md.gpg", template = "fresh| content" }) ]]),
+				child.lua_get([[ new_note.create({ path = "legacy.md.gpg", template = "fresh${cursor} content" }) ]]),
 				true
 			)
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), existing)
@@ -455,7 +455,7 @@ describe("new_note", function()
 			child.lua("vim.fn.confirm = function() return 1 end")
 
 			MiniTest.expect.equality(
-				child.lua_get([[ new_note.create({ path = "existing.md.gpg", template = "fresh| content" }) ]]),
+				child.lua_get([[ new_note.create({ path = "existing.md.gpg", template = "fresh${cursor} content" }) ]]),
 				true
 			)
 
@@ -472,7 +472,7 @@ describe("new_note", function()
 			child.lua("vim.fn.confirm = function() return 1 end")
 
 			MiniTest.expect.equality(
-				child.lua_get([[ new_note.create({ path = "overwrite-backup.md.asc", template = "fresh| content" }) ]]),
+				child.lua_get([[ new_note.create({ path = "overwrite-backup.md.asc", template = "fresh${cursor} content" }) ]]),
 				true
 			)
 
@@ -581,7 +581,7 @@ describe("new_note", function()
 			local created = child.lua_get([[
 		new_note.create({
 			path = "same-content.md.asc",
-			template = "same content|",
+			template = "same content${cursor}",
 		})
 	]])
 
@@ -630,7 +630,7 @@ describe("new_note", function()
 			local created = child.lua_get([[
 		new_note.create({
 			path = "existing-symmetric.md.asc",
-			template = "fresh content|",
+			template = "fresh content${cursor}",
 			encryption = { mode = "passphrase" },
 		})
 	]])
@@ -684,7 +684,7 @@ describe("new_note", function()
 			child.lua("vim.fn.input = function() return 'ranged' end")
 
 			child.lua_get(
-				[[ new_note.create({ path = "ranged.md", range = 2, line1 = 2, line2 = 2, template = "## Notes\n- | (kept)" }) ]]
+				[[ new_note.create({ path = "ranged.md", range = 2, line1 = 2, line2 = 2, template = "## Notes\n- ${cursor} (kept)" }) ]]
 			)
 
 			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/ranged.md.asc")
@@ -718,7 +718,7 @@ describe("new_note", function()
 			child.api.nvim_win_set_cursor(0, { 1, 6 })
 			child.cmd("normal! v")
 			child.api.nvim_win_set_cursor(0, { 1, 9 })
-			child.lua_get([[ require("memo").new_note({ path = "fromvisual.md", template = "## Notes\n- | (kept)" }) ]])
+			child.lua_get([[ require("memo").new_note({ path = "fromvisual.md", template = "## Notes\n- ${cursor} (kept)" }) ]])
 
 			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/fromvisual.md.asc")
 			MiniTest.expect.equality(result.code, 0)
@@ -732,7 +732,7 @@ describe("new_note", function()
 			child.lua("vim.fn.input = function() return 'explicit' end")
 
 			child.lua_get(
-				[[ new_note.create({ path = "explicit.md", range = 2, line1 = 2, line2 = 2, template = "call | arg" }) ]]
+				[[ new_note.create({ path = "explicit.md", range = 2, line1 = 2, line2 = 2, template = "call ${cursor} arg" }) ]]
 			)
 
 			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/explicit.md.asc")

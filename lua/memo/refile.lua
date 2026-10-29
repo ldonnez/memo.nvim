@@ -28,7 +28,7 @@ local DEFAULTS = {
 ---@field prepend? boolean insert content before existing destination content
 ---@field target_header? string insert content below this exact header, creating it when missing
 ---@field remove_from_source? boolean remove the selection after writing; defaults to false
----@field template? string window template, supports `os.date` formats and a `|` cursor marker; selected text is inserted at the marker
+---@field template? string template with `${cursor}` and date/time placeholders; selected text is inserted at the cursor marker
 ---@field padding? MemoRefilePadding blank lines above and below the refiled content
 ---@field encryption? GpgEncryptOpts how to encrypt a new destination, "key" when omitted; existing destinations keep their mode
 ---@field window? MemoWindowConfig Window configuration
@@ -270,7 +270,13 @@ function M.create(opts)
 		not config.prompt_path and default_target ~= "" and default_target or "Refile"
 	)
 	local buf, refile_win = create_refile_window(config, filetype, name)
-	local template = Template.new({ template = config.template })
+	local source_path = vim.api.nvim_buf_get_name(source_buf)
+	local source_line = selected and selected.start[2] or vim.api.nvim_win_get_cursor(source_win)[1]
+	local template = Template.new({
+		template = config.template,
+		source_path = source_path ~= "" and vim.fn.fnamemodify(source_path, ":p") or nil,
+		source_line = source_line,
+	})
 	local initial_lines, cursor_pos = template:initial_content(has_selection and lines or nil)
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, initial_lines)
 	vim.api.nvim_win_set_cursor(refile_win, cursor_pos)

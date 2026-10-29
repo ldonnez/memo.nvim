@@ -142,7 +142,7 @@ describe("refile", function()
 
 		child.lua([[ M.create({
 			range = 1, line1 = 1, line2 = 1, remove_from_source = true,
-			template = "# %Y-%m-%d\n\n- |\n",
+			template = "# ${date:%Y-%m-%d}\n\n- ${cursor}\n",
 		}) ]])
 
 		local refile_buf = child.api.nvim_get_current_buf()
@@ -162,7 +162,7 @@ describe("refile", function()
 	end)
 
 	it("creates a new entry without a selection", function()
-		child.lua([[ M.create({ template = "# %Y-%m-%d\n\n|\n" }) ]])
+		child.lua([[ M.create({ template = "# ${date:%Y-%m-%d}\n\n${cursor}\n" }) ]])
 		local buf = child.api.nvim_get_current_buf()
 		MiniTest.expect.equality(
 			child.api.nvim_buf_get_lines(buf, 0, -1, false),
