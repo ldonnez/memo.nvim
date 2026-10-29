@@ -3,7 +3,7 @@ local M = {}
 ---@class MemoNewNoteOpts
 ---@field path? string note path inside the notes dir, prompts for one when
 ---omitted
----@field template? string body template with a `|` cursor marker; a range or
+---@field template? string body template with a `${cursor}` marker; a range or
 ---visual selection is inserted there, or becomes the whole note
 ---@field range? integer
 ---@field line1? integer
@@ -62,7 +62,7 @@ local function create_window(path, opts)
 	return win, bufnr
 end
 ---Creates a new encrypted note and opens it in the current window.
----A range or visual selection is inserted at the template's `|` marker.
+---A range or visual selection is inserted at the template's `${cursor}` marker.
 ---@param opts? MemoNewNoteOpts
 ---@return boolean success
 function M.create(opts)
@@ -106,7 +106,7 @@ function M.create(opts)
 	-- check comes before the existing note is touched, so an empty selection
 	-- cannot cost the note it was meant to replace.
 	local source_bufnr = vim.api.nvim_get_current_buf()
-	local selected = selection.resolve(source_bufnr, new_opts)
+	local selected, selected_position = selection.resolve(source_bufnr, new_opts)
 
 	if selected and table.concat(selected, "\n"):gsub("%s+", "") == "" then
 		message.warn("MemoNewNote: aborted, selection is empty")
@@ -115,7 +115,13 @@ function M.create(opts)
 
 	-- Prepared before the original is touched: a template that raises cannot
 	-- cost the note it was meant to replace.
-	local note_template = Template.new({ template = new_opts.template })
+	local source_path = vim.api.nvim_buf_get_name(source_bufnr)
+	local source_line = selected_position and selected_position.start[2] or vim.api.nvim_win_get_cursor(0)[1]
+	local note_template = Template.new({
+		template = new_opts.template,
+		source_path = source_path ~= "" and vim.fn.fnamemodify(source_path, ":p") or nil,
+		source_line = source_line,
+	})
 	local initial_lines, cursor_pos = note_template:initial_content(selected)
 
 	-- Use the requested mode, defaulting to key-based encryption.
