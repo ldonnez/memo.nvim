@@ -162,7 +162,13 @@ function M.insert_lines(path, lines, bufnr, opts)
 
 		vim.list_extend(merged, remaining)
 	elseif has_target_header then
-		if #existing > 0 and #lines > 0 and lines[#lines] ~= "" and (padding.bottom or 0) == 0 then
+		if
+			#existing > 0
+			and existing[1] ~= ""
+			and #lines > 0
+			and lines[#lines] ~= ""
+			and (padding.bottom or 0) == 0
+		then
 			table.insert(block, "")
 		end
 
