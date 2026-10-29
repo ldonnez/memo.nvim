@@ -472,7 +472,9 @@ describe("new_note", function()
 			child.lua("vim.fn.confirm = function() return 1 end")
 
 			MiniTest.expect.equality(
-				child.lua_get([[ new_note.create({ path = "overwrite-backup.md.asc", template = "fresh${cursor} content" }) ]]),
+				child.lua_get(
+					[[ new_note.create({ path = "overwrite-backup.md.asc", template = "fresh${cursor} content" }) ]]
+				),
 				true
 			)
 
@@ -718,7 +720,9 @@ describe("new_note", function()
 			child.api.nvim_win_set_cursor(0, { 1, 6 })
 			child.cmd("normal! v")
 			child.api.nvim_win_set_cursor(0, { 1, 9 })
-			child.lua_get([[ require("memo").new_note({ path = "fromvisual.md", template = "## Notes\n- ${cursor} (kept)" }) ]])
+			child.lua_get(
+				[[ require("memo").new_note({ path = "fromvisual.md", template = "## Notes\n- ${cursor} (kept)" }) ]]
+			)
 
 			local result = helpers.decrypt_file(vim.env.NOTES_DIR .. "/fromvisual.md.asc")
 			MiniTest.expect.equality(result.code, 0)
