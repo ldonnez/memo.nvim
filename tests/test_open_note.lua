@@ -109,7 +109,7 @@ describe("open_note", function()
 			MiniTest.expect.equality(child.api.nvim_get_current_buf(), bufnr)
 		end)
 
-		it("opens the default capture file when no path is given", function()
+		it("opens the default refile target when no path is given", function()
 			helpers.encrypt_file(vim.env.NOTES_DIR .. "/inbox.md.gpg", "Inbox\n")
 
 			child.lua([[
