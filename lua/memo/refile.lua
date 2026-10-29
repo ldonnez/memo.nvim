@@ -19,64 +19,6 @@ local M = {}
 ---@field top? integer blank lines before the refiled content
 ---@field bottom? integer blank lines after the refiled content
 
----@param path string
----@return boolean valid
----@return string? err
-local function validate_destination(path)
-	local stat = vim.uv.fs_stat(path)
-
-	if stat and stat.type ~= "file" then
-		return false, ("destination is not a regular file: %s"):format(path)
-	end
-
-	return true
-end
-
----Appends `lines` to the note at `path`, then runs `after` before dropping the
----destination's original. The original is restored if appending or `after`
----fails, including a missing or empty destination.
----@param path string
----@param lines string[]
----@param bufnr integer
----@param padding MemoRefilePadding
----@param encryption GpgEncryptOpts?
----@param after fun(): boolean, string?
----@return boolean success
----@return string? err
-local function append_to_note(path, lines, bufnr, padding, encryption, after)
-	local valid, validation_err = validate_destination(path)
-
-	if not valid then
-		return false, validation_err
-	end
-
-	local existing, err = note_io.read_lines(path, bufnr)
-
-	if not existing then
-		return false, err
-	end
-
-	local mode = not utils.file_has_content(path) and encryption and encryption.mode or nil
-
-	local top_padding = padding.top or 0
-
-	if #existing > 0 and #lines > 0 then
-		top_padding = math.max(1, top_padding)
-	end
-
-	for _ = 1, top_padding do
-		table.insert(existing, "")
-	end
-
-	vim.list_extend(existing, lines)
-
-	for _ = 1, padding.bottom or 0 do
-		table.insert(existing, "")
-	end
-
-	return note_io.write_lines(path, existing, bufnr, { mode = mode }, after)
-end
-
 ---@param config MemoRefileOpts
 ---@param filetype string
 ---@return integer buf
@@ -196,7 +138,10 @@ function M.create(opts)
 				return
 			end
 
-			local saved, err = append_to_note(path, content, buf, config.padding, config.encryption, function()
+			local saved, err = note_io.insert_lines(path, content, buf, {
+				padding = config.padding,
+				mode = config.encryption and config.encryption.mode,
+				after = function()
 				if source_changed() then
 					return false, "source changed while writing"
 				end
@@ -204,7 +149,8 @@ function M.create(opts)
 				selection.delete_selection(source_buf, selected)
 
 				return true, nil
-			end)
+				end,
+			})
 
 			if not saved then
 				if err then
