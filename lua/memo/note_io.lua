@@ -69,20 +69,39 @@ end
 ---@field after? fun(): boolean, string? Called after writing, before finalizing the write
 
 ---@param lines string[]
----@param count integer
 ---@param from_start boolean
 ---@return integer
-local function missing_padding(lines, count, from_start)
-	local existing = 0
+local function edge_blank_count(lines, from_start)
+	local count = 0
 	local index = from_start and 1 or #lines
 	local step = from_start and 1 or -1
 
 	while lines[index] == "" do
-		existing = existing + 1
+		count = count + 1
 		index = index + step
 	end
 
-	return math.max(0, count - existing)
+	return count
+end
+
+---@param lines string[]
+---@param count integer
+---@param from_start boolean
+---@return integer
+local function missing_padding(lines, count, from_start)
+	return math.max(0, count - edge_blank_count(lines, from_start))
+end
+
+---Blank lines needed between two adjacent blocks, so they stay separated.
+---@param existing string[]
+---@param inserted string[]
+---@param existing_before boolean true when the existing content comes first
+---@return integer
+local function separator_padding(existing, inserted, existing_before)
+	local existing_edge = edge_blank_count(existing, not existing_before)
+	local inserted_edge = edge_blank_count(inserted, existing_before)
+
+	return math.max(0, 1 - existing_edge - inserted_edge)
 end
 
 ---@param target string[]
@@ -178,25 +197,17 @@ function M.insert_lines(path, lines, bufnr, opts)
 		append_blank_lines(merged, missing_padding(lines, padding.top or 0, true))
 		vim.list_extend(merged, lines)
 
-		local bottom_padding = math.floor(
-			math.max(
-				missing_padding(lines, padding.bottom or 0, false),
-				#existing > 0 and #lines > 0 and 1 - (#lines[#lines] == "" and 1 or 0) - (existing[1] == "" and 1 or 0)
-					or 0
-			)
+		local bottom_padding = math.max(
+			missing_padding(lines, padding.bottom or 0, false),
+			(#existing > 0 and #lines > 0) and separator_padding(existing, lines, false) or 0
 		)
 
 		append_blank_lines(merged, bottom_padding)
 		vim.list_extend(merged, existing)
 	else
-		local top_padding = math.floor(
-			math.max(
-				missing_padding(lines, padding.top or 0, true),
-				#existing > 0
-						and #lines > 0
-						and 1 - (existing[#existing] == "" and 1 or 0) - (#lines[1] == "" and 1 or 0)
-					or 0
-			)
+		local top_padding = math.max(
+			missing_padding(lines, padding.top or 0, true),
+			(#existing > 0 and #lines > 0) and separator_padding(existing, lines, true) or 0
 		)
 
 		vim.list_extend(merged, existing)
