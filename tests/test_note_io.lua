@@ -286,6 +286,24 @@ describe("note_io", function()
 			MiniTest.expect.equality(vim.fn.readfile(destination), { "# inbox", "new entry", "", "old entry" })
 		end)
 
+		it("uses an existing leading blank line as the target-header separator", function()
+			local source = child.api.nvim_get_current_buf()
+			child.api.nvim_buf_set_lines(source, 0, -1, false, { "new entry" })
+			local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
+			vim.fn.writefile({ "", "old entry" }, destination)
+
+			child.lua(
+				[[
+				vim.g.decrypt_output = "\nold entry"
+				local destination, source = ...
+				M.insert_lines(destination, { "new entry" }, source, { target_header = "# inbox" })
+			]],
+				{ destination, source }
+			)
+
+			MiniTest.expect.equality(vim.fn.readfile(destination), { "# inbox", "new entry", "", "old entry" })
+		end)
+
 		it("applies top and bottom padding to refiled content", function()
 			local source = child.api.nvim_get_current_buf()
 			child.api.nvim_buf_set_lines(source, 0, -1, false, { "move me" })
