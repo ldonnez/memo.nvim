@@ -142,9 +142,9 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
 ```
 
 Every mapping is optional, drop the ones you do not want.
-`g:memo_default_refile_target` is the destination used by `refile()` when no path prompt is requested, and
-`<leader>mo` opens the very same note. The three pickers need
-[fzf-lua](https://github.com/ibhagwan/fzf-lua).
+`g:memo_default_refile_target` is the destination used by `refile()` when
+no path prompt is requested, and `<leader>mo` opens the very same note. The
+three pickers need [fzf-lua](https://github.com/ibhagwan/fzf-lua).
 
 ### vim.pack
 
@@ -247,7 +247,8 @@ vim.g.memo_scratch_dir = "~/.local/state/memo-scratch"
 ### `g:memo_default_refile_target`
 
 The note `:Memo` and `require("memo").open()` open when no path is given, and
-the destination `require("memo").refile()` writes to by default. A path relative to `<notes_dir>`, with or without a note extension.
+the destination `require("memo").refile()` writes to by default. A path
+relative to `<notes_dir>`, with or without a note extension.
 
 - Default: `inbox.md.asc`.
 
@@ -288,7 +289,8 @@ vim.keymap.set({ "n", "v" }, "<leader>mc", function()
 end, { desc = "Memo: Refile to today" })
 ```
 
-Set `prompt_path = true` on `refile()` when you want to choose a destination for an individual operation. `:MemoNewNote <path>` has its own explicit path.
+Set `prompt_path = true` on `refile()` when you want to choose a destination
+for an individual operation. `:MemoNewNote <path>` has its own explicit path.
 
 ### `g:memo_extension`
 
@@ -437,7 +439,8 @@ end, { desc = "Memo: Refile passphrase note" })
 ```
 
 An existing note keeps its encryption: writing it or refiling into it does
-not switch a passphrase note to key encryption, or the other way around. The mode option picks the encryption of a new note only.
+not switch a passphrase note to key encryption, or the other way around. The
+mode option picks the encryption of a new note only.
 
 Passphrases for key-encrypted notes are handed straight to gpg-agent with
 `--pinentry-mode=loopback`, so no pinentry program pops up. gpg-agent caches
@@ -544,6 +547,38 @@ vim.keymap.set({"n", "v"}, "<leader>mS", function()
 end, { desc = "Memo: Save buffer as note" })
 ```
 
+### Templates
+
+`refile()`, `new_note()` and `archive()` accept a `template` that
+prefills the buffer. Placeholders use the form `${name}` or
+`${name:format}` and are expanded when the buffer opens.
+
+- `${cursor}`: insertion point. The first occurrence is removed and
+  sets the cursor. With a selection, the selection is inserted there;
+  later occurrences stay literal.
+- `${date}`: current local date, `YYYY-MM-DD`.
+- `${datetime}`: current local date and time, `YYYY-MM-DD HH:MM`.
+- `${timestamp}`: Org-style date, `<YYYY-MM-DD Day>`.
+- `${timestamp:time}`: Org-style date and time,
+  `<YYYY-MM-DD Day HH:MM>`.
+- `${date:FORMAT}`: local date using an `os.date()` format, for
+  example `${date:%Y-%m-%d}`.
+- `${time:FORMAT}`: local time using an `os.date()` format, for
+  example `${time:%H:%M}`.
+- `${clipboard}`: clipboard contents, preferring the `*` register and
+  falling back to `+` when empty.
+- `${yank}`: contents of the unnamed register.
+- `${filename}`: source file name, including its extension.
+- `${filepath}`: source file path.
+- `${capture}`: Markdown link to the source file at the source line.
+
+The filename, filepath and capture placeholders are empty when no
+source file is available. Unknown placeholders are left unchanged.
+
+In Lua strings, escape a placeholder with `\\` to keep it literal:
+`"\\${date}"` produces `${date}`, and `"\\\\"` produces one literal
+backslash.
+
 ### Archive selected text
 
 Use a Visual-mode mapping or `require("memo").archive()` to move a selection
@@ -554,8 +589,13 @@ The buffer must be in the notes directory.
 For example, `projects/plan.md.asc` is archived to
 `projects/plan.archive.md.asc`, and `projects/plan.md` to
 `projects/plan.archive.md.asc`. Every archive is GPG-encrypted, including
-archives created from plaintext notes. Each entry records its timestamp and
-source path, and existing entries are retained.
+archives created from plaintext notes. Entries are appended as-is, separated
+by a blank line, and existing entries are retained.
+
+Pass `template` to add metadata or formatting around an entry. The archived
+lines are inserted at the template's `${cursor}` marker, or appended after
+the template when there is no marker. Templates use the placeholders
+described in "Templates" above.
 
 The operation is also available through `require("memo").archive()`.
 When called from a Visual-mode mapping, it detects the active selection, so no
@@ -574,44 +614,38 @@ When calling the function outside Visual mode, pass `range = 1`, `line1`, and
 require("memo").archive({ range = 1, line1 = 2, line2 = 4 })
 ```
 
+Add a timestamp and source path with a template:
+
+```lua
+require("memo").archive({
+  range = 1, line1 = 2, line2 = 4,
+  template = "\n---\n\nArchived ${date:%Y-%m-%d}\n"
+    .. "Source: ${filename}\n\n${cursor}",
+})
+```
+
 ### Refile selected text
 
-Move or copy a selection into another note, or create a new entry, with `:MemoRefile` or
-`require("memo").refile()`. An editable window opens with the selected text when a selection exists; without a selection it opens an empty/template-filled entry.
-Write the window to save to `g:memo_default_refile_target`; set `prompt_path = true` to choose a different destination. Content is appended by default, or prepended with `prepend = true`. The original selection is kept by default. Set `remove_from_source = true` to remove it after a successful write instead of copying.
+Move or copy a selection into another note, or create a new entry, with
+`:MemoRefile` or `require("memo").refile()`. An editable window opens with
+the selected text when a selection exists; without a selection it opens an
+empty or template-filled entry.
+
+Write the window to save to `g:memo_default_refile_target`; set
+`prompt_path = true` to choose a different destination. Content is appended
+by default, or prepended with `prepend = true`. The original selection is
+kept by default. Set `remove_from_source = true` to remove it after a
+successful write instead of copying.
+
 If the destination does not exist, it is created. Existing notes keep their
-encryption mode. The configured default destination is used unless `prompt_path = true`. Use `padding` to configure blank lines before and after the moved
-content. A `template` can add context around new or selected content. Templates support
-the placeholders listed below, including a `${cursor}` marker where selected
-content is inserted. Without a cursor marker, a selection becomes the entire
-initial content.
+encryption mode. Use `padding` to configure blank lines before and after the
+moved content. A `template` can add context around new or selected content;
+see "Templates" above. Without a `${cursor}` marker, a selection becomes the
+entire initial content.
 
-#### Template placeholders
-
-Templates are supported by refile()`, `new_note()` and `archive()`. Placeholders are
-written as `${name}` or `${name:format}` and are expanded when the template
-is opened.
-
-| Placeholder | Expands to |
-| --- | --- |
-| `${cursor}` | An empty insertion point. The first occurrence is removed and sets the cursor; with a selection, the selection is inserted there. Later occurrences remain literal. |
-| `${date}` | The current local date in `YYYY-MM-DD` format. |
-| `${datetime}` | The current local date and time in `YYYY-MM-DD HH:MM` format. |
-| `${timestamp}` | The current local date in `<YYYY-MM-DD Day>` format, e.g. `<2026-10-29 Thu>`. |
-| `${timestamp:time}` | The current local date and time in `<YYYY-MM-DD Day HH:MM>` format. |
-| `${date:FORMAT}` | The current local date formatted with Lua's `os.date()` format string. For example, `${date:%Y-%m-%d}`. |
-| `${time:FORMAT}` | The current local time formatted with Lua's `os.date()` format string. For example, `${time:%H:%M}`. |
-| `${clipboard}` | Clipboard contents, preferring the `*` register and falling back to the `+` register when empty. |
-| `${yank}` | Contents of Neovim's unnamed register (`"`). |
-| `${filename}` | The source file's name, including its extension. Empty when no source file is available. |
-| `${filepath}` | The source file's path. Empty when no source file is available. |
-| `${capture}` | A Markdown link to the source file at the source line. Empty when source information is unavailable. |
-
-For custom date/time formats, use Lua's `os.date()` format specifiers, such
-as `%Y` (year), `%m` (month), `%d` (day), `%H` (hour), and `%M`
-(minute). Unknown placeholders are left unchanged. Escape a placeholder with
-a backslash to keep it literal, for example `\\${date}` produces
-`${date}`; a doubled backslash (`\\\\`) produces one literal backslash.
+New destinations use key encryption by default; set
+`encryption.mode = "passphrase"` to use passphrase encryption. Existing
+destinations keep their current encryption mode.
 
 ```lua
 require("memo").refile({
@@ -670,14 +704,16 @@ Start an empty encrypted note with `:MemoNewNote` (or
   Relative paths resolve against `<notes_dir>` and may contain subdirectories.
   Paths must stay inside `<notes_dir>`.
 - With a visual selection or a range, e.g. `:'<,'>MemoNewNote`, the selected
-  lines are inserted at the template's `${cursor}` marker. A template without a marker
-  has nowhere to insert, so the selection becomes the whole note.
+  lines are inserted at the template's `${cursor}` marker. A template
+  without a marker has nowhere to insert, so the selection becomes the whole
+  note.
 - Missing parent directories are created. An existing note is only replaced
   after you confirm the overwrite.
   `:MemoFiles` right away.
 
-A template can be passed to prefill the refile window. Templates accept `${date:...}` and `${time:...}`
-format placeholders and a `${cursor}` marker that is removed and used as the cursor position:
+A template can be passed to prefill the note. Templates accept the
+placeholders described in "Templates" above, including a `${cursor}` marker
+that is removed and used as the cursor position:
 
 ```lua
 require("memo").new_note({
@@ -705,17 +741,25 @@ A `tab` is opened after the current one and takes the whole screen, so `size`
 and `position` do not apply to it.
 
 When a template and a selection are both given, the selection is inserted at
-the `${cursor}` marker and the cursor lands right after the inserted selection. For example, selecting
-`Ada Lovelace` with `"## Agenda\n- | (carried over)"` produces
-`## Agenda` followed by `- Ada Lovelace (carried over)`. Without a marker there
-is nowhere to insert, so the selection becomes the whole note.
+the `${cursor}` marker and the cursor lands right after the inserted
+selection. For example, selecting `Ada Lovelace` with
+`"## Agenda\n- ${cursor} (carried over)"` produces `## Agenda` followed by
+`- Ada Lovelace (carried over)`. Without a marker there is nowhere to insert,
+so the selection becomes the whole note.
 
 Notes in subdirectories are opened and written transparently, so nested paths
 such as `journals/2026-01-01.md.asc` behave like top-level notes.
 
 ### Quick refile
 
-Use the same `refile()` workflow to create a new entry or move/copy a selection. Without a selection it opens a blank or template-filled entry; writing saves it to `g:memo_default_refile_target`. Use `target_header` to insert below a specific header, or `prompt_path = true` to choose a destination. With `target_header`, `padding.top` controls spacing after the header and `padding.bottom` controls spacing after the entry; blank lines already at the edges of the selected content count toward that padding, and existing content remains separated by at least one blank line.
+Use the same `refile()` workflow to create a new entry or move/copy a
+selection. Without a selection it opens a blank or template-filled entry;
+writing saves it to `g:memo_default_refile_target`. Use `target_header` to
+insert below a specific header, or `prompt_path = true` to choose a
+destination. With `target_header`, `padding.top` controls spacing after the
+header and `padding.bottom` controls spacing after the entry. Blank lines
+already at the edges of the selected content count toward that padding, and
+existing content remains separated by at least one blank line.
 
 ```lua
 vim.keymap.set("n", "<leader>mc", function()
@@ -741,7 +785,10 @@ vim.keymap.set("v", "<leader>mc", function()
 end, { desc = "Memo: Quick refile selection" })
 ```
 
-With a template that has `${cursor}`, the selection is inserted at that marker instead of replacing the template. A template without a marker has nowhere to insert, so the selection becomes the whole initial content. Without a selection, the template is used as-is.
+With a template that has `${cursor}`, the selection is inserted at that
+marker instead of replacing the template. A template without a marker has
+nowhere to insert, so the selection becomes the whole initial content.
+Without a selection, the template is used as-is.
 
 Turn the default refile target into a journal with dynamic headers:
 
