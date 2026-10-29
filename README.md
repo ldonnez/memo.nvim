@@ -3,9 +3,9 @@
 Seamless Neovim interface for [memo](https://github.com/ldonnez/memo), a CLI-based notes system with transparent GPG encryption. Create, read, and update encrypted files without leaving your editor.
 
 - Transparent encryption: `.asc` files in your notes directory are decrypted into the buffer and re-encrypted on write; plaintext never touches disk.
-- Passphrase-mode encryption for notes, capture files, and scratch buffers.
+- Passphrase-mode encryption for notes, refile targets, and scratch buffers.
 - One encrypted scratch buffer per directory for throwaway, sensitive content.
-- Quick capture workflow that appends to a capture file (e.g. a journal).
+- Quick refile workflow that appends to a refile target (e.g. a journal).
 - Archive selected text into companion encrypted archive files.
 - fzf-lua pickers for browsing notes and scratch files.
 - Git sync via `memo sync git`.
@@ -33,19 +33,19 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
   init = function()
     vim.g.memo_notes_dir = "~/my-notes-dir" -- default: ~/notes
     vim.g.memo_scratch_dir = "~/.local/state/memo-scratch" -- default: stdpath("data")/memo-scratch
-    vim.g.memo_default_capture_file = "journal.md.asc" -- default: inbox.md.asc
+    vim.g.memo_default_refile_target = "journal.md.asc" -- default: inbox.md.asc
   end,
   keys = {
     {
       mode = { "n", "v" },
       "<leader>mc",
       function()
-        require("memo").capture({
-          target_header = "# " .. os.date("%Y-%m-%d"),
-          padding = { top = 1 },
+        require("memo").refile({
+          template = "## %Y-%m-%d %H:%M\n\n|\n",
+          padding = { top = 1, bottom = 1 },
         })
       end,
-      desc = "Memo: Capture to braindump",
+      desc = "Memo: Refile to braindump",
     },
     {
       "<leader>mo",
@@ -56,7 +56,7 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
           },
         })
       end,
-      desc = "Memo: Open default capture file",
+      desc = "Memo: Open default refile target",
     },
     {
       "<leader>ms",
@@ -90,12 +90,12 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
       mode = { "n", "v" },
       "<leader>mC",
       function()
-        require("memo").capture({
+        require("memo").refile({
           target_header = "# " .. os.date("%Y-%m-%d"),
           encryption = { mode = "passphrase" },
         })
       end,
-      desc = "Memo: Capture to braindump (passphrase)",
+      desc = "Memo: Refile to braindump (passphrase)",
     },
     {
       "<leader>mp",
@@ -142,8 +142,7 @@ Check with `:checkhealth memo` to verify everything is set up correctly.
 ```
 
 Every mapping is optional, drop the ones you do not want.
-`g:memo_default_capture_file` is what ties the two together: `<leader>mc`
-captures into that note, under a `target_header` for the day, and
+`g:memo_default_refile_target` is the destination used by `refile()` when no path prompt is requested, and
 `<leader>mo` opens the very same note. The three pickers need
 [fzf-lua](https://github.com/ibhagwan/fzf-lua).
 
@@ -154,18 +153,18 @@ Set configuration before loading the plugin.
 ```lua
 vim.g.memo_notes_dir = "~/my-notes-dir" -- default: ~/notes
 vim.g.memo_scratch_dir = "~/.local/state/memo-scratch" -- default: stdpath("data")/memo-scratch
-vim.g.memo_default_capture_file = "journal.md.asc" -- default: inbox.md.asc
+vim.g.memo_default_refile_target = "journal.md.asc" -- default: inbox.md.asc
 
 vim.pack.add({
   { src = "https://github.com/ldonnez/memo.nvim", version = vim.version.range("*") },
 })
 
 vim.keymap.set({ "n", "v" }, "<leader>mc", function()
-  require("memo").capture({
+  require("memo").refile({
     target_header = "# " .. os.date("%Y-%m-%d"),
     padding = { top = 1 },
   })
-end, { desc = "Memo: Capture to braindump" })
+end, { desc = "Memo: Refile to braindump" })
 
 vim.keymap.set("n", "<leader>mo", function()
   require("memo").open({
@@ -173,7 +172,7 @@ vim.keymap.set("n", "<leader>mo", function()
       split = "vsplit",
     },
   })
-end, { desc = "Memo: Open default capture file" })
+end, { desc = "Memo: Open default refile target" })
 
 vim.keymap.set("n", "<leader>ms", function()
   require("memo").scratch({ window = { split = "split" } })
@@ -192,11 +191,11 @@ vim.keymap.set("n", "<leader>mP", function()
 end, { desc = "Memo: Scratch (passphrase)" })
 
 vim.keymap.set({ "n", "v" }, "<leader>mC", function()
-  require("memo").capture({
+  require("memo").refile({
     target_header = "# " .. os.date("%Y-%m-%d"),
     encryption = { mode = "passphrase" },
   })
-end, { desc = "Memo: Capture to braindump (passphrase)" })
+end, { desc = "Memo: Refile to braindump (passphrase)" })
 
 vim.keymap.set("n", "<leader>mp", function()
   require("memo.pickers.fzf_lua").scratch_files()
@@ -245,25 +244,24 @@ Directory where encrypted scratch files are stored.
 vim.g.memo_scratch_dir = "~/.local/state/memo-scratch"
 ```
 
-### `g:memo_default_capture_file`
+### `g:memo_default_refile_target`
 
 The note `:Memo` and `require("memo").open()` open when no path is given, and
-the one `require("memo").capture()` writes to when no `capture_file` is
-given. A path relative to `<notes_dir>`, with or without a note extension.
+the destination `require("memo").refile()` writes to by default. A path relative to `<notes_dir>`, with or without a note extension.
 
 - Default: `inbox.md.asc`.
 
 ```lua
-vim.g.memo_default_capture_file = "inbox.md.asc"
+vim.g.memo_default_refile_target = "inbox.md.asc"
 ```
 
-A subdirectory keeps captures out of the way, and the extension is optional:
+A subdirectory keeps refile entries out of the way, and the extension is optional:
 
 ```lua
-vim.g.memo_default_capture_file = "quick/inbox.md.asc"
+vim.g.memo_default_refile_target = "quick/inbox.md.asc"
 ```
 
-The first capture creates the note and any missing parent directories;
+The first refile creates the note and any missing parent directories;
 `:Memo` reports an error until then, since there is nothing to open yet.
 
 Read the default back with `:Memo` or `require("memo").open()`:
@@ -271,27 +269,26 @@ Read the default back with `:Memo` or `require("memo").open()`:
 ```lua
 vim.keymap.set("n", "<leader>mo", function()
   require("memo").open()
-end, { desc = "Memo: Open the default capture file" })
+end, { desc = "Memo: Open the default refile target" })
 ```
 
 Pair it with `target_header` and one note becomes a dated journal, with
 `<leader>mc` writing to it and `:Memo` opening it:
 
 ```lua
-vim.g.memo_default_capture_file = "journal.md.asc"
+vim.g.memo_default_refile_target = "journal.md.asc"
 ```
 
 ```lua
 vim.keymap.set({ "n", "v" }, "<leader>mc", function()
-  require("memo").capture({
+  require("memo").refile({
     target_header = "# " .. os.date("%Y-%m-%d"),
     padding = { top = 1 },
   })
-end, { desc = "Memo: Capture to today" })
+end, { desc = "Memo: Refile to today" })
 ```
 
-This is only the fallback: `require("memo").capture({ capture_file = ... })`
-and `:MemoNewNote <path>` still take an explicit path and ignore the default.
+Set `prompt_path = true` on `refile()` when you want to choose a destination for an individual operation. `:MemoNewNote <path>` has its own explicit path.
 
 ### `g:memo_extension`
 
@@ -309,7 +306,7 @@ vim.g.memo_extension = "gpg"
 An existing note always keeps its own extension. A `note.md.gpg` note opens, decrypts, and is
 written back to `note.md.gpg` even with the `asc` default.
 
-Paths in `g:memo_default_capture_file` and note paths passed to
+Paths in `g:memo_default_refile_target` and note paths passed to
 `require("memo")` may include a note extension or omit it; when omitted,
 `g:memo_extension` applies.
 
@@ -342,7 +339,7 @@ vim.g.memo_ignore_patterns = {
 
 | Command             | Description                                        |
 | ------------------- | -------------------------------------------------- |
-| `:Memo`             | Open the default capture file.                     |
+| `:Memo`             | Open the default refile target.                     |
 | `:MemoScratch`      | Open or create the scratch buffer for the cwd.     |
 | `:MemoNewNote`      | Create a new encrypted note in the notes dir.      |
 | `:MemoScratchFiles` | Browse and open encrypted scratch files.           |
@@ -388,9 +385,9 @@ The [memo CLI](https://github.com/ldonnez/memo) creates these notes with
 `memo encrypt --symmetric`, and keeps them symmetric when you open them with
 `memo FILE`, so both tools can work on the same notes.
 
-A new note, capture file, or scratch buffer encrypts with your key unless the
+A new note, refile target, or scratch buffer encrypts with your key unless the
 passphrase mode is configured. The passphrase is confirmed when creating a new
-note or capture file; the note is only created once it is confirmed.
+note or refile target; the note is only created once it is confirmed.
 
 Both commands take it as an argument and complete to `passphrase` and
 `key`, which is the default:
@@ -410,8 +407,8 @@ require("memo").save_as_note({
   encryption = { mode = "passphrase" },
 })
 
-require("memo").capture({
-  capture_file = "captures/grocery.md",
+require("memo").refile({
+  prompt_path = true,
   encryption = { mode = "passphrase" },
 })
 
@@ -432,16 +429,15 @@ vim.keymap.set({ "n", "v" }, "<leader>mP", function()
 end, { desc = "Memo: Save buffer as passphrase note" })
 
 vim.keymap.set({ "n", "v" }, "<leader>mC", function()
-  require("memo").capture({
-    capture_file = "captures/grocery.md",
+  require("memo").refile({
+    prompt_path = true,
     encryption = { mode = "passphrase" },
   })
-end, { desc = "Memo: Capture passphrase note" })
+end, { desc = "Memo: Refile passphrase note" })
 ```
 
-An existing note keeps its encryption: writing it or capturing into it does
-not switch a passphrase note to be encrypted your key, or the other way
-around. The mode option picks the encryption of a new note only.
+An existing note keeps its encryption: writing it or refiling into it does
+not switch a passphrase note to key encryption, or the other way around. The mode option picks the encryption of a new note only.
 
 Passphrases for key-encrypted notes are handed straight to gpg-agent with
 `--pinentry-mode=loopback`, so no pinentry program pops up. gpg-agent caches
@@ -580,21 +576,22 @@ require("memo").archive({ range = 1, line1 = 2, line2 = 4 })
 
 ### Refile selected text
 
-Move a selection into another note with `:MemoRefile` or
-`require("memo").refile()`. An editable window opens with the selected text.
-Write the window to choose a destination note path; the text is appended to
-that note, and the original selection is removed only after the write succeeds.
+Move or copy a selection into another note, or create a new entry, with `:MemoRefile` or
+`require("memo").refile()`. An editable window opens with the selected text when a selection exists; without a selection it opens an empty/template-filled entry.
+Write the window to save to `g:memo_default_refile_target`; set `prompt_path = true` to choose a different destination. Content is appended by default, or prepended with `prepend = true`. The original selection is kept by default. Set `remove_from_source = true` to remove it after a successful write instead of copying.
 If the destination does not exist, it is created. Existing notes keep their
-encryption mode. Pass `target_file` to skip the prompt; absolute paths and
-paths relative to the notes directory are supported, with the note extension
-optional. Use `padding` to configure blank lines before and after the moved
-content, just as with capture. New destinations use key encryption by default;
+encryption mode. The configured default destination is used unless `prompt_path = true`. Use `padding` to configure blank lines before and after the moved
+content. A `template` can add context around new or selected
+content; it supports `os.date` formats and a `|` marker where the selection is
+inserted. Without a marker, the selection becomes the entire initial content.
+New destinations use key encryption by default;
 set `encryption.mode = "passphrase"` to use passphrase encryption. Existing
 destinations keep their current encryption mode.
 
 ```lua
 require("memo").refile({
-  target_file = "projects/plan.md",
+  prompt_path = true,
+  template = "## %Y-%m-%d\n\n- |\n",
   padding = { top = 1, bottom = 1 },
   encryption = { mode = "passphrase" },
 })
@@ -626,7 +623,7 @@ require("memo").open({
 ```
 
 `:Memo` and `require("memo").open()` without a path open
-`g:memo_default_capture_file`, which is the same note a capture writes to:
+`g:memo_default_refile_target`, which is also the default refile destination:
 
 ```lua
 require("memo").open()
@@ -654,7 +651,7 @@ Start an empty encrypted note with `:MemoNewNote` (or
   after you confirm the overwrite.
   `:MemoFiles` right away.
 
-A template can be passed to prefill the note. Templates accept `os.date`
+A template can be passed to prefill the refile window. Templates accept `os.date`
 formats and a `|` marker that is removed and used as the cursor position:
 
 ```lua
@@ -665,7 +662,7 @@ require("memo").new_note({
 ```
 
 A `window` opens the note in a split, with the same options
-`require("memo").capture()` takes. Every option has a default, so `split`
+`require("memo").refile()` takes. Every option has a default, so `split`
 alone is enough. Without a `window` the note takes over the current
 window:
 
@@ -691,18 +688,15 @@ is nowhere to insert, so the selection becomes the whole note.
 Notes in subdirectories are opened and written transparently, so nested paths
 such as `journals/2026-01-01.md.asc` behave like top-level notes.
 
-### Quick capture
+### Quick refile
 
-Wire a keybinding to write down text in a temporary buffer. On saving and
-closing the window, the content is appended to your configured `capture_file`,
-under the `target_header` (prepended if it does not exist).
+Use the same `refile()` workflow to create a new entry or move/copy a selection. Without a selection it opens a blank or template-filled entry; writing saves it to `g:memo_default_refile_target`. Use `target_header` to insert below a specific header, or `prompt_path = true` to choose a destination. With `target_header`, `padding.top` controls spacing after the header and `padding.bottom` controls spacing after the entry; blank lines already at the edges of the selected content count toward that padding, and existing content remains separated by at least one blank line.
 
 ```lua
 vim.keymap.set("n", "<leader>mc", function()
-  require("memo").capture({
-    capture_file = "inbox.md.asc",
-    target_header = "# inbox", -- captures are inserted below this header
-    padding = { top = 1, bottom = 1 }, -- blank lines above and below the capture
+  require("memo").refile({
+    target_header = "# inbox", -- content is inserted below this header
+    padding = { top = 1, bottom = 1 }, -- blank lines above and below the content
     template = "## %Y-%m-%d %H:%M\n\n|\n", -- '|' marks the cursor
     window = {
       split = "split", -- "split" (default) | "vsplit"
@@ -710,38 +704,24 @@ vim.keymap.set("n", "<leader>mc", function()
       position = "botright", -- "botright" (default) | "topleft" | "leftabove" | "rightbelow"
     },
   })
-end, { desc = "Memo: Quick capture" })
+end, { desc = "Memo: Quick refile" })
 ```
 
 A visual selection is detected automatically: select text in visual mode and
-call `require("memo").capture()` to pre-fill the capture window:
+call `require("memo").refile()` to pre-fill the refile window:
 
 ```lua
 vim.keymap.set("v", "<leader>mc", function()
-  require("memo").capture({ capture_file = "inbox.md.asc" })
-end, { desc = "Memo: Quick capture selection" })
+  require("memo").refile()
+end, { desc = "Memo: Quick refile selection" })
 ```
 
-With a template that has a `|`, the selection is inserted at that marker instead
-of replacing the template, so a selected capture keeps its date header. A
-template without a marker has nowhere to insert, so the selection still
-becomes the whole capture window.
+With a template that has a `|`, the selection is inserted at that marker instead of replacing the template. A template without a marker has nowhere to insert, so the selection becomes the whole initial content. Without a selection, the template is used as-is.
 
-Turn a capture file into a journal with dynamic headers:
+Turn the default refile target into a journal with dynamic headers:
 
 ```lua
-require("memo").capture({
-  capture_file = "journal.md.asc",
-  target_header = "# " .. os.date("%Y-%m-%d"),
-  padding = { top = 1 },
-})
-```
-
-Or create a journal file for each day automatically:
-
-```lua
-require("memo").capture({
-  capture_file = "journals/" .. os.date("%Y-%m-%d") .. ".md.asc",
+require("memo").refile({
   target_header = "# " .. os.date("%Y-%m-%d"),
   padding = { top = 1 },
 })

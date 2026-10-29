@@ -48,6 +48,14 @@ describe("note_template", function()
 			MiniTest.expect.equality(cursor, { 2, 11 })
 		end)
 
+		it("treats only the first pipe as the cursor marker", function()
+			local note_template = Template.new({ template = "before | after | tail" })
+			local lines, cursor = note_template:insert_at_cursor({ "content" })
+
+			MiniTest.expect.equality(lines, { "before content after | tail" })
+			MiniTest.expect.equality(cursor, { 1, 14 })
+		end)
+
 		it("keeps the text that follows the marker on the same line", function()
 			local note_template = Template.new({ template = "## Agenda\n- | tail" })
 			local lines, cursor = note_template:insert_at_cursor({ "todo item" })

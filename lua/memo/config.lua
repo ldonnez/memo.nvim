@@ -1,7 +1,7 @@
 ---@class MemoConfig
 ---@field notes_dir string
 ---@field scratch_dir string
----@field capture_file string
+---@field refile_target string
 ---@field extension string
 ---@field supported_extensions string[]
 ---@field ignore_patterns string[]
@@ -12,7 +12,7 @@
 ---@field setup fun()
 ---@field notes_dir string
 ---@field scratch_dir string
----@field capture_file string
+---@field refile_target string
 ---@field extension string
 ---@field supported_extensions string[]
 ---@field ignore_patterns string[]
@@ -27,7 +27,7 @@ local options
 ---@type MemoConfig
 local DEFAULTS = {
 	notes_dir = vim.fn.expand("~/notes") --[[@as string]],
-	capture_file = "inbox.md.asc",
+	refile_target = "inbox.md.asc",
 	scratch_dir = vim.fs.joinpath(vim.fn.stdpath("data") --[[@as string]], "memo-scratch"),
 	-- Supported note extensions. New notes are written with `extension`, while
 	-- every entry here is read and written as it is.
@@ -54,8 +54,8 @@ function M.setup()
 	options.notes_dir = vim.fs.normalize(vim.g.memo_notes_dir or options.notes_dir)
 	options.scratch_dir = vim.fs.normalize(vim.g.memo_scratch_dir or options.scratch_dir)
 
-	if vim.g.memo_default_capture_file ~= nil then
-		options.capture_file = vim.g.memo_default_capture_file
+	if vim.g.memo_default_refile_target ~= nil then
+		options.refile_target = vim.g.memo_default_refile_target
 	end
 
 	if vim.g.memo_extension ~= nil then

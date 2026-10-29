@@ -113,7 +113,7 @@ describe("open_note", function()
 			helpers.encrypt_file(vim.env.NOTES_DIR .. "/inbox.md.gpg", "Inbox\n")
 
 			child.lua([[
-				vim.g.memo_default_capture_file = "inbox.md.gpg"
+				vim.g.memo_default_refile_target = "inbox.md.gpg"
 				require("memo.config").setup()
 				M.open()
 			]])
@@ -121,11 +121,11 @@ describe("open_note", function()
 			MiniTest.expect.equality(child.api.nvim_buf_get_name(0), vim.env.NOTES_DIR .. "/inbox.md.gpg")
 		end)
 
-		it("opens vim.g.memo_default_capture_file when no path is given", function()
+		it("opens vim.g.memo_default_refile_target when no path is given", function()
 			helpers.encrypt_file(vim.env.NOTES_DIR .. "/quick.gpg", "Quick\n")
 
 			child.lua([[
-				vim.g.memo_default_capture_file = "quick.gpg"
+				vim.g.memo_default_refile_target = "quick.gpg"
 				require("memo.config").setup()
 				M.open()
 			]])
@@ -135,7 +135,7 @@ describe("open_note", function()
 
 		it("errors when no path is given and the default is empty", function()
 			child.lua([[
-				vim.g.memo_default_capture_file = ""
+				vim.g.memo_default_refile_target = ""
 				require("memo.config").setup()
 				M.open()
 			]])

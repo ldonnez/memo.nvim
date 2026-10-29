@@ -1,11 +1,5 @@
 local M = {}
 
---Opens a capture buffer, prefilled with the target header and the template.
----@param opts? MemoCaptureOpts
-function M.capture(opts)
-	require("memo.capture").create(opts)
-end
-
 --Creates a new encrypted note and opens it.
 ---@param opts? MemoNewNoteOpts
 function M.new_note(opts)
@@ -27,7 +21,7 @@ function M.save_as_note(opts)
 	return require("memo.save_as_note").create(opts)
 end
 
---Opens an editable window for a selection and appends it to a chosen note.
+--Opens an editable window for new content or a selection, then saves it to a note.
 ---@param opts? MemoRefileOpts
 ---@return boolean success
 function M.refile(opts)

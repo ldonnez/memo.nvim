@@ -17,6 +17,7 @@ describe("refile", function()
 		child.lua(
 			[[
 			vim.g.memo_notes_dir = ...
+			vim.g.memo_default_refile_target = "destination.md"
 			require("memo.config").setup()
 
 			local crypto = require("memo.crypto")
@@ -65,6 +66,24 @@ describe("refile", function()
 		MiniTest.expect.equality(child.api.nvim_win_get_buf(source_win), source)
 		MiniTest.expect.equality(refile_buf ~= source, true)
 		MiniTest.expect.equality(child.api.nvim_get_option_value("filetype", { buf = refile_buf }), "markdown")
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(refile_buf), "MemoRefile://destination.md")
+	end)
+
+	it("prompts for a destination when the default target is empty", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "selected" })
+		child.lua([[
+			require("memo.config").refile_target = ""
+			require("memo.utils").prompt_note_path = function(default_path)
+				prompt_default = default_path
+				return "destination.md"
+			end
+			M.create({ range = 1, line1 = 1, line2 = 1, prompt_path = true })
+		]])
+		child.cmd("write")
+
+		MiniTest.expect.equality(child.lua_get("prompt_default"), vim.env.NOTES_DIR)
+		MiniTest.expect.equality(vim.fn.readfile(vim.env.NOTES_DIR .. "/destination.md.asc"), { "selected" })
 	end)
 
 	it("uses the notes directory as the destination prompt default", function()
@@ -77,10 +96,10 @@ describe("refile", function()
 		local source = child.api.nvim_get_current_buf()
 		child.api.nvim_buf_set_lines(source, 0, -1, false, { "selected" })
 
-		child.lua([[ M.create({ range = 1, line1 = 1, line2 = 1 }) ]])
+		child.lua([[ M.create({ range = 1, line1 = 1, line2 = 1, prompt_path = true }) ]])
 		child.cmd("write")
 
-		MiniTest.expect.equality(child.lua_get("prompt_default"), vim.env.NOTES_DIR .. "/")
+		MiniTest.expect.equality(child.lua_get("prompt_default"), vim.env.NOTES_DIR .. "/destination.md")
 	end)
 
 	it("appends the selection and removes it from the source after writing", function()
@@ -91,7 +110,9 @@ describe("refile", function()
 		local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
 		vim.fn.writefile({ "existing" }, destination)
 
-		child.lua([[ M.create({ range = 1, line1 = 2, line2 = 2, window = { split = "split" } }) ]])
+		child.lua(
+			[[ M.create({ range = 1, line1 = 2, line2 = 2, remove_from_source = true, window = { split = "split" } }) ]]
+		)
 		child.cmd("write")
 
 		MiniTest.expect.equality(vim.fn.readfile(destination), { "existing", "", "move me" })
@@ -105,7 +126,7 @@ describe("refile", function()
 		local source_win = child.api.nvim_get_current_win()
 		child.api.nvim_buf_set_lines(source, 0, -1, false, { "before", "selected", "after" })
 
-		child.lua([[ M.create({ range = 1, line1 = 2, line2 = 2 }) ]])
+		child.lua([[ M.create({ range = 1, line1 = 2, line2 = 2, remove_from_source = true }) ]])
 		child.api.nvim_buf_set_lines(child.api.nvim_get_current_buf(), 0, -1, false, { "edited", "content" })
 		child.cmd("write")
 
@@ -113,6 +134,126 @@ describe("refile", function()
 		MiniTest.expect.equality(child.api.nvim_buf_get_lines(source, 0, -1, false), { "before", "after" })
 		MiniTest.expect.equality(child.api.nvim_get_current_win(), source_win)
 		MiniTest.expect.equality(child.api.nvim_get_current_buf(), source)
+	end)
+
+	it("inserts the selection into a template before refiling", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "move me" })
+
+		child.lua([[ M.create({
+			range = 1, line1 = 1, line2 = 1, remove_from_source = true,
+			template = "# %Y-%m-%d\n\n- |\n",
+		}) ]])
+
+		local refile_buf = child.api.nvim_get_current_buf()
+		MiniTest.expect.equality(
+			child.api.nvim_buf_get_lines(refile_buf, 0, -1, false),
+			{ "# " .. os.date("%Y-%m-%d"), "", "- move me", "" }
+		)
+		MiniTest.expect.equality(child.api.nvim_win_get_cursor(0), { 3, 8 })
+
+		child.cmd("write")
+
+		MiniTest.expect.equality(
+			vim.fn.readfile(vim.env.NOTES_DIR .. "/destination.md.asc"),
+			{ "# " .. os.date("%Y-%m-%d"), "", "- move me", "" }
+		)
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(source, 0, -1, false), { "" })
+	end)
+
+	it("creates a new entry without a selection", function()
+		child.lua([[ M.create({ template = "# %Y-%m-%d\n\n|\n" }) ]])
+		local buf = child.api.nvim_get_current_buf()
+		MiniTest.expect.equality(
+			child.api.nvim_buf_get_lines(buf, 0, -1, false),
+			{ "# " .. os.date("%Y-%m-%d"), "", "", "" }
+		)
+		child.api.nvim_buf_set_lines(buf, 0, -1, false, { "New entry" })
+		child.cmd("write")
+
+		MiniTest.expect.equality(vim.fn.readfile(vim.env.NOTES_DIR .. "/destination.md.asc"), { "New entry" })
+	end)
+
+	it("prepends content when requested", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "move me" })
+		vim.fn.writefile({ "existing" }, vim.env.NOTES_DIR .. "/destination.md.asc")
+
+		child.lua([[ M.create({ range = 1, line1 = 1, line2 = 1, prepend = true }) ]])
+		child.cmd("write")
+
+		MiniTest.expect.equality(
+			vim.fn.readfile(vim.env.NOTES_DIR .. "/destination.md.asc"),
+			{ "move me", "", "existing" }
+		)
+	end)
+
+	it("copies the selection when remove_from_source is false", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "copy me" })
+
+		child.lua([[ M.create({ range = 1, line1 = 1, line2 = 1, remove_from_source = false }) ]])
+		child.cmd("write")
+
+		MiniTest.expect.equality(vim.fn.readfile(vim.env.NOTES_DIR .. "/destination.md.asc"), { "copy me" })
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(source, 0, -1, false), { "copy me" })
+	end)
+
+	it("keeps a blank line between a header entry and existing content", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "new entry" })
+		local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
+		vim.fn.writefile({ "# inbox", "", "old entry" }, destination)
+
+		child.lua([[ M.create({
+			range = 1, line1 = 1, line2 = 1, target_header = "# inbox",
+		}) ]])
+		child.cmd("write")
+
+		MiniTest.expect.equality(vim.fn.readfile(destination), { "# inbox", "new entry", "", "old entry" })
+	end)
+
+	it("separates a header entry when the existing content has no blank line", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "new entry" })
+		local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
+		vim.fn.writefile({ "# inbox", "old entry" }, destination)
+
+		child.lua([[ M.create({
+			range = 1, line1 = 1, line2 = 1, target_header = "# inbox",
+		}) ]])
+		child.cmd("write")
+
+		MiniTest.expect.equality(vim.fn.readfile(destination), { "# inbox", "new entry", "", "old entry" })
+	end)
+
+	it("does not add padding already present in the selected source", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "", "new entry", "" })
+		local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
+		vim.fn.writefile({ "# inbox", "old entry" }, destination)
+
+		child.lua([[ M.create({
+			range = 1, line1 = 1, line2 = 3, target_header = "# inbox",
+			padding = { top = 1, bottom = 1 },
+		}) ]])
+		child.cmd("write")
+
+		MiniTest.expect.equality(vim.fn.readfile(destination), { "# inbox", "", "new entry", "", "old entry" })
+	end)
+
+	it("separates a newly created target header from existing content", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "new entry" })
+		local destination = vim.env.NOTES_DIR .. "/destination.md.asc"
+		vim.fn.writefile({ "old entry" }, destination)
+
+		child.lua([[ M.create({
+			range = 1, line1 = 1, line2 = 1, target_header = "# inbox",
+		}) ]])
+		child.cmd("write")
+
+		MiniTest.expect.equality(vim.fn.readfile(destination), { "# inbox", "new entry", "", "old entry" })
 	end)
 
 	it("applies top and bottom padding to refiled content", function()
@@ -164,7 +305,7 @@ describe("refile", function()
 		MiniTest.expect.equality(child.lua_get("last_encrypt_opts.mode") == vim.NIL, true)
 	end)
 
-	it("uses a relative target_file without prompting", function()
+	it("uses the configured target without prompting", function()
 		local source = child.api.nvim_get_current_buf()
 		child.api.nvim_buf_set_lines(source, 0, -1, false, { "move me" })
 
@@ -172,7 +313,8 @@ describe("refile", function()
 			require("memo.utils").prompt_note_path = function()
 				error("should not prompt")
 			end
-			M.create({ range = 1, line1 = 1, line2 = 1, target_file = "nested/target.md" })
+			require("memo.config").refile_target = "nested/target.md"
+			M.create({ range = 1, line1 = 1, line2 = 1, remove_from_source = true })
 		]])
 
 		child.cmd("write")
@@ -182,7 +324,7 @@ describe("refile", function()
 		MiniTest.expect.equality(child.api.nvim_buf_get_lines(source, 0, -1, false), { "" })
 	end)
 
-	it("uses an absolute target_file without prompting", function()
+	it("uses an absolute configured target without prompting", function()
 		local source = child.api.nvim_get_current_buf()
 		child.api.nvim_buf_set_lines(source, 0, -1, false, { "move me" })
 
@@ -192,7 +334,8 @@ describe("refile", function()
 			require("memo.utils").prompt_note_path = function()
 				error("should not prompt")
 			end
-			M.create({ range = 1, line1 = 1, line2 = 1, target_file = ... })
+			require("memo.config").refile_target = ...
+			M.create({ range = 1, line1 = 1, line2 = 1, remove_from_source = true })
 		]],
 			{ destination }
 		)
@@ -208,7 +351,7 @@ describe("refile", function()
 		child.api.nvim_buf_set_lines(source, 0, -1, false, { "keep me" })
 		child.lua([[ vim.bo[vim.api.nvim_get_current_buf()].modifiable = false ]])
 
-		child.lua([[ M.create({ range = 1, line1 = 1, line2 = 1 }) ]])
+		child.lua([[ M.create({ range = 1, line1 = 1, line2 = 1, remove_from_source = true }) ]])
 		child.cmd("write")
 
 		MiniTest.expect.equality(child.api.nvim_buf_get_lines(source, 0, -1, false), { "keep me" })
@@ -232,7 +375,7 @@ describe("refile", function()
 		local source = child.api.nvim_get_current_buf()
 		child.api.nvim_buf_set_lines(source, 0, -1, false, { "keep me" })
 
-		child.lua([[ M.create({ range = 1, line1 = 1, line2 = 1 }) ]])
+		child.lua([[ M.create({ range = 1, line1 = 1, line2 = 1, remove_from_source = true }) ]])
 		child.api.nvim_buf_set_lines(source, 0, -1, false, { "changed source" })
 		child.cmd("write")
 
@@ -253,7 +396,7 @@ describe("refile", function()
 				vim.fn.writefile(lines, path)
 				return true
 			end
-			M.create({ range = 1, line1 = 1, line2 = 1 })
+			M.create({ range = 1, line1 = 1, line2 = 1, remove_from_source = true })
 		]])
 		child.cmd("write")
 
@@ -282,7 +425,7 @@ describe("refile", function()
 				vim.fn.writefile(lines, path)
 				return true
 			end
-			M.create({ range = 1, line1 = 1, line2 = 1 })
+			M.create({ range = 1, line1 = 1, line2 = 1, remove_from_source = true })
 		]])
 		child.cmd("write")
 
@@ -310,7 +453,7 @@ describe("refile", function()
 				vim.fn.writefile(lines, path)
 				return true
 			end
-			M.create({ range = 1, line1 = 1, line2 = 1 })
+			M.create({ range = 1, line1 = 1, line2 = 1, remove_from_source = true })
 		]])
 		child.cmd("write")
 
@@ -327,7 +470,7 @@ describe("refile", function()
 			require("memo.crypto").encrypt_from_stdin = function()
 				return false, "write failed"
 			end
-			M.create({ range = 1, line1 = 1, line2 = 1 })
+			M.create({ range = 1, line1 = 1, line2 = 1, remove_from_source = true })
 		]])
 		child.cmd("write")
 
@@ -355,7 +498,7 @@ describe("refile", function()
 			require("memo.utils").prompt_note_path = function()
 				return nil
 			end
-			M.create({ range = 1, line1 = 1, line2 = 1 })
+			M.create({ range = 1, line1 = 1, line2 = 1, prompt_path = true })
 		]])
 		child.cmd("write")
 
@@ -371,7 +514,7 @@ describe("refile", function()
 			require("memo.utils").prompt_note_path = function()
 				return "../outside.md"
 			end
-			M.create({ range = 1, line1 = 1, line2 = 1 })
+			M.create({ range = 1, line1 = 1, line2 = 1, prompt_path = true })
 		]])
 		child.cmd("write")
 

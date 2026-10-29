@@ -92,24 +92,24 @@ describe("config", function()
 		end)
 	end)
 
-	describe("capture_file", function()
+	describe("refile_target", function()
 		before_each(function()
 			setup_child()
 		end)
 
 		it("defaults to the inbox", function()
-			local result = child.lua_get("M.capture_file")
+			local result = child.lua_get("M.refile_target")
 
 			MiniTest.expect.equality(result, "inbox.md.asc")
 		end)
 
-		it("uses vim.g.memo_default_capture_file when set", function()
+		it("uses vim.g.memo_default_refile_target when set", function()
 			child.lua([[
-        vim.g.memo_default_capture_file = "quick/inbox.asc"
+        vim.g.memo_default_refile_target = "quick/inbox.asc"
        	M.setup()
       ]])
 
-			local result = child.lua_get("M.capture_file")
+			local result = child.lua_get("M.refile_target")
 
 			MiniTest.expect.equality(result, "quick/inbox.asc")
 		end)
