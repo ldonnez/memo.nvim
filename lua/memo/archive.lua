@@ -22,36 +22,6 @@ local function archive_path(path)
 	return (stem or content_path) .. ".archive" .. (content_extension or "") .. "." .. extension
 end
 
----@param path string
----@param lines string[]
----@param bufnr integer
----@param source_path string
----@param after fun(): boolean, string?
----@return boolean success
----@return string? err
-local function append_to_archive(path, lines, bufnr, source_path, after)
-	local existed = utils.file_exists(path)
-	local has_content = utils.file_has_content(path)
-
-	if not existed and vim.fn.getftype(path) ~= "" then
-		return false, ("archive path is not a file: %s"):format(path)
-	end
-
-	local existing, read_err = note_io.read_lines(path, bufnr)
-
-	if not existing then
-		return false, read_err
-	end
-
-	vim.list_extend(existing, lines)
-
-	-- A new archive follows the source note's mode. Existing archives retain
-	-- their mode in gpg.encrypt, which detects it before replacing the file.
-	local mode = not has_content and gpg.get_encryption_mode(source_path) or nil
-
-	return note_io.write_lines(path, existing, bufnr, { mode = mode }, after)
-end
-
 ---@param opts? MemoArchiveOpts
 ---@return boolean
 function M.archive(opts)
@@ -100,11 +70,14 @@ function M.archive(opts)
 	}
 	vim.list_extend(entry, selected_lines)
 
-	local success, err = append_to_archive(archive_file, entry, bufnr, path, function()
-		vim.cmd("normal! \27")
-		selection.delete_selection(bufnr, selection_range)
-		return true
-	end)
+	local success, err = note_io.insert_lines(archive_file, entry, bufnr, {
+		mode = not utils.file_has_content(archive_file) and gpg.get_encryption_mode(path) or nil,
+		after = function()
+			vim.cmd("normal! \27")
+			selection.delete_selection(bufnr, selection_range)
+			return true
+		end,
+	})
 
 	if not success then
 		if err then

@@ -37,19 +37,6 @@ local DEFAULTS = {
 ---@field top? integer blank lines before the refiled content
 ---@field bottom? integer blank lines after the refiled content
 
----@param path string
----@return boolean valid
----@return string? err
-local function validate_destination(path)
-	local stat = vim.uv.fs_stat(path)
-
-	if stat and stat.type ~= "file" then
-		return false, ("destination is not a regular file: %s"):format(path)
-	end
-
-	return true
-end
-
 ---@param default_target string
 ---@param prompt_path boolean?
 ---@return string? target
@@ -63,138 +50,6 @@ local function resolve_target(default_target, prompt_path)
 		or (default_target:sub(1, 1) == "/" and default_target or vim.fs.joinpath(notes_dir, default_target))
 
 	return utils.prompt_note_path(default_path, "MemoRefile")
-end
-
----Inserts `lines` into the note at `path`, then runs `after` before dropping the
----destination's original. The original is restored if writing or `after` fails.
----@param lines string[]
----@param count integer
----@param from_start boolean
----@return integer
-local function missing_padding(lines, count, from_start)
-	local existing = 0
-	local index = from_start and 1 or #lines
-	local step = from_start and 1 or -1
-
-	while lines[index] == "" do
-		existing = existing + 1
-		index = index + step
-	end
-
-	return math.max(0, count - existing)
-end
-
----@param target string[]
----@param count integer
-local function append_blank_lines(target, count)
-	for _ = 1, count do
-		table.insert(target, "")
-	end
-end
-
----@param path string
----@param lines string[]
----@param config RefileConfig
----@param bufnr integer
----@param after fun(): boolean, string?
----@return boolean success
----@return string? err
-local function insert_into_note(path, lines, config, bufnr, after)
-	local padding = config.padding
-	local encryption = config.encryption
-	local prepend = config.prepend
-	local target_header = config.target_header or ""
-	local has_target_header = target_header ~= ""
-	local valid, validation_err = validate_destination(path)
-
-	if not valid then
-		return false, validation_err
-	end
-
-	local existing, err = note_io.read_lines(path, bufnr)
-
-	if not existing then
-		return false, err
-	end
-
-	local mode = not utils.file_has_content(path) and encryption and encryption.mode or nil
-
-	local merged = {}
-	local header_idx
-
-	if has_target_header then
-		for i, line in ipairs(existing) do
-			if line == target_header then
-				header_idx = i
-				break
-			end
-		end
-	end
-
-	local block = {}
-
-	if has_target_header and not header_idx then
-		table.insert(block, target_header)
-	end
-
-	if has_target_header then
-		append_blank_lines(block, missing_padding(lines, padding.top or 0, true))
-	end
-
-	vim.list_extend(block, lines)
-
-	append_blank_lines(block, missing_padding(lines, padding.bottom or 0, false))
-
-	if header_idx then
-		vim.list_extend(merged, vim.list_slice(existing, 1, header_idx))
-		vim.list_extend(merged, block)
-		local remaining = vim.list_slice(existing, header_idx + 1)
-		if
-			#lines > 0
-			and #remaining > 0
-			and remaining[1] ~= ""
-			and lines[#lines] ~= ""
-			and (padding.bottom or 0) == 0
-		then
-			table.insert(merged, "")
-		end
-		vim.list_extend(merged, remaining)
-	elseif has_target_header then
-		if #existing > 0 and #lines > 0 and lines[#lines] ~= "" and (padding.bottom or 0) == 0 then
-			table.insert(block, "")
-		end
-		vim.list_extend(merged, block)
-		vim.list_extend(merged, existing)
-	elseif prepend then
-		append_blank_lines(merged, missing_padding(lines, padding.top or 0, true))
-		vim.list_extend(merged, lines)
-		local bottom_padding = math.max(
-			missing_padding(lines, padding.bottom or 0, false),
-			#existing > 0 and #lines > 0 and 1 - (#lines[#lines] == "" and 1 or 0) - (existing[1] == "" and 1 or 0) or 0
-		)
-		for _ = 1, bottom_padding do
-			table.insert(merged, "")
-		end
-		vim.list_extend(merged, existing)
-	else
-		local top_padding = math.max(
-			missing_padding(lines, padding.top or 0, true),
-			#existing > 0 and #lines > 0 and 1 - (existing[#existing] == "" and 1 or 0) - (#lines[1] == "" and 1 or 0)
-				or 0
-		)
-
-		vim.list_extend(merged, existing)
-
-		for _ = 1, top_padding do
-			table.insert(merged, "")
-		end
-
-		vim.list_extend(merged, lines)
-
-		append_blank_lines(merged, missing_padding(lines, padding.bottom or 0, false))
-	end
-
-	return note_io.write_lines(path, merged, bufnr, { mode = mode }, after)
 end
 
 ---@param config RefileConfig
@@ -335,17 +190,23 @@ function M.create(opts)
 				return
 			end
 
-			local saved, err = insert_into_note(path, content, config, buf, function()
-				if selected and config.remove_from_source then
-					if source_changed() then
-						return false, "source changed while writing"
+			local saved, err = note_io.insert_lines(path, content, buf, {
+				prepend = config.prepend,
+				padding = config.padding,
+				mode = config.encryption and config.encryption.mode,
+				target_header = config.target_header,
+				after = function()
+					if selected and config.remove_from_source then
+						if source_changed() then
+							return false, "source changed while writing"
+						end
+
+						selection.delete_selection(source_buf, selected)
 					end
 
-					selection.delete_selection(source_buf, selected)
-				end
-
-				return true, nil
-			end)
+					return true
+				end,
+			})
 
 			if not saved then
 				if err then
