@@ -71,7 +71,7 @@ function M.archive(opts)
 	vim.list_extend(entry, selected_lines)
 
 	local success, err = note_io.insert_lines(archive_file, entry, bufnr, {
-		mode = gpg.get_encryption_mode(path),
+		mode = not utils.file_has_content(archive_file) and gpg.get_encryption_mode(path) or nil,
 		after = function()
 			vim.cmd("normal! \27")
 			selection.delete_selection(bufnr, selection_range)
