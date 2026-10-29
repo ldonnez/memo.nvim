@@ -183,6 +183,134 @@ describe("note_io", function()
 		end)
 	end)
 
+	describe("insert_lines", function()
+		it("appends by default without adding padding", function()
+			local path = vim.env.NOTES_DIR .. "/append.md.asc"
+			helpers.write_file(path, "ciphertext")
+			child.lua([[ vim.g.decrypt_output = "existing\\nline" ]])
+
+			local success = child.lua_get([[ M.insert_lines(..., { "new" }, 17) ]], { path })
+
+			MiniTest.expect.equality(success, true)
+			MiniTest.expect.equality(child.lua_get("vim.g.write_lines"), { "existing", "line", "new" })
+			MiniTest.expect.equality(child.lua_get("vim.g.write_bufnr"), 17)
+		end)
+
+		it("prepends lines when requested", function()
+			local path = vim.env.NOTES_DIR .. "/prepend.md.asc"
+			helpers.write_file(path, "ciphertext")
+			child.lua([[ vim.g.decrypt_output = "existing\\nline" ]])
+
+			local success = child.lua_get([[ M.insert_lines(..., { "first", "second" }, nil, { prepend = true }) ]], { path })
+
+			MiniTest.expect.equality(success, true)
+			MiniTest.expect.equality(child.lua_get("vim.g.write_lines"), { "first", "second", "existing", "line" })
+		end)
+
+		it("preserves refile padding when appending", function()
+			local path = vim.env.NOTES_DIR .. "/padding.md.asc"
+			helpers.write_file(path, "ciphertext")
+			child.lua([[ vim.g.decrypt_output = "existing" ]])
+
+			local success = child.lua_get(
+				[[ M.insert_lines(..., { "new" }, nil, { padding = { top = 0, bottom = 2 } }) ]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(success, true)
+			MiniTest.expect.equality(child.lua_get("vim.g.write_lines"), { "existing", "", "new", "", "" })
+		end)
+
+		it("applies padding around prepended content", function()
+			local path = vim.env.NOTES_DIR .. "/prepend-padding.md.asc"
+			helpers.write_file(path, "ciphertext")
+			child.lua([[ vim.g.decrypt_output = "existing" ]])
+
+			local success = child.lua_get(
+				[[ M.insert_lines(..., { "new" }, nil, { prepend = true, padding = { top = 1, bottom = 2 } }) ]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(success, true)
+			MiniTest.expect.equality(child.lua_get("vim.g.write_lines"), { "", "new", "", "", "existing" })
+		end)
+
+		it("uses the requested encryption mode for an empty destination", function()
+			local path = vim.env.NOTES_DIR .. "/empty-destination.md.asc"
+			helpers.write_file(path, "")
+
+			local success = child.lua_get(
+				[[ M.insert_lines(..., { "new" }, nil, { mode = "passphrase" }) ]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(success, true)
+			MiniTest.expect.equality(child.lua_get("vim.g.write_mode"), "passphrase")
+		end)
+
+		it("does not overwrite a destination when reading fails", function()
+			local path = vim.env.NOTES_DIR .. "/read-failure.md.asc"
+			helpers.write_file(path, "ciphertext")
+			child.lua([[ vim.g.decrypt_error = "bad passphrase" ]])
+
+			local result = child.lua_get(
+				[[
+				(function(path)
+					local success, err = M.insert_lines(path, { "new" })
+					return { success, err }
+				end)(...)
+				]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(result, { false, "bad passphrase" })
+			MiniTest.expect.equality(child.lua_get("vim.g.write_path or vim.NIL"), vim.NIL)
+			MiniTest.expect.equality(vim.fn.readfile(path), { "ciphertext" })
+		end)
+
+		it("rejects a directory destination", function()
+			local path = vim.env.NOTES_DIR .. "/destination-directory"
+			vim.fn.mkdir(path)
+
+			local result = child.lua_get(
+				[[
+				(function(path)
+					local success, err = M.insert_lines(path, { "new" })
+					return { success, err }
+				end)(...)
+				]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(result[1], false)
+			MiniTest.expect.equality(result[2]:find("destination is not a regular file", 1, true) ~= nil, true)
+			MiniTest.expect.equality(child.lua_get("vim.g.write_path or vim.NIL"), vim.NIL)
+		end)
+
+		it("restores the destination when the follow-up fails", function()
+			local path = vim.env.NOTES_DIR .. "/insert-follow-up.md.asc"
+			helpers.write_file(path, "ciphertext")
+			child.lua([[ vim.g.decrypt_output = "original" ]])
+
+			local result = child.lua_get(
+				[[
+				(function(path)
+					local success, err = M.insert_lines(path, { "new" }, nil, {
+						after = function()
+							return false, "follow-up failed"
+						end,
+					})
+					return { success, err }
+				end)(...)
+				]],
+				{ path }
+			)
+
+			MiniTest.expect.equality(result, { false, "follow-up failed" })
+			MiniTest.expect.equality(vim.fn.readfile(path), { "ciphertext" })
+		end)
+	end)
+
 	describe("follow-up writes", function()
 		it("keeps the write when the follow-up succeeds", function()
 			local path = vim.env.NOTES_DIR .. "/follow-up.md.asc"
