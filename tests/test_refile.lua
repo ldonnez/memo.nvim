@@ -232,6 +232,22 @@ describe("refile", function()
 		MiniTest.expect.equality(child.fn.filereadable(target), 0)
 	end)
 
+	it("detects the source buffer through a non-normalized destination path", function()
+		local target = vim.env.NOTES_DIR .. "/destination.md.asc"
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_buf_set_name(source, target)
+		child.api.nvim_buf_set_lines(source, 0, -1, false, { "keep me" })
+
+		child.lua([[
+			require("memo.utils").prompt_note_path = function() return "./destination.md" end
+			M.create({ range = 1, line1 = 1, line2 = 1, remove_from_source = true, prompt_path = true })
+		]])
+		child.cmd("write")
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(source, 0, -1, false), { "keep me" })
+		MiniTest.expect.equality(child.fn.filereadable(target), 0)
+	end)
+
 	it("prepends content when requested", function()
 		local source = child.api.nvim_get_current_buf()
 		child.api.nvim_buf_set_lines(source, 0, -1, false, { "move me" })

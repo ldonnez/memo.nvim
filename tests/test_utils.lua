@@ -395,6 +395,92 @@ describe("utils", function()
 		end)
 	end)
 
+	describe("prepare_note_path", function()
+		local notes_dir = ""
+		local original_notes_dir
+
+		before_each(function()
+			notes_dir = vim.fn.tempname()
+			vim.fn.mkdir(notes_dir, "p")
+			original_notes_dir = vim.g.memo_notes_dir
+			vim.g.memo_notes_dir = notes_dir
+			require("memo.config").setup()
+		end)
+
+		after_each(function()
+			vim.g.memo_notes_dir = original_notes_dir
+			require("memo.config").setup()
+			vim.fn.delete(notes_dir, "rf")
+		end)
+
+		it("creates parent directories without prompting for a new note", function()
+			local prompted = false
+			local original_confirm = vim.fn.confirm
+			vim.fn.confirm = function()
+				prompted = true
+				return 1
+			end
+
+			local note_path = util.prepare_note_path("nested/note.md", "MemoTest")
+			vim.fn.confirm = original_confirm
+
+			MiniTest.expect.equality(note_path, notes_dir .. "/nested/note.md.asc")
+			MiniTest.expect.equality(vim.fn.isdirectory(notes_dir .. "/nested"), 1)
+			MiniTest.expect.equality(prompted, false)
+		end)
+
+		it("returns nil when the overwrite prompt is declined", function()
+			local note_path = notes_dir .. "/note.md.asc"
+			helpers.write_file(note_path, "secret")
+
+			local original_confirm = vim.fn.confirm
+			vim.fn.confirm = function()
+				return 2
+			end
+
+			local prepared = util.prepare_note_path("note.md", "MemoTest")
+			vim.fn.confirm = original_confirm
+
+			MiniTest.expect.equality(prepared, nil)
+			MiniTest.expect.equality(vim.fn.readfile(note_path), { "secret" })
+		end)
+
+		it("returns the path when the overwrite prompt is accepted", function()
+			local note_path = notes_dir .. "/note.md.asc"
+			helpers.write_file(note_path, "secret")
+
+			local original_confirm = vim.fn.confirm
+			vim.fn.confirm = function()
+				return 1
+			end
+
+			local prepared = util.prepare_note_path("note.md", "MemoTest")
+			vim.fn.confirm = original_confirm
+
+			MiniTest.expect.equality(prepared, note_path)
+			MiniTest.expect.equality(vim.fn.readfile(note_path), { "secret" })
+		end)
+
+		it("returns nil for a path outside the notes dir", function()
+			local message = require("memo.message")
+			local original_defer_error = message.defer_error
+			local reported = ""
+			message.defer_error = function(fmt, ...)
+				reported = string.format(fmt, ...)
+			end
+
+			local prepared = util.prepare_note_path("../outside.md", "MemoTest")
+			message.defer_error = original_defer_error
+
+			MiniTest.expect.equality(prepared, nil)
+			MiniTest.expect.equality(
+				reported:find("note path must be inside the notes directory", 1, true) ~= nil,
+				true
+			)
+			MiniTest.expect.equality(vim.fn.filereadable(notes_dir .. "/../outside.md.asc"), 0)
+		end)
+	end)
+
 	describe("prompt_note_path", function()
 		it("returns the entered path", function()
 			local original_input = vim.fn.input

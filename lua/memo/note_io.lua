@@ -61,6 +61,10 @@ function M.write_lines(path, lines, bufnr, opts, after)
 	end)
 end
 
+---@class MemoRefilePadding
+---@field top? integer blank lines before the inserted content
+---@field bottom? integer blank lines after the inserted content
+
 ---@class MemoNoteInsertOpts
 ---@field prepend? boolean Insert before existing content instead of after it
 ---@field padding? MemoRefilePadding Blank lines around the inserted content
@@ -123,6 +127,10 @@ end
 function M.insert_lines(path, lines, bufnr, opts)
 	opts = opts or {}
 
+	if #lines == 0 then
+		return true
+	end
+
 	local stat = vim.uv.fs_stat(path)
 
 	if (stat and stat.type ~= "file") or (not stat and vim.fn.getftype(path) ~= "") then
@@ -135,7 +143,8 @@ function M.insert_lines(path, lines, bufnr, opts)
 		return false, err
 	end
 
-	local mode = not utils.file_has_content(path) and opts.mode or nil
+	local has_content = stat ~= nil and stat.type == "file" and stat.size > 0
+	local mode = not has_content and opts.mode or nil
 	local padding = opts.padding or {}
 	local target_header = opts.target_header or ""
 	local has_target_header = target_header ~= ""
@@ -164,35 +173,19 @@ function M.insert_lines(path, lines, bufnr, opts)
 	vim.list_extend(block, lines)
 	append_blank_lines(block, missing_padding(lines, padding.bottom or 0, false))
 
-	if header_idx then
-		vim.list_extend(merged, vim.list_slice(existing, 1, header_idx))
-		vim.list_extend(merged, block)
-		local remaining = vim.list_slice(existing, header_idx + 1)
+	if has_target_header then
+		local insert_after = header_idx or 0
+		local prefix = vim.list_slice(existing, 1, insert_after)
+		local remaining = vim.list_slice(existing, insert_after + 1)
 
-		if
-			#lines > 0
-			and #remaining > 0
-			and remaining[1] ~= ""
-			and lines[#lines] ~= ""
-			and (padding.bottom or 0) == 0
-		then
-			table.insert(merged, "")
+		vim.list_extend(merged, prefix)
+		vim.list_extend(merged, block)
+
+		if #remaining > 0 and #block > 0 then
+			append_blank_lines(merged, separator_padding(remaining, block, false))
 		end
 
 		vim.list_extend(merged, remaining)
-	elseif has_target_header then
-		if
-			#existing > 0
-			and existing[1] ~= ""
-			and #lines > 0
-			and lines[#lines] ~= ""
-			and (padding.bottom or 0) == 0
-		then
-			table.insert(block, "")
-		end
-
-		vim.list_extend(merged, block)
-		vim.list_extend(merged, existing)
 	elseif opts.prepend then
 		append_blank_lines(merged, missing_padding(lines, padding.top or 0, true))
 		vim.list_extend(merged, lines)

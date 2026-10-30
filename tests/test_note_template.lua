@@ -58,6 +58,27 @@ describe("note_template", function()
 		MiniTest.expect.equality(line:find("${date}", 1, true) ~= nil, true)
 	end)
 
+	it("builds source context from a buffer and the earliest selected line", function()
+		local bufnr = vim.api.nvim_create_buf(false, true)
+		local path = vim.fn.tempname() .. ".md"
+		vim.api.nvim_buf_set_name(bufnr, path)
+
+		local lines = Template.for_buffer({
+			template = "${filename} ${capture}",
+			bufnr = bufnr,
+			selection = {
+				start = { 0, 5, 1, 0 },
+				finish = { 0, 2, 1, 0 },
+				linewise = false,
+			},
+		}):resolve_template()
+
+		vim.api.nvim_buf_delete(bufnr, { force = true })
+		local line = assert(lines[1])
+		MiniTest.expect.equality(line:find(vim.fn.fnamemodify(path, ":t"), 1, true) ~= nil, true)
+		MiniTest.expect.equality(line:find("#L2", 1, true) ~= nil, true)
+	end)
+
 	describe("insert_at_cursor", function()
 		it("inserts a single line where the marker was", function()
 			local note_template = Template.new({ template = "## Agenda\n- ${cursor}" })

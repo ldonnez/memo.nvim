@@ -18,6 +18,18 @@ local function default_path()
 	return require("memo.utils").build_note_path(os.date("%Y-%m-%d.md"))
 end
 
+---Uses the given path, or prompts for one so the Lua API behaves like the
+---command.
+---@param path? string
+---@return string? path
+local function path_or_prompt(path)
+	if path and path ~= "" then
+		return path
+	end
+
+	return require("memo.utils").prompt_note_path(default_path(), "MemoNewNote")
+end
+
 --- Remove an already-loaded buffer before replacing its note.
 ---@param path string
 ---@return boolean success
@@ -67,38 +79,21 @@ end
 ---@return boolean success
 function M.create(opts)
 	local new_opts = opts or {}
-	local config = require("memo.config")
 	local message = require("memo.message")
 	local utils = require("memo.utils")
 	local selection = require("memo.selection")
 	local note_io = require("memo.note_io")
 	local Template = require("memo.note_template")
 
-	local path = new_opts.path
+	local path = path_or_prompt(new_opts.path)
 
-	if not path or path == "" then
-		-- Prompted here so the Lua API behaves like the command.
-		path = utils.prompt_note_path(default_path(), "MemoNewNote")
-
-		if not path then
-			return false
-		end
+	if not path then
+		return false
 	end
 
-	local note_path = utils.resolve_note_path(path)
+	local note_path = utils.prepare_note_path(path, "MemoNewNote")
 
 	if not note_path then
-		message.error("MemoNewNote: note path must be inside the notes directory (%s)", config.notes_dir)
-		return false
-	end
-
-	local overwriting = utils.file_has_content(note_path)
-
-	if overwriting and not utils.confirm("Note already exists. Overwrite?", "MemoNewNote") then
-		return false
-	end
-
-	if not utils.ensure_directories(vim.fs.dirname(note_path)) then
 		return false
 	end
 
@@ -115,12 +110,11 @@ function M.create(opts)
 
 	-- Prepared before the original is touched: a template that raises cannot
 	-- cost the note it was meant to replace.
-	local source_path = vim.api.nvim_buf_get_name(source_bufnr)
-	local source_line = selected_position and selected_position.start[2] or vim.api.nvim_win_get_cursor(0)[1]
-	local note_template = Template.new({
+	local note_template = Template.for_buffer({
 		template = new_opts.template,
-		source_path = source_path ~= "" and vim.fn.fnamemodify(source_path, ":p") or nil,
-		source_line = source_line,
+		bufnr = source_bufnr,
+		selection = selected_position,
+		source_line = vim.api.nvim_win_get_cursor(0)[1],
 	})
 	local initial_lines, cursor_pos = note_template:initial_content(selected)
 

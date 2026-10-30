@@ -172,6 +172,44 @@ describe("archive", function()
 		MiniTest.expect.equality(vim.fn.readfile(path("note.archive.md.asc")), { "## Archived", "", "archive me" })
 	end)
 
+	it("treats an empty template as raw archived lines", function()
+		buffer("note.md", { "archive me" })
+
+		MiniTest.expect.equality(child.lua_get([[M.archive({ range = 1, line1 = 1, line2 = 1, template = "" })]]), true)
+
+		MiniTest.expect.equality(vim.fn.readfile(path("note.archive.md.asc")), { "archive me" })
+	end)
+
+	it("refuses to archive when the source buffer is not modifiable", function()
+		local bufnr = buffer("note.md", { "archive me" })
+		child.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
+
+		MiniTest.expect.equality(child.lua_get("M.archive({ range = 1, line1 = 1, line2 = 1 })"), false)
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(bufnr, 0, -1, false), { "archive me" })
+		MiniTest.expect.equality(vim.fn.filereadable(path("note.archive.md.asc")), 0)
+	end)
+
+	it("restores the archive when the source changes during the write", function()
+		local bufnr = buffer("note.md", { "keep", "archive me" })
+
+		child.lua(
+			[[
+				local bufnr = ...
+				local crypto = require("memo.crypto")
+				crypto.encrypt_from_stdin = function(target, lines)
+					vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "changed during write" })
+					vim.fn.writefile(lines, target)
+					return true
+				end
+			]],
+			{ bufnr }
+		)
+
+		MiniTest.expect.equality(child.lua_get("M.archive({ range = 1, line1 = 2, line2 = 2 })"), false)
+		MiniTest.expect.equality(child.api.nvim_buf_get_lines(bufnr, 0, -1, false), { "changed during write" })
+		MiniTest.expect.equality(vim.fn.filereadable(path("note.archive.md.asc")), 0)
+	end)
+
 	it("archives only the active character-wise selection", function()
 		local bufnr = buffer("note.md", { "keep archive word tail" })
 
