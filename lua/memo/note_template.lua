@@ -8,8 +8,14 @@ local M = {}
 ---@class MemoNoteTemplate
 ---@field config MemoNoteTemplateConfig
 ---@field resolve_template fun(self: MemoNoteTemplate): string[], [integer, integer], boolean
----@field insert_at_cursor fun(self: MemoNoteTemplate, content: string[]): string[], integer[]
+---@field insert_at_cursor fun(self: MemoNoteTemplate, content: string[], lines?: string[], cursor_pos?: [integer, integer], has_cursor_marker?: boolean): string[], integer[]
 ---@field initial_content fun(self: MemoNoteTemplate, selection?: string[]): string[], [integer, integer]
+
+---@class MemoNoteTemplateBufferOpts
+---@field template string?
+---@field bufnr integer
+---@field selection MemoSelection?
+---@field source_line integer?
 
 local DEFAULTS = { template = "" }
 local Template = {}
@@ -18,7 +24,25 @@ Template.__index = Template
 ---@param opts MemoNoteTemplateConfig?
 ---@return MemoNoteTemplate
 function M.new(opts)
-	return setmetatable({ config = vim.tbl_deep_extend("force", DEFAULTS, opts or {}) }, Template)
+	return setmetatable({ config = vim.tbl_extend("force", DEFAULTS, opts or {}) }, Template)
+end
+
+---Creates a template whose source context comes from a buffer.
+---@param opts MemoNoteTemplateBufferOpts
+---@return MemoNoteTemplate
+function M.for_buffer(opts)
+	local source_path = vim.api.nvim_buf_get_name(opts.bufnr)
+	local source_line = opts.source_line
+
+	if opts.selection then
+		source_line = math.min(opts.selection.start[2], opts.selection.finish[2])
+	end
+
+	return M.new({
+		template = opts.template,
+		source_path = source_path ~= "" and vim.fn.fnamemodify(source_path, ":p") or nil,
+		source_line = source_line,
+	})
 end
 
 ---@param template string
@@ -116,9 +140,14 @@ function Template:resolve_template()
 end
 
 ---@param content string[]
+---@param lines string[]? already-resolved template lines
+---@param cursor_pos [integer, integer]?
+---@param has_cursor_marker boolean?
 ---@return string[] lines, integer[] cursor_pos
-function Template:insert_at_cursor(content)
-	local lines, cursor_pos, has_cursor_marker = self:resolve_template()
+function Template:insert_at_cursor(content, lines, cursor_pos, has_cursor_marker)
+	if not lines or not cursor_pos or has_cursor_marker == nil then
+		lines, cursor_pos, has_cursor_marker = self:resolve_template()
+	end
 	if #content == 0 or not has_cursor_marker then
 		return lines, cursor_pos
 	end
@@ -154,7 +183,7 @@ function Template:initial_content(selection)
 		return lines, cursor_pos
 	end
 	if has_cursor_marker then
-		return self:insert_at_cursor(selection)
+		return self:insert_at_cursor(selection, lines, cursor_pos, has_cursor_marker)
 	end
 	return selection, { #selection, 0 }
 end

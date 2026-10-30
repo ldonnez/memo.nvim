@@ -26,7 +26,6 @@ function M.open(opts)
 	local note_path = utils.resolve_note_path(path)
 
 	if not note_path then
-		message.error("MemoOpen: note path must be inside the notes directory (%s)", config.notes_dir)
 		return false
 	end
 

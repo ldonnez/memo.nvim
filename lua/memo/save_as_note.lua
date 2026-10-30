@@ -19,9 +19,7 @@ local M = {}
 ---@return boolean success
 function M.create(opts)
 	local utils = require("memo.utils")
-	local config = require("memo.config")
 	local bufnr = vim.api.nvim_get_current_buf()
-	local notes_dir = config.notes_dir
 	local current = vim.api.nvim_buf_get_name(bufnr)
 
 	local default_name = utils.strip_extension(vim.fn.fnamemodify(current, ":t"))
@@ -32,20 +30,9 @@ function M.create(opts)
 		return false
 	end
 
-	local note_path = utils.resolve_note_path(target)
+	local note_path = utils.prepare_note_path(target, "MemoSaveAsNote")
 
 	if not note_path then
-		message.error("MemoSaveAsNote: note path must be inside the notes directory (%s)", notes_dir)
-		return false
-	end
-
-	local overwriting = utils.file_has_content(note_path)
-
-	if overwriting and not utils.confirm("Note already exists. Overwrite?", "MemoSaveAsNote") then
-		return false
-	end
-
-	if not utils.ensure_directories(vim.fs.dirname(note_path)) then
 		return false
 	end
 

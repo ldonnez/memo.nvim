@@ -138,21 +138,47 @@ end
 ---Resolves a supplied note path to an absolute note path inside the notes
 ---directory. Relative paths are resolved against the notes dir and `~` is
 ---expanded. A supported extension that is already there is kept, otherwise the
----configured one is appended.
+---configured one is appended. An invalid path reports a deferred `Memo` error.
 ---@param path string
 ---@return string? note_path nil when the path is empty or escapes the notes dir
 function M.resolve_note_path(path)
 	local notes_dir = require("memo.config").notes_dir
 	local expanded = vim.fn.expand(path) --[[@as string]]
 
-	if expanded == "" then
+	if expanded ~= "" then
+		local target = expanded:sub(1, 1) == "/" and expanded or (notes_dir .. "/" .. expanded)
+		local note_path = M.resolve_note_file(target)
+
+		if M.is_in_dir(note_path, notes_dir) then
+			return note_path
+		end
+	end
+
+	require("memo.message").defer_error("%s: note path must be inside the notes directory (%s)", "Memo", notes_dir)
+
+	return nil
+end
+
+---Resolves a note target, confirms an overwrite, and creates its directory.
+---@param path string
+---@param title string command name used in the message
+---@return string? note_path
+function M.prepare_note_path(path, title)
+	local note_path = M.resolve_note_path(path)
+
+	if not note_path then
 		return nil
 	end
 
-	local target = expanded:sub(1, 1) == "/" and expanded or (notes_dir .. "/" .. expanded)
-	local note_path = M.resolve_note_file(target)
+	if M.file_has_content(note_path) and not M.confirm("Note already exists. Overwrite?", title) then
+		return nil
+	end
 
-	return M.is_in_dir(note_path, notes_dir) and note_path or nil
+	if not M.ensure_directories(vim.fs.dirname(note_path)) then
+		return nil
+	end
+
+	return note_path
 end
 
 ---Prompts for a note path, pre-filled with `default_path`.

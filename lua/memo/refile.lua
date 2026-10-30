@@ -33,10 +33,6 @@ local DEFAULTS = {
 ---@field encryption? GpgEncryptOpts how to encrypt a new destination, "key" when omitted; existing destinations keep their mode
 ---@field window? MemoWindowConfig Window configuration
 
----@class MemoRefilePadding
----@field top? integer blank lines before the refiled content
----@field bottom? integer blank lines after the refiled content
-
 ---@param default_target string
 ---@param prompt_path boolean?
 ---@return string? target
@@ -78,14 +74,11 @@ end
 
 ---Restores focus to the source window and drops the refile buffer.
 ---@param source_win integer
----@param source_buf integer
 ---@param refile_win integer
 ---@param buf integer
-local function close_refile(source_win, source_buf, refile_win, buf)
+local function close_refile(source_win, refile_win, buf)
 	if vim.api.nvim_win_is_valid(source_win) then
-		if refile_win == source_win then
-			vim.api.nvim_win_set_buf(source_win, source_buf)
-		elseif vim.api.nvim_win_is_valid(refile_win) then
+		if vim.api.nvim_win_is_valid(refile_win) then
 			vim.api.nvim_win_close(refile_win, true)
 		end
 
@@ -120,17 +113,18 @@ function M.create(opts)
 		return false
 	end
 
-	local filetype = (has_selection and vim.bo[source_buf].filetype or utils.get_filetype(default_target)) or ""
-	local name = ("MemoRefile://%s"):format(
-		not config.prompt_path and default_target ~= "" and default_target or "Refile"
-	)
-	local buf, refile_win = create_refile_window(config, filetype, name)
 	local source_path = vim.api.nvim_buf_get_name(source_buf)
-	local source_line = selected and selected.start[2] or vim.api.nvim_win_get_cursor(source_win)[1]
-	local template = Template.new({
+	local source_file = source_path ~= "" and vim.fs.normalize(vim.fn.fnamemodify(source_path, ":p")) or nil
+
+	local filetype = (has_selection and vim.bo[source_buf].filetype or utils.get_filetype(default_target)) or ""
+	local target_label = config.prompt_path and "Refile" or (default_target ~= "" and default_target or "Refile")
+	local name = ("MemoRefile://%s"):format(target_label)
+	local buf, refile_win = create_refile_window(config, filetype, name)
+	local template = Template.for_buffer({
 		template = config.template,
-		source_path = source_path ~= "" and vim.fn.fnamemodify(source_path, ":p") or nil,
-		source_line = source_line,
+		bufnr = source_buf,
+		selection = has_selection and selected or nil,
+		source_line = vim.api.nvim_win_get_cursor(source_win)[1],
 	})
 	local initial_lines, cursor_pos = template:initial_content(has_selection and lines or nil)
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, initial_lines)
@@ -142,7 +136,7 @@ function M.create(opts)
 		callback = function()
 			vim.api.nvim_exec_autocmds("BufWritePre", { buffer = buf, modeline = false })
 
-			if selected and config.remove_from_source and source_changed() then
+			if has_selection and config.remove_from_source and source_changed() then
 				message.defer_error("MemoRefile: source buffer changed; recreate the refile selection")
 				return
 			end
@@ -156,7 +150,7 @@ function M.create(opts)
 
 			if not has_selection and vim.deep_equal(content, initial_lines) then
 				message.info("MemoRefile: no changes")
-				close_refile(source_win, source_buf, refile_win, buf)
+				close_refile(source_win, refile_win, buf)
 				return
 			end
 
@@ -169,19 +163,12 @@ function M.create(opts)
 			local path = utils.resolve_note_path(target)
 
 			if not path then
-				message.defer_error(
-					"MemoRefile: note path must be inside the notes directory (%s)",
-					require("memo.config").notes_dir
-				)
 				return
 			end
 
-			if
-				selected
-				and config.remove_from_source
-				and source_path ~= ""
-				and vim.fn.fnamemodify(source_path, ":p") == path
-			then
+			local target_file = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
+
+			if has_selection and config.remove_from_source and source_file == target_file then
 				message.defer_error("MemoRefile: destination must differ from the source buffer")
 				return
 			end
@@ -190,7 +177,7 @@ function M.create(opts)
 				return
 			end
 
-			if selected and config.remove_from_source and not vim.bo[source_buf].modifiable then
+			if has_selection and config.remove_from_source and not vim.bo[source_buf].modifiable then
 				message.defer_error("MemoRefile: source buffer is not modifiable")
 				return
 			end
@@ -201,12 +188,12 @@ function M.create(opts)
 				mode = config.encryption and config.encryption.mode,
 				target_header = config.target_header,
 				after = function()
-					if selected and config.remove_from_source then
+					if has_selection and config.remove_from_source then
 						if source_changed() then
 							return false, "source changed while writing"
 						end
 
-						selection.delete_selection(source_buf, selected)
+						selection.delete_selection(source_buf, selected --[[@as MemoSelection]])
 					end
 
 					return true
@@ -220,12 +207,12 @@ function M.create(opts)
 				return
 			end
 
-			local action = has_selection and (config.remove_from_source and "Moved to" or "Copied to") or "Saved to"
+			local action = not has_selection and "Saved to" or (config.remove_from_source and "Moved to" or "Copied to")
 
 			message.info("%s %s", action, path)
 			vim.api.nvim_exec_autocmds("BufWritePost", { buffer = buf, modeline = false })
 
-			close_refile(source_win, source_buf, refile_win, buf)
+			close_refile(source_win, refile_win, buf)
 		end,
 	})
 

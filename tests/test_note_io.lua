@@ -184,6 +184,15 @@ describe("note_io", function()
 	end)
 
 	describe("insert_lines", function()
+		it("does nothing for empty lines", function()
+			local path = vim.env.NOTES_DIR .. "/empty-insert.md.asc"
+
+			local success = child.lua_get([[ M.insert_lines(..., {}) ]], { path })
+
+			MiniTest.expect.equality(success, true)
+			MiniTest.expect.equality(vim.fn.filereadable(path), 0)
+		end)
+
 		it("appends by default with a blank separator", function()
 			local path = vim.env.NOTES_DIR .. "/append.md.asc"
 			helpers.write_file(path, "ciphertext")
