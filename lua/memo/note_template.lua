@@ -32,11 +32,8 @@ end
 ---@return MemoNoteTemplate
 function M.for_buffer(opts)
 	local source_path = vim.api.nvim_buf_get_name(opts.bufnr)
-	local source_line = opts.source_line
-
-	if opts.selection then
-		source_line = math.min(opts.selection.start[2], opts.selection.finish[2])
-	end
+	local source_line = opts.selection and math.min(opts.selection.start[2], opts.selection.finish[2])
+		or opts.source_line
 
 	return M.new({
 		template = opts.template,
