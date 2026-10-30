@@ -344,6 +344,7 @@ vim.g.memo_ignore_patterns = {
 | `:Memo`             | Open the default refile target.                     |
 | `:MemoScratch`      | Open or create the scratch buffer for the cwd.     |
 | `:MemoNewNote`      | Create a new encrypted note in the notes dir.      |
+| `:MemoRefile`       | Refile a selection or create a new entry.          |
 | `:MemoScratchFiles` | Browse and open encrypted scratch files.           |
 | `:MemoSaveAsNote`   | Save the buffer or selection as an encrypted note. |
 | `:MemoArchive`      | Move the selection into the note archive.          |
