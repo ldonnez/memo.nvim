@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.23.0](https://github.com/ldonnez/memo.nvim/compare/v0.22.0...v0.23.0) (2026-10-30)
+
+
+### Features
+
+* expand note templates with contextual placeholders ([4cb9dac](https://github.com/ldonnez/memo.nvim/commit/4cb9dacb14667c830aad27bca135fc8473d466f6))
+* support archive entry templates ([1fe58f0](https://github.com/ldonnez/memo.nvim/commit/1fe58f0d21c2463da28dd628a2a63b001b58d625))
+* support Org-style timestamp placeholders ([3e2efd7](https://github.com/ldonnez/memo.nvim/commit/3e2efd755180d54600e1f1c7e117ac74e877262e))
+* unify capture and refile workflows ([251a91c](https://github.com/ldonnez/memo.nvim/commit/251a91c8de70c5d4caa8d4ecb6eca1b55dbfe78b))
+
+
+### Bug Fixes
+
+* avoid duplicate separator before leading blank line ([73aaf1c](https://github.com/ldonnez/memo.nvim/commit/73aaf1c9531215dbc5e37c49c4d1e9617d7a7938))
+* **refile:** allow new entries in the target buffer ([a3d904c](https://github.com/ldonnez/memo.nvim/commit/a3d904c73b24585df54224592236636f78d54455))
+
 ## [0.22.0](https://github.com/ldonnez/memo.nvim/compare/v0.21.2...v0.22.0) (2026-10-27)
 
 
