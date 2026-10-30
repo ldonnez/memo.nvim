@@ -93,14 +93,10 @@ function M.archive(opts)
 	end
 
 	local template_text = opts and opts.template
-	if template_text == "" then
-		template_text = nil
-	end
-
 	local entry = archive_entry(template_text, bufnr, selection_range, selected_lines)
 	local has_content = utils.file_has_content(archive_file)
 
-	if template_text and has_content then
+	if has_content and template_text and template_text ~= "" then
 		while entry[1] == "" do
 			table.remove(entry, 1)
 		end
