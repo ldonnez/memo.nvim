@@ -583,8 +583,8 @@ backslash.
 ### Archive selected text
 
 Use a Visual-mode mapping or `require("memo").archive()` to move a selection
-into a companion archive file. Character-wise, line-wise, and block-wise
-selections are supported. The `:MemoArchive` command archives its line range.
+into a companion archive file. Character-wise and line-wise selections are
+supported. The `:MemoArchive` command archives its line range.
 The buffer must be in the notes directory.
 
 For example, `projects/plan.md.asc` is archived to
