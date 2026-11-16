@@ -68,9 +68,11 @@ local function create_window(path, opts)
 	vim.bo[bufnr].modifiable = true
 	vim.bo[bufnr].fileencoding = "utf-8"
 	vim.bo[bufnr].buftype = "acwrite"
-	vim.bo[bufnr].filetype = require("memo.utils").get_filetype(path) or ""
-
 	vim.api.nvim_exec_autocmds("BufReadPost", { buffer = bufnr, modeline = false })
+
+	-- BufReadPost can run filetype detection based on the encrypted extension.
+	-- Set the note filetype afterwards so the underlying note name wins.
+	vim.bo[bufnr].filetype = require("memo.utils").get_filetype(path) or ""
 	return win, bufnr
 end
 ---Creates a new encrypted note and opens it in the current window.
