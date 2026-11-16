@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.1](https://github.com/ldonnez/memo.nvim/compare/v0.23.0...v0.23.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* set note filetype after read autocmds ([c55198d](https://github.com/ldonnez/memo.nvim/commit/c55198dba24204260aef377bdce4a3f90ecc9755))
+
 ## [0.23.0](https://github.com/ldonnez/memo.nvim/compare/v0.22.0...v0.23.0) (2026-10-30)
 
 
