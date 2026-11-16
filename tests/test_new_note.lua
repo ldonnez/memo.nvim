@@ -107,6 +107,7 @@ describe("new_note", function()
 		it("sets the filetype from the note name, without the note extension", function()
 			child.lua_get([[ new_note.create({ path = "typed.md" }) ]])
 
+			MiniTest.expect.equality(child.api.nvim_buf_get_name(0):match("%.(%w+)$"), "asc")
 			MiniTest.expect.equality(child.bo.filetype, "markdown")
 		end)
 
