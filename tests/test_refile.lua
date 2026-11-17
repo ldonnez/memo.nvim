@@ -122,19 +122,22 @@ describe("refile", function()
 		MiniTest.expect.equality(vim.fn.readfile(vim.env.NOTES_DIR .. "/destination.md.asc"), { "selected" })
 	end)
 
-	it("sets the filetype from a prompted destination before writing", function()
+	it("uses the source filetype when prompting for a destination", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_set_option_value("filetype", "lua", { buf = source })
 		child.lua([[
-			require("memo.config").refile_target = ""
 			require("memo.utils").prompt_note_path = function()
 				return "destination.org"
 			end
 			M.create({ template = "${cursor}", prompt_path = true })
 		]])
 		local buf = child.api.nvim_get_current_buf()
+		MiniTest.expect.equality(child.api.nvim_get_option_value("filetype", { buf = buf }), "lua")
+
 		child.api.nvim_buf_set_lines(buf, 0, -1, false, { "entry" })
 		child.cmd("write")
 
-		MiniTest.expect.equality(child.lua_get("last_encrypt_filetype"), "org")
+		MiniTest.expect.equality(child.lua_get("last_encrypt_filetype"), "lua")
 		MiniTest.expect.equality(vim.fn.readfile(vim.env.NOTES_DIR .. "/destination.org.asc"), { "entry" })
 	end)
 
