@@ -116,7 +116,7 @@ function M.create(opts)
 	local source_path = vim.api.nvim_buf_get_name(source_buf)
 	local source_file = source_path ~= "" and vim.fs.normalize(vim.fn.fnamemodify(source_path, ":p")) or nil
 
-	local filetype = (has_selection and vim.bo[source_buf].filetype or utils.get_filetype(default_target)) or ""
+	local filetype = utils.get_filetype(default_target) or vim.bo[source_buf].filetype
 	local target_label = config.prompt_path and "Refile" or (default_target ~= "" and default_target or "Refile")
 	local name = ("MemoRefile://%s"):format(target_label)
 	local buf, refile_win = create_refile_window(config, filetype, name)
@@ -166,6 +166,7 @@ function M.create(opts)
 				return
 			end
 
+			vim.bo[buf].filetype = utils.get_filetype(path) or vim.bo[source_buf].filetype
 			local target_file = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
 
 			if has_selection and config.remove_from_source and source_file == target_file then
