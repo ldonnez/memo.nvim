@@ -4,6 +4,7 @@ local child = helpers.new_child_neovim()
 describe("refile", function()
 	before_each(function()
 		vim.fn.delete(vim.env.NOTES_DIR .. "/destination.md.asc", "rf")
+		vim.fn.delete(vim.env.NOTES_DIR .. "/explicit.org.asc", "rf")
 
 		for _, backup in ipairs(vim.fn.glob(vim.env.NOTES_DIR .. "/destination.md.memo-backup-*.asc", false, true)) do
 			vim.fn.delete(backup)
@@ -120,6 +121,30 @@ describe("refile", function()
 
 		MiniTest.expect.equality(child.lua_get("prompt_default"), vim.env.NOTES_DIR)
 		MiniTest.expect.equality(vim.fn.readfile(vim.env.NOTES_DIR .. "/destination.md.asc"), { "selected" })
+	end)
+
+	it("uses an explicit path instead of the default or destination prompt", function()
+		local source = child.api.nvim_get_current_buf()
+		child.api.nvim_set_option_value("filetype", "lua", { buf = source })
+		child.lua([[
+			require("memo.utils").prompt_note_path = function()
+				error("should not prompt")
+			end
+			M.create({
+				path = "explicit.org",
+				prompt_path = true,
+				template = "${cursor}",
+			})
+		]])
+
+		local buf = child.api.nvim_get_current_buf()
+		MiniTest.expect.equality(child.api.nvim_get_option_value("filetype", { buf = buf }), "org")
+		child.api.nvim_buf_set_lines(buf, 0, -1, false, { "entry" })
+		child.cmd("write")
+
+		MiniTest.expect.equality(child.lua_get("last_encrypt_filetype"), "org")
+		MiniTest.expect.equality(vim.fn.readfile(vim.env.NOTES_DIR .. "/explicit.org.asc"), { "entry" })
+		MiniTest.expect.equality(child.fn.filereadable(vim.env.NOTES_DIR .. "/destination.md.asc"), 0)
 	end)
 
 	it("uses the source filetype when prompting for a destination", function()
