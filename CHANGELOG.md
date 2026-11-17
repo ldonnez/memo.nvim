@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.2](https://github.com/ldonnez/memo.nvim/compare/v0.23.1...v0.23.2) (2026-11-17)
+
+
+### Bug Fixes
+
+* use destination filetype for refile buffer ([2ff9558](https://github.com/ldonnez/memo.nvim/commit/2ff9558f38840b0f05e46bf45f3b3d6d4ea91bca))
+
 ## [0.23.1](https://github.com/ldonnez/memo.nvim/compare/v0.23.0...v0.23.1) (2026-11-16)
 
 
