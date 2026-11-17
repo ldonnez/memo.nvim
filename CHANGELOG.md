@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.24.0](https://github.com/ldonnez/memo.nvim/compare/v0.23.2...v0.24.0) (2026-11-17)
+
+
+### Features
+
+* allow an explicit refile destination path ([144a1e0](https://github.com/ldonnez/memo.nvim/commit/144a1e078fbf660ef22727305c73cbb6f695a37b))
+
+
+### Bug Fixes
+
+* preserve source filetype when prompting for refile target ([608dcee](https://github.com/ldonnez/memo.nvim/commit/608dcee4b84376fe00a89cb144c4d243f95d539c))
+
 ## [0.23.2](https://github.com/ldonnez/memo.nvim/compare/v0.23.1...v0.23.2) (2026-11-17)
 
 
