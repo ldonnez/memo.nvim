@@ -290,7 +290,19 @@ end, { desc = "Memo: Refile to today" })
 ```
 
 Set `prompt_path = true` on `refile()` when you want to choose a destination
-for an individual operation. `:MemoNewNote <path>` has its own explicit path.
+for an individual operation. When the destination is known in advance, pass
+`path` instead. It overrides `g:memo_default_refile_target` and skips the
+prompt, even if `prompt_path = true`. Relative paths are resolved against
+`<notes_dir>`.
+
+```lua
+require("memo").refile({
+  path = "journals/2026-01-01.md",
+  template = "## ${date:%Y-%m-%d}\\n\\n${cursor}",
+})
+```
+
+`:MemoNewNote <path>` has its own explicit path.
 
 ### `g:memo_extension`
 
@@ -633,16 +645,28 @@ the selected text when a selection exists; without a selection it opens an
 empty or template-filled entry.
 
 Write the window to save to `g:memo_default_refile_target`; set
-`prompt_path = true` to choose a different destination. Content is appended
-by default, or prepended with `prepend = true`. The original selection is
-kept by default. Set `remove_from_source = true` to remove it after a
-successful write instead of copying.
+`prompt_path = true` to choose a different destination. Alternatively, pass
+`path` to specify the destination directly. It overrides the default target
+and skips the prompt, even if `prompt_path = true`. Relative paths are
+resolved against `<notes_dir>`; missing files and parent directories are
+created. Content is appended by default, or prepended with `prepend = true`.
+The original selection is kept by default. Set `remove_from_source = true`
+to remove it after a successful write instead of copying.
 
 If the destination does not exist, it is created. Existing notes keep their
 encryption mode. Use `padding` to configure blank lines before and after the
 moved content. A `template` can add context around new or selected content;
 see "Templates" above. Without a `${cursor}` marker, a selection becomes the
 entire initial content.
+
+
+
+```lua
+require("memo").refile({
+  path = "journals/2026-01-01.md",
+  template = "## ${date:%Y-%m-%d}\\n\\n${cursor}",
+})
+```
 
 New destinations use key encryption by default; set
 `encryption.mode = "passphrase"` to use passphrase encryption. Existing

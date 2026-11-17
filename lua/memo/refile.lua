@@ -24,6 +24,7 @@ local DEFAULTS = {
 ---@field range? integer Command range indicator
 ---@field line1? integer First line of the command range
 ---@field line2? integer Last line of the command range
+---@field path? string destination path; overrides the default target and skips prompting
 ---@field prompt_path? boolean prompt for a destination instead of using the default target
 ---@field prepend? boolean insert content before existing destination content
 ---@field target_header? string insert content below this exact header, creating it when missing
@@ -33,19 +34,19 @@ local DEFAULTS = {
 ---@field encryption? GpgEncryptOpts how to encrypt a new destination, "key" when omitted; existing destinations keep their mode
 ---@field window? MemoWindowConfig Window configuration
 
----@param default_target string
+---@param target_path string
 ---@param prompt_path boolean?
 ---@return string? target
-local function resolve_target(default_target, prompt_path)
+local function resolve_target(target_path, prompt_path)
 	if not prompt_path then
-		return default_target
+		return target_path
 	end
 
 	local notes_dir = require("memo.config").notes_dir
-	local default_path = default_target == "" and notes_dir
-		or (default_target:sub(1, 1) == "/" and default_target or vim.fs.joinpath(notes_dir, default_target))
+	local path = target_path == "" and notes_dir
+		or (target_path:sub(1, 1) == "/" and target_path or vim.fs.joinpath(notes_dir, target_path))
 
-	return utils.prompt_note_path(default_path, "MemoRefile")
+	return utils.prompt_note_path(path, "MemoRefile")
 end
 
 ---@param config RefileConfig
@@ -107,8 +108,9 @@ function M.create(opts)
 			or vim.api.nvim_buf_get_changedtick(source_buf) ~= source_changedtick
 	end
 
-	local default_target = require("memo.config").refile_target or ""
-	if default_target == "" and not config.prompt_path then
+	local target_path = config.path or require("memo.config").refile_target or ""
+	local prompt_path = config.path == nil and config.prompt_path
+	if target_path == "" and not prompt_path then
 		message.error("MemoRefile: a destination is required, or set g:memo_default_refile_target")
 		return false
 	end
@@ -116,8 +118,8 @@ function M.create(opts)
 	local source_path = vim.api.nvim_buf_get_name(source_buf)
 	local source_file = source_path ~= "" and vim.fs.normalize(vim.fn.fnamemodify(source_path, ":p")) or nil
 
-	local filetype = (not config.prompt_path and utils.get_filetype(default_target)) or vim.bo[source_buf].filetype
-	local target_label = config.prompt_path and "Refile" or (default_target ~= "" and default_target or "Refile")
+	local filetype = (not prompt_path and utils.get_filetype(target_path)) or vim.bo[source_buf].filetype
+	local target_label = prompt_path and "Refile" or (target_path ~= "" and target_path or "Refile")
 	local name = ("MemoRefile://%s"):format(target_label)
 	local buf, refile_win = create_refile_window(config, filetype, name)
 	local template = Template.for_buffer({
@@ -154,7 +156,7 @@ function M.create(opts)
 				return
 			end
 
-			local target = resolve_target(default_target, config.prompt_path)
+			local target = resolve_target(target_path, prompt_path)
 
 			if not target then
 				return
