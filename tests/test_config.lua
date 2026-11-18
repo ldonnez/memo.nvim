@@ -51,6 +51,25 @@ describe("config", function()
 		end)
 	end)
 
+	describe("archive_dir", function()
+		before_each(function()
+			setup_child()
+		end)
+
+		it("defaults to nil", function()
+			MiniTest.expect.equality(child.lua_get("M.archive_dir == nil"), true)
+		end)
+
+		it("uses vim.g.memo_archive_dir when set", function()
+			child.lua([[
+				vim.g.memo_archive_dir = "archive"
+				M.setup()
+			]])
+
+			MiniTest.expect.equality(child.lua_get("M.archive_dir"), "archive")
+		end)
+	end)
+
 	describe("scratch_dir", function()
 		before_each(function()
 			setup_child()

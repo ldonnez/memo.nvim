@@ -2,6 +2,7 @@
 ---@field notes_dir string
 ---@field scratch_dir string
 ---@field refile_target string
+---@field archive_dir string?
 ---@field extension string
 ---@field supported_extensions string[]
 ---@field ignore_patterns string[]
@@ -13,6 +14,7 @@
 ---@field notes_dir string
 ---@field scratch_dir string
 ---@field refile_target string
+---@field archive_dir string?
 ---@field extension string
 ---@field supported_extensions string[]
 ---@field ignore_patterns string[]
@@ -53,6 +55,8 @@ function M.setup()
 
 	options.notes_dir = vim.fs.normalize(vim.g.memo_notes_dir or options.notes_dir)
 	options.scratch_dir = vim.fs.normalize(vim.g.memo_scratch_dir or options.scratch_dir)
+
+	options.archive_dir = vim.g.memo_archive_dir
 
 	if vim.g.memo_default_refile_target ~= nil then
 		options.refile_target = vim.g.memo_default_refile_target

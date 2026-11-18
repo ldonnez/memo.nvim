@@ -4,6 +4,7 @@ local utils = require("memo.utils")
 local gpg = require("memo.gpg")
 local selection = require("memo.selection")
 local Template = require("memo.note_template")
+local config = require("memo.config")
 
 local M = {}
 
@@ -15,13 +16,39 @@ local M = {}
 
 ---Returns the companion archive path, preserving the note's content and encryption extensions.
 ---@param path string
----@return string
+---@return string? archive_path nil when the configured directory escapes notes_dir
 local function archive_path(path)
 	local extension = utils.get_extension(path) or "asc"
 	local content_path = utils.strip_extension(path)
 	local stem, content_extension = content_path:match("^(.*)(%.[^./]+)$")
+	local filename = (stem or content_path):match("([^/]+)$")
+		.. ".archive"
+		.. (content_extension or "")
+		.. "."
+		.. extension
 
-	return (stem or content_path) .. ".archive" .. (content_extension or "") .. "." .. extension
+	if not config.archive_dir then
+		return (stem or content_path) .. ".archive" .. (content_extension or "") .. "." .. extension
+	end
+
+	local relative_path = vim.fs.relpath(config.notes_dir, path)
+
+	if not relative_path then
+		return nil
+	end
+
+	local archive_file =
+		vim.fs.joinpath(config.notes_dir, vim.fs.normalize(config.archive_dir), vim.fs.dirname(relative_path), filename)
+
+	if not utils.is_in_dir(archive_file, config.notes_dir) then
+		return nil
+	end
+
+	if not utils.ensure_directories(vim.fs.dirname(archive_file)) then
+		return nil
+	end
+
+	return archive_file
 end
 
 ---@param template_text? string
@@ -52,7 +79,6 @@ end
 ---@param opts? MemoArchiveOpts
 ---@return boolean
 function M.archive(opts)
-	local config = require("memo.config")
 	local bufnr = vim.api.nvim_get_current_buf()
 	local name = vim.api.nvim_buf_get_name(bufnr)
 
@@ -88,7 +114,8 @@ function M.archive(opts)
 	local source_changedtick = vim.api.nvim_buf_get_changedtick(bufnr)
 	local archive_file = archive_path(path)
 
-	if not utils.ensure_directories(vim.fs.dirname(archive_file)) then
+	if not archive_file then
+		message.error("MemoArchive: archive directory must be inside %s", config.notes_dir)
 		return false
 	end
 
