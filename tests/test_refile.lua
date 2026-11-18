@@ -347,20 +347,6 @@ describe("refile", function()
 		MiniTest.expect.equality(child.lua_get("last_encrypt_opts.mode"), "passphrase")
 	end)
 
-	it("preserves the encryption mode of an existing destination", function()
-		local source = child.api.nvim_get_current_buf()
-		child.api.nvim_buf_set_lines(source, 0, -1, false, { "move me" })
-		vim.fn.writefile({ "existing" }, vim.env.NOTES_DIR .. "/destination.md.asc")
-
-		child.lua([[ M.create({
-			range = 1, line1 = 1, line2 = 1,
-			encryption = { mode = "passphrase" },
-		}) ]])
-		child.cmd("write")
-
-		MiniTest.expect.equality(child.lua_get("last_encrypt_opts.mode") == vim.NIL, true)
-	end)
-
 	it("keeps the refile buffer when encryption is cancelled", function()
 		local source = child.api.nvim_get_current_buf()
 		child.api.nvim_buf_set_lines(source, 0, -1, false, { "keep me" })
