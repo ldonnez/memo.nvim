@@ -244,6 +244,22 @@ Directory where encrypted scratch files are stored.
 vim.g.memo_scratch_dir = "~/.local/state/memo-scratch"
 ```
 
+### `g:memo_archive_dir`
+
+Directory where archived selections are stored, relative to `<notes_dir>`.
+The source note's relative subdirectory is preserved, so notes with the same
+name in different directories do not share an archive.
+
+- Default: unset (archives stay beside their source notes).
+
+```lua
+vim.g.memo_archive_dir = "archive"
+```
+
+With this setting, `projects/plan.md.asc` is archived to
+`archive/projects/plan.archive.md.asc`. Missing directories are created
+automatically. The configured directory must stay inside `<notes_dir>`.
+
 ### `g:memo_default_refile_target`
 
 The note `:Memo` and `require("memo").open()` open when no path is given, and
@@ -599,9 +615,11 @@ into a companion archive file. Character-wise and line-wise selections are
 supported. The `:MemoArchive` command archives its line range.
 The buffer must be in the notes directory.
 
-For example, `projects/plan.md.asc` is archived to
-`projects/plan.archive.md.asc`, and `projects/plan.md` to
-`projects/plan.archive.md.asc`. Every archive is GPG-encrypted, including
+By default, `projects/plan.md.asc` is archived to
+`projects/plan.archive.md.asc`. Set `g:memo_archive_dir = "archive"` to
+store it at `archive/projects/plan.archive.md.asc` instead. The source
+subdirectory is preserved, and missing archive directories are created.
+Every archive is GPG-encrypted, including
 archives created from plaintext notes. Entries are appended as-is, separated
 by a blank line, and existing entries are retained.
 
