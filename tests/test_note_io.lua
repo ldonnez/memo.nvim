@@ -386,14 +386,14 @@ describe("note_io", function()
 			MiniTest.expect.equality(child.lua_get("vim.g.write_mode"), "passphrase")
 		end)
 
-		it("keeps the encryption mode of an existing destination", function()
+		it("passes the requested encryption mode through for an existing destination", function()
 			local path = vim.env.NOTES_DIR .. "/existing-destination.md.asc"
 			helpers.write_file(path, "ciphertext")
 
-			local success = child.lua_get([[ M.insert_lines(..., { "new" }) ]], { path })
+			local success = child.lua_get([[ M.insert_lines(..., { "new" }, nil, { mode = "passphrase" }) ]], { path })
 
 			MiniTest.expect.equality(success, true)
-			MiniTest.expect.equality(child.lua_get("vim.g.write_mode == nil"), true)
+			MiniTest.expect.equality(child.lua_get("vim.g.write_mode"), "passphrase")
 		end)
 
 		it("does not overwrite a destination when reading fails", function()

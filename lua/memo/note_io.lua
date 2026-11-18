@@ -143,8 +143,6 @@ function M.insert_lines(path, lines, bufnr, opts)
 		return false, err
 	end
 
-	local has_content = stat ~= nil and stat.type == "file" and stat.size > 0
-	local mode = not has_content and opts.mode or nil
 	local padding = opts.padding or {}
 	local target_header = opts.target_header or ""
 	local has_target_header = target_header ~= ""
@@ -209,7 +207,7 @@ function M.insert_lines(path, lines, bufnr, opts)
 		append_blank_lines(merged, missing_padding(lines, padding.bottom or 0, false))
 	end
 
-	return M.write_lines(path, merged, bufnr, { mode = mode }, opts.after)
+	return M.write_lines(path, merged, bufnr, { mode = opts.mode }, opts.after)
 end
 
 return M
