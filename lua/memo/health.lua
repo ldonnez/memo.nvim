@@ -16,8 +16,15 @@ local function check_memo_binary()
 	end
 
 	local result = vim.system({ "memo", "version" }, { text = true }):wait()
-	if result.code ~= 0 or not result.stdout then
-		vim.health.ok("memo is installed")
+	if result.code ~= 0 then
+		vim.health.error(
+			string.format("memo version command failed (exit code %d): %s", result.code, vim.trim(result.stderr or ""))
+		)
+		return
+	end
+
+	if not result.stdout or result.stdout == "" then
+		vim.health.warn("memo version command returned no output")
 		return
 	end
 
