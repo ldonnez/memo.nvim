@@ -38,7 +38,7 @@ local function archive_path(path)
 	end
 
 	local archive_file =
-		vim.fs.joinpath(config.notes_dir, vim.fs.normalize(config.archive_dir), vim.fs.dirname(relative_path), filename)
+		vim.fs.normalize(vim.fs.joinpath(config.notes_dir, config.archive_dir, vim.fs.dirname(relative_path), filename))
 
 	if not utils.is_in_dir(archive_file, config.notes_dir) then
 		return nil
