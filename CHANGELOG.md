@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.1](https://github.com/ldonnez/memo.nvim/compare/v0.25.0...v0.25.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* normalize archive destination paths ([bd28fdb](https://github.com/ldonnez/memo.nvim/commit/bd28fdbb255b11905ce0b515684ffddbcdbc83e7))
+
 ## [0.25.0](https://github.com/ldonnez/memo.nvim/compare/v0.24.0...v0.25.0) (2026-11-19)
 
 
