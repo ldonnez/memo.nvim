@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/ldonnez/memo.nvim/compare/v0.24.0...v0.25.0) (2026-11-19)
+
+
+### Features
+
+* configure archive directory ([fcf8c1a](https://github.com/ldonnez/memo.nvim/commit/fcf8c1a8a6cfb00e800607ff1c5e22bb91233ffd))
+
 ## [0.24.0](https://github.com/ldonnez/memo.nvim/compare/v0.23.2...v0.24.0) (2026-11-17)
 
 
