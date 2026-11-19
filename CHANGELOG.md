@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.25.2](https://github.com/ldonnez/memo.nvim/compare/v0.25.1...v0.25.2) (2026-11-19)
+
+
+### Bug Fixes
+
+* handle plaintext deletion failures ([714dda6](https://github.com/ldonnez/memo.nvim/commit/714dda63e94620651999f04d4713f6077a11e3db))
+* report memo version command failures ([b28c747](https://github.com/ldonnez/memo.nvim/commit/b28c74766f354d0c92359141840e4562a2e111ac))
+
 ## [0.25.1](https://github.com/ldonnez/memo.nvim/compare/v0.25.0...v0.25.1) (2026-11-19)
 
 
