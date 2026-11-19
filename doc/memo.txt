@@ -1,5 +1,5 @@
 *memo.txt* Seamless Neovim interface for memo, a CLI-based encrypted notes system
-                             For NVIM v0.11.5    Last change: 2026 November 17
+                             For NVIM v0.11.5    Last change: 2026 November 19
 
 ==============================================================================
 Table of Contents                                     *memo-table-of-contents*
@@ -267,6 +267,23 @@ Directory where encrypted scratch files are stored.
 >lua
     vim.g.memo_scratch_dir = "~/.local/state/memo-scratch"
 <
+
+
+G:MEMO_ARCHIVE_DIR ~
+
+Directory where archived selections are stored, relative to `<notes_dir>`. The
+source note’s relative subdirectory is preserved, so notes with the same name
+in different directories do not share an archive.
+
+- Default: unset (archives stay beside their source notes).
+
+>lua
+    vim.g.memo_archive_dir = "archive"
+<
+
+With this setting, `projects/plan.md.asc` is archived to
+`archive/projects/plan.archive.md.asc`. Missing directories are created
+automatically. The configured directory must stay inside `<notes_dir>`.
 
 
 G:MEMO_DEFAULT_REFILE_TARGET ~
@@ -651,11 +668,12 @@ into a companion archive file. Character-wise and line-wise selections are
 supported. The `:MemoArchive` command archives its line range. The buffer must
 be in the notes directory.
 
-For example, `projects/plan.md.asc` is archived to
-`projects/plan.archive.md.asc`, and `projects/plan.md` to
-`projects/plan.archive.md.asc`. Every archive is GPG-encrypted, including
-archives created from plaintext notes. Entries are appended as-is, separated by
-a blank line, and existing entries are retained.
+By default, `projects/plan.md.asc` is archived to
+`projects/plan.archive.md.asc`. Set `g:memo_archive_dir = "archive"` to store
+it at `archive/projects/plan.archive.md.asc` instead. The source subdirectory
+is preserved, and missing archive directories are created. Every archive is
+GPG-encrypted, including archives created from plaintext notes. Entries are
+appended as-is, separated by a blank line, and existing entries are retained.
 
 Pass `template` to add metadata or formatting around an entry. The archived
 lines are inserted at the template’s `${cursor}` marker, or appended after
