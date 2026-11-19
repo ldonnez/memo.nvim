@@ -203,8 +203,9 @@ function M.on_write(args)
 	end
 
 	if file ~= note_path then
-		if utils.file_exists(file) then
-			vim.fn.delete(file)
+		if utils.file_exists(file) and vim.fn.delete(file) ~= 0 then
+			message.defer_error("Failed to delete plaintext note: %s", file)
+			return
 		end
 
 		vim.api.nvim_buf_set_name(bufnr, note_path)
