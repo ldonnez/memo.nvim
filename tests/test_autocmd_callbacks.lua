@@ -280,6 +280,29 @@ describe("autocmd", function()
 		MiniTest.expect.equality(encrypted_file_exists, true)
 	end)
 
+	it("keeps the plaintext and reports a deferred error when deleting it fails", function()
+		local plain = vim.env.NOTES_DIR .. "/deletefail.md"
+		local encrypted = plain .. ".asc"
+		helpers.write_file(plain, "content")
+
+		child.lua([[
+			vim.fn.delete = function()
+				return -1
+			end
+		]])
+
+		child.cmd("edit " .. plain)
+		child.cmd("write")
+
+		child.wait_until(function()
+			return child.cmd_capture("messages"):find("Failed to delete plaintext note", 1, true) ~= nil
+		end)
+
+		MiniTest.expect.equality(child.api.nvim_buf_get_name(0), plain)
+		MiniTest.expect.equality(vim.fn.filereadable(plain), 1)
+		MiniTest.expect.equality(vim.fn.filereadable(encrypted), 1)
+	end)
+
 	it("keeps the plaintext and reports a deferred error when encryption fails on write", function()
 		local plain = vim.env.NOTES_DIR .. "/encfail.md"
 		helpers.write_file(plain, "content")
