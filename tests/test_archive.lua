@@ -109,12 +109,26 @@ describe("archive", function()
 	end)
 
 	it("archives notes in the configured directory while preserving their relative paths", function()
-		child.lua([[vim.g.memo_archive_dir = "archive/../archive"; require("memo.config").setup()]])
+		child.lua([[
+			vim.g.memo_archive_dir = ".archive/../.archive"
+			require("memo.config").setup()
+			require("memo.message").info = function(fmt, ...)
+				vim.g.archive_message = fmt:format(...)
+			end
+		]])
 		local bufnr = buffer("projects/plan.md.asc", { "keep", "archive me" })
 		MiniTest.expect.equality(child.lua_get("M.archive({ range = 1, line1 = 2, line2 = 2 })"), true)
-		MiniTest.expect.equality(vim.fn.filereadable(path("archive/projects/plan.archive.md.asc")), 1)
+		MiniTest.expect.equality(vim.fn.filereadable(path(".archive/projects/plan.archive.md.asc")), 1)
 		MiniTest.expect.equality(vim.fn.filereadable(path("projects/plan.archive.md.asc")), 0)
 		MiniTest.expect.equality(child.api.nvim_buf_get_lines(bufnr, 0, -1, false), { "keep" })
+
+		buffer("note.md", { "archive me" })
+
+		MiniTest.expect.equality(child.lua_get("M.archive({ range = 1, line1 = 1, line2 = 1 })"), true)
+		MiniTest.expect.equality(
+			child.lua_get("vim.g.archive_message"),
+			"Archived lines to " .. path(".archive/note.archive.md.asc")
+		)
 	end)
 
 	it("keeps same-named notes in separate directories in separate archives", function()
