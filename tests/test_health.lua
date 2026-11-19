@@ -59,6 +59,22 @@ describe("health", function()
 		MiniTest.expect.equality(report:find("Notes directory not found: " .. missing, 1, true) ~= nil, true)
 	end)
 
+	it("reports when the memo version command fails", function()
+		local bin_dir = "/tmp/memo-health-failingbin"
+		local memo = vim.fs.joinpath(bin_dir, "memo")
+		vim.fn.mkdir(bin_dir, "p")
+		vim.fn.writefile({ "#!/bin/sh", "echo version failed >&2", "exit 1" }, memo)
+		vim.fn.system({ "chmod", "+x", memo })
+		child.lua([[ vim.env.PATH = ... .. ":" .. vim.env.PATH ]], { bin_dir })
+
+		local report = checkhealth(NOTES_DIR)
+
+		MiniTest.expect.equality(
+			report:find("memo version command failed (exit code 1): version failed", 1, true) ~= nil,
+			true
+		)
+	end)
+
 	it("warns on a malformed memo version", function()
 		fake_memo("not-a-version")
 
